@@ -21,6 +21,23 @@
         "vitest": "^4.1.10",
       },
     },
+    "examples/example-app": {
+      "name": "@agent-kit/example",
+      "version": "0.0.1",
+      "dependencies": {
+        "@agent-kit/ai": "workspace:*",
+        "@agent-kit/core": "workspace:*",
+        "@agent-kit/curator": "workspace:*",
+        "@agent-kit/sessions": "workspace:*",
+        "agentfs-sdk": "^0.6.4",
+        "ai": "^7.0.40",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "~6.0.3",
+        "vitest": "^4.1.10",
+      },
+    },
     "packages/ai": {
       "name": "@agent-kit/ai",
       "version": "0.0.1",
@@ -84,6 +101,8 @@
     "@agent-kit/core": ["@agent-kit/core@workspace:packages/core"],
 
     "@agent-kit/curator": ["@agent-kit/curator@workspace:packages/curator"],
+
+    "@agent-kit/example": ["@agent-kit/example@workspace:examples/example-app"],
 
     "@agent-kit/sandbox": ["@agent-kit/sandbox@workspace:packages/sandbox"],
 

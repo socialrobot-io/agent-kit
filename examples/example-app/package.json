@@ -1,0 +1,38 @@
+{
+  "name": "@agent-kit/example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "chat": "bun src/chat.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "nx": {
+    "name": "example",
+    "tags": ["type:example"],
+    "targets": {
+      "typecheck": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "tsc -p tsconfig.json --noEmit",
+          "cwd": "examples/example-app"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@agent-kit/ai": "workspace:*",
+    "@agent-kit/core": "workspace:*",
+    "@agent-kit/curator": "workspace:*",
+    "@agent-kit/sessions": "workspace:*",
+    "agentfs-sdk": "^0.6.4",
+    "ai": "^7.0.40"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

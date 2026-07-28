@@ -95,6 +95,19 @@ string (resolved through the AI Gateway) or a ready `LanguageModel` instance.
 The demo runs on an offline mock so it works with zero keys; `runAgentTurn` is
 the same code path pointed at a live model.
 
+### Example app
+
+[`examples/example-app`](examples/example-app) is a runnable walkthrough against
+a live model: persistent AgentFS home, curator staging, human approval, then
+recall in a second session (plus a chat REPL).
+
+```bash
+cd examples/example-app
+cp .env.sample .env   # set AI_GATEWAY_API_KEY
+bun run start         # scripted live demo
+bun run chat          # interactive REPL
+```
+
 ---
 
 ## How it works
