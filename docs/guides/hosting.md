@@ -84,7 +84,9 @@ const session = await openAgentSession({
   tenantId,
   fs,
   definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
-  sessionSearchTool: createSessionSearchTool(transcripts, tenantId),
+  sessionSearchTool: createSessionSearchTool(transcripts, tenantId, {
+    currentSessionId: sessionId,
+  }),
   sandboxTools: bash.tools,
 });
 ```

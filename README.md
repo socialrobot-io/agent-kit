@@ -44,91 +44,119 @@ the runtime a per-tenant filesystem, and the production stack comes with it.
 
 ## Install
 
-Packages are on npm under `@socialrobot-io/agent-kit-*`. Install what you need:
+Production stack (multi-tenant volume, sandbox, transcripts, live model loop):
 
 ```bash
-npm install @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai
-# optional:
-#   @socialrobot-io/agent-kit-sessions
-#   @socialrobot-io/agent-kit-sandbox
-#   @socialrobot-io/agent-kit-curator
-#   @socialrobot-io/agent-kit-cli
+npm install \
+  @socialrobot-io/agent-kit-core \
+  @socialrobot-io/agent-kit-ai \
+  @socialrobot-io/agent-kit-sessions \
+  @socialrobot-io/agent-kit-sandbox \
+  @socialrobot-io/agent-kit-curator
 ```
 
 | Package | Use |
 | ------- | --- |
-| [`@socialrobot-io/agent-kit-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, session runtime, memory, skills, approval |
-| [`@socialrobot-io/agent-kit-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop via the Vercel AI SDK |
-| [`@socialrobot-io/agent-kit-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts and `session_search` |
-| [`@socialrobot-io/agent-kit-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS + guarded bash |
-| [`@socialrobot-io/agent-kit-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory and skills |
-| [`@socialrobot-io/agent-kit-cli`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-cli) | Offline production-loop demo helpers |
+| [`agent-kit-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, session runtime, memory, skills, approval |
+| [`agent-kit-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop via the Vercel AI SDK |
+| [`agent-kit-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Durable transcripts + tenant-scoped `session_search` |
+| [`agent-kit-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS volume + guarded bash |
+| [`agent-kit-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory and skills |
 
 ## Quick start
 
-`@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` into a live
-model and runs the loop via the [Vercel AI SDK](https://sdk.vercel.ai). One API
-key (`AI_GATEWAY_API_KEY`) reaches every provider through the AI Gateway.
+Your app owns auth and maps it to a stable `tenantId`. Open one AgentFS volume
+per tenant, then compose the session. Write approval stays on by default.
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
-import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { defineAgent } from "@socialrobot-io/agent-kit-core";
+import {
+  openAgentSession,
+  resolveModel,
+  runAgentTurn,
+} from "@socialrobot-io/agent-kit-ai";
+import {
+  openAgentFs,
+  serializeAgentFs,
+  createTenantBashToolkit,
+} from "@socialrobot-io/agent-kit-sandbox";
+import {
+  FileTranscriptStore,
+  assertTenantSession,
+  createSessionSearchTool,
+} from "@socialrobot-io/agent-kit-sessions";
 
-const fs = new InMemoryFs();
-await fs.writeFile("agent/SOUL.md", "You are concise.");
-await fs.writeFile("agent/AGENTS.md", "Prefer short answers.");
+// From your auth layer — never trust a client-supplied tenant id.
+const tenantId = "brand-123";
+const sessionId = "chat-abc";
+const volumePath = `/data/tenants/${tenantId}.db`;
 
+const afs = await openAgentFs(volumePath);
+serializeAgentFs(afs.fs);
+const fs = adaptAgentFs(afs.fs); // host adapter; see Hosting guide
+
+const transcripts = new FileTranscriptStore({ fs });
+await transcripts.createSession({
+  id: sessionId,
+  tenantId,
+  source: "chat",
+  createdAt: Date.now() / 1000,
+});
+await assertTenantSession(transcripts, tenantId, sessionId);
+
+const bash = await createTenantBashToolkit({ tenantId, agentFs: afs });
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
-const runtime = new AgentSessionRuntime({
-  tenantId: "brand-123",
+
+const session = await openAgentSession({
+  tenantId,
   fs,
   definition,
+  sessionSearchTool: createSessionSearchTool(transcripts, tenantId, {
+    currentSessionId: sessionId,
+  }),
+  sandboxTools: bash.tools,
 });
-await runtime.init();
 
+const { toolSet } = session.composeTools();
 const turn = await runAgentTurn(
-  [{ role: "user", content: "Stop being so verbose." }],
-  { runtime, definition },
+  [{ role: "user", content: "Summarize /workspace and remember my preference for short answers." }],
+  {
+    runtime: session.runtime,
+    model: resolveModel(definition.model),
+    toolSet,
+  },
 );
-console.log(turn.text);
 ```
 
-**Models:** any AI SDK provider. Pass a `"provider/model"` string (AI Gateway)
-or a ready `LanguageModel`. Full guide: [Models](docs/guides/models.md).
+`adaptAgentFs` is host code (AgentFS SDK → `AgentFsLike`). Copy it from
+[`docs/guides/hosting.md`](docs/guides/hosting.md) or
+[`examples/example-app`](examples/example-app).
 
-### Offline demo (clone the repo)
-
-```bash
-git clone git@github.com:socialrobot-io/agent-kit.git
-cd agent-kit
-bun install
-bun packages/cli/src/lib/demo.ts   # no API keys
-```
-
-```text
-=== Session 1 (tenant A) ===        ✓ snapshot has no memory yet
-=== Curator review (background) ===  ✓ staged memory + skill, nothing applied
-=== Approve staged writes ===        ✓ human reviews, then applies
-=== Session 2 (tenant A) — recall ===✓ snapshot recalls memory, sees new skill
-=== Cross-session FTS recall ===     ✓ session_search finds session 1
-=== Tenant B — isolation ===         ✓ own empty memory / skills / FTS
-
-DEMO PASSED
-```
+After the turn, run the curator in the background and approve staged writes
+before the next session snapshot. Details: [Hosting](docs/guides/hosting.md),
+[Skills & learning](docs/guides/skills-and-learning.md),
+[Models](docs/guides/models.md).
 
 ### Example app
 
-[`examples/example-app`](examples/example-app) is a streaming Next.js chat over
-agent-kit (AI SDK UI `useChat`), with persistent AgentFS memory, bash-tool
-sandbox tools, and a live model.
+[`examples/example-app`](examples/example-app) is this stack as a streaming
+Next.js chat (AI SDK UI `useChat`).
 
 ```bash
+git clone git@github.com:socialrobot-io/agent-kit.git
+cd agent-kit && bun install
 cd examples/example-app
 cp .env.sample .env.local   # set DEEPSEEK_API_KEY (or AI_GATEWAY_API_KEY)
 npx nx dev example          # http://localhost:3000
 ```
 
-Defaults to `@ai-sdk/deepseek` and `deepseek-v4-flash`. Gateway is the fallback.
+### Offline demo
+
+No API keys. Exercises approval, recall, and tenant isolation:
+
+```bash
+bun packages/cli/src/lib/demo.ts
+```
 
 ---
 

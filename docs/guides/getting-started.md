@@ -1,17 +1,23 @@
 # Getting started
 
-Install from npm:
+Production stack from npm:
 
 ```bash
-npm install @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai
+npm install \
+  @socialrobot-io/agent-kit-core \
+  @socialrobot-io/agent-kit-ai \
+  @socialrobot-io/agent-kit-sessions \
+  @socialrobot-io/agent-kit-sandbox \
+  @socialrobot-io/agent-kit-curator
 ```
 
-Optional packages: `@socialrobot-io/agent-kit-sessions`,
-`@socialrobot-io/agent-kit-sandbox`, `@socialrobot-io/agent-kit-curator`.
+Wire auth → `tenantId` → one AgentFS volume → sandbox + transcripts →
+`openAgentSession`. Full composition: [Hosting](hosting.md) and the
+[README](../../README.md#quick-start).
 
 ## Offline demo
 
-Clone the repo if you want the full production-loop demo (no API keys):
+Clone the repo for the approval / recall / isolation loop (no API keys):
 
 ```bash
 git clone git@github.com:socialrobot-io/agent-kit.git
@@ -45,10 +51,11 @@ Never invent numbers.
 
 Custom tools: [Tools](tools.md).
 
-## Run a turn
+## Minimal turn (no volume)
 
-Needs `AI_GATEWAY_API_KEY` (or your own `LanguageModel`). Uses `InMemoryFs` so
-you can try without opening a SQLite volume. Production: [Hosting](hosting.md).
+Needs `AI_GATEWAY_API_KEY` (or your own `LanguageModel`). Uses `InMemoryFs`
+without AgentFS / sandbox. Prefer the [Hosting](hosting.md) composition for
+anything multi-tenant.
 
 ```ts
 import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
