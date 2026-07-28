@@ -1,3 +1,23 @@
+## 0.1.1 (2026-07-28)
+
+### 🚀 Features
+
+- port Hermes self-improvement primitives into a TS agent toolkit ([4a1364a](https://github.com/socialrobot-io/agent-kit/commit/4a1364a))
+- **ai:** real model loop via Vercel AI SDK v7 ([0eea4ea](https://github.com/socialrobot-io/agent-kit/commit/0eea4ea))
+- **example:** live DeepSeek example app with AgentFS persistence ([9215589](https://github.com/socialrobot-io/agent-kit/commit/9215589))
+- **example:** Next.js chat with AI SDK UI, DeepSeek, and bash sandbox ([d311973](https://github.com/socialrobot-io/agent-kit/commit/d311973))
+- **sessions:** persist chat transcripts and add CI security gates ([4cd004b](https://github.com/socialrobot-io/agent-kit/commit/4cd004b))
+
+### 🩹 Fixes
+
+- **example:** Hermes session memory freeze and AgentFS-backed workspace ([13ac7fb](https://github.com/socialrobot-io/agent-kit/commit/13ac7fb))
+- **sandbox:** align just-bash with official Bash + bash-tool setup ([0903c0d](https://github.com/socialrobot-io/agent-kit/commit/0903c0d))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 # Changelog
 
 ## 0.1.0
