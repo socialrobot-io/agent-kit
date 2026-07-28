@@ -47,21 +47,18 @@ the runtime a per-tenant filesystem, and the production stack comes with it.
 Production stack (multi-tenant volume, sandbox, transcripts, live model loop):
 
 ```bash
-npm install \
-  @socialrobot-io/agent-kit-core \
-  @socialrobot-io/agent-kit-ai \
-  @socialrobot-io/agent-kit-sessions \
-  @socialrobot-io/agent-kit-sandbox \
-  @socialrobot-io/agent-kit-curator
+npm i @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai \
+      @socialrobot-io/agent-kit-sessions @socialrobot-io/agent-kit-sandbox \
+      @socialrobot-io/agent-kit-curator
 ```
 
 | Package | Use |
 | ------- | --- |
-| [`agent-kit-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, session runtime, memory, skills, approval |
-| [`agent-kit-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop via the Vercel AI SDK |
-| [`agent-kit-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Durable transcripts + tenant-scoped `session_search` |
-| [`agent-kit-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS volume + guarded bash |
-| [`agent-kit-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory and skills |
+| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, runtime, memory, skills, approval |
+| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop (Vercel AI SDK) |
+| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + tenant-scoped `session_search` |
+| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS + guarded bash |
+| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory / skills |
 
 ## Quick start
 
@@ -70,71 +67,44 @@ per tenant, then compose the session. Write approval stays on by default.
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import {
-  openAgentSession,
-  resolveModel,
-  runAgentTurn,
-} from "@socialrobot-io/agent-kit-ai";
-import {
-  openAgentFs,
-  serializeAgentFs,
-  createTenantBashToolkit,
-} from "@socialrobot-io/agent-kit-sandbox";
-import {
-  FileTranscriptStore,
-  assertTenantSession,
-  createSessionSearchTool,
-} from "@socialrobot-io/agent-kit-sessions";
+import { openAgentSession, resolveModel, runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { openAgentFs, serializeAgentFs, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
+import { FileTranscriptStore, assertTenantSession, createSessionSearchTool } from "@socialrobot-io/agent-kit-sessions";
 
-// From your auth layer — never trust a client-supplied tenant id.
+// tenantId from your auth layer, never from the client
 const tenantId = "brand-123";
 const sessionId = "chat-abc";
-const volumePath = `/data/tenants/${tenantId}.db`;
 
-const afs = await openAgentFs(volumePath);
+const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);
 serializeAgentFs(afs.fs);
-const fs = adaptAgentFs(afs.fs); // host adapter; see Hosting guide
+const fs = adaptAgentFs(afs.fs); // host adapter → AgentFsLike (see Hosting)
 
 const transcripts = new FileTranscriptStore({ fs });
-await transcripts.createSession({
-  id: sessionId,
-  tenantId,
-  source: "chat",
-  createdAt: Date.now() / 1000,
-});
+await transcripts.createSession({ id: sessionId, tenantId, source: "chat", createdAt: Date.now() / 1000 });
 await assertTenantSession(transcripts, tenantId, sessionId);
 
 const bash = await createTenantBashToolkit({ tenantId, agentFs: afs });
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
+const search = createSessionSearchTool(transcripts, tenantId, { currentSessionId: sessionId });
 
 const session = await openAgentSession({
-  tenantId,
-  fs,
-  definition,
-  sessionSearchTool: createSessionSearchTool(transcripts, tenantId, {
-    currentSessionId: sessionId,
-  }),
+  tenantId, fs, definition,
+  sessionSearchTool: search,
   sandboxTools: bash.tools,
 });
 
 const { toolSet } = session.composeTools();
 const turn = await runAgentTurn(
-  [{ role: "user", content: "Summarize /workspace and remember my preference for short answers." }],
-  {
-    runtime: session.runtime,
-    model: resolveModel(definition.model),
-    toolSet,
-  },
+  [{ role: "user", content: "Summarize /workspace; prefer short answers going forward." }],
+  { runtime: session.runtime, model: resolveModel(definition.model), toolSet },
 );
 ```
 
-`adaptAgentFs` is host code (AgentFS SDK → `AgentFsLike`). Copy it from
-[`docs/guides/hosting.md`](docs/guides/hosting.md) or
-[`examples/example-app`](examples/example-app).
-
-After the turn, run the curator in the background and approve staged writes
-before the next session snapshot. Details: [Hosting](docs/guides/hosting.md),
-[Skills & learning](docs/guides/skills-and-learning.md),
+`adaptAgentFs` is host code. Copy from [Hosting](docs/guides/hosting.md) or
+[`examples/example-app`](examples/example-app). After the turn, run the curator
+and approve staged writes before the next snapshot.
+[Hosting](docs/guides/hosting.md) ·
+[Skills & learning](docs/guides/skills-and-learning.md) ·
 [Models](docs/guides/models.md).
 
 ### Example app
