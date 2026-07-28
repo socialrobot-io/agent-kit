@@ -1,8 +1,5 @@
 /**
- * Adapts agentfs-sdk's Node-like FileSystem to @agent-kit/core's AgentFsLike.
- *
- * AgentFS: readFile/writeFile/readdir/unlink/rename (throws on missing paths).
- * AgentFsLike: readFile => null on miss, list => [] on miss, optional deleteFile.
+ * Adapts agentfs-sdk's FileSystem to @agent-kit/core's AgentFsLike.
  */
 
 import type { FileSystem } from "agentfs-sdk";
@@ -23,7 +20,6 @@ export function adaptAgentFs(fs: FileSystem): AgentFsAdapter {
     },
 
     async writeFile(path: string, content: string): Promise<void> {
-      // AgentFS writeFile creates parent directories when they are missing.
       await fs.writeFile(path, content, "utf8");
     },
 
@@ -39,12 +35,11 @@ export function adaptAgentFs(fs: FileSystem): AgentFsAdapter {
       await fs.rename(from, to);
     },
 
-    // PendingWriteStore.discard and SkillLibrary.delete* need this.
     async deleteFile(path: string): Promise<void> {
       try {
         await fs.unlink(path);
       } catch {
-        // Already gone is fine for discard/remove.
+        // Already gone is fine.
       }
     },
   };

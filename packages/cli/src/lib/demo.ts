@@ -16,7 +16,7 @@
  * AI SDK `streamText`) in production.
  */
 
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
+import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@agent-kit/core";
 import { runBackgroundReview, applySkill, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@agent-kit/curator";
 import { InMemoryTranscriptStore } from "@agent-kit/sessions";
 import { aiCuratorRunner } from "@agent-kit/ai";
@@ -67,17 +67,10 @@ function scriptedCurator(): CuratorModelRunner {
 
 /** Approve every staged write by replaying it through the runtime. */
 async function approveAllPending(t: DemoTenant): Promise<void> {
-  for (const rec of await t.runtime.pending.list("memory")) {
-    const { target, action, content, old_text } = rec.payload as Record<string, string>;
-    if (action === "add") await t.runtime.memory.add(target as "user" | "memory", content);
-    else if (action === "replace") await t.runtime.memory.replace(target as "user" | "memory", old_text, content);
-    else if (action === "remove") await t.runtime.memory.remove(target as "user" | "memory", old_text);
-    await t.runtime.pending.discard("memory", rec.id);
-  }
-  for (const rec of await t.runtime.pending.list("skills")) {
-    await applySkill(rec.payload, { skills: t.runtime.skills });
-    await t.runtime.pending.discard("skills", rec.id);
-  }
+  await approvePendingWrites(
+    { memory: t.runtime.memory, skills: t.runtime.skills, pending: t.runtime.pending },
+    applySkill,
+  );
 }
 
 export async function runDemo(log: (s: string) => void = console.log): Promise<boolean> {

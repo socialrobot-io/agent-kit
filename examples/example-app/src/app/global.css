@@ -1,0 +1,77 @@
+:root {
+  color-scheme: light;
+  --bg: #f4f2ec;
+  --fg: #171717;
+  --muted: #5f5a52;
+  --line: #d8d2c6;
+  --panel: rgba(255, 255, 255, 0.78);
+  --panel-solid: #fffcf7;
+  --accent: #1f4d3a;
+  --accent-soft: #e5f0ea;
+  --accent-fg: #f4faf7;
+  --user: #ebe4d6;
+  --assistant: #fffcf7;
+  --danger: #8b2e2e;
+  --shadow: 0 18px 40px rgba(40, 32, 18, 0.08);
+  --mono: var(--font-mono), "SF Mono", ui-monospace, Menlo, monospace;
+  --sans: var(--font-sans), "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse 70% 45% at 8% -8%, #dfece4 0%, transparent 58%),
+    radial-gradient(ellipse 55% 35% at 100% 0%, #ebe3d4 0%, transparent 52%),
+    linear-gradient(180deg, transparent 0%, rgba(244, 242, 236, 0.9) 70%);
+  background-attachment: fixed;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}

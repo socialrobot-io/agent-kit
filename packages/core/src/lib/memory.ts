@@ -424,3 +424,29 @@ export class MemoryStore {
     return [...this.entriesFor(target)];
   }
 }
+
+/**
+ * Apply a memory tool payload (single-op or `operations` batch).
+ * Used by the live tool handler, curator, and human approval replay.
+ */
+export async function applyMemoryArgs(
+  store: MemoryStore,
+  args: Record<string, unknown>,
+): Promise<MemoryResult> {
+  const target = (args.target as MemoryTarget) ?? "memory";
+  if (Array.isArray(args.operations)) {
+    return store.applyBatch(target, args.operations as MemoryOperation[]);
+  }
+  const action = args.action as string | undefined;
+  if (action === "add") return store.add(target, (args.content as string) ?? "");
+  if (action === "replace") {
+    return store.replace(target, (args.old_text as string) ?? "", (args.content as string) ?? "");
+  }
+  if (action === "remove") return store.remove(target, (args.old_text as string) ?? "");
+  return {
+    success: false,
+    error:
+      `unknown memory action '${action ?? ""}'. ` +
+      `Use action=add|replace|remove with content/old_text, or an operations array.`,
+  };
+}

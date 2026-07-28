@@ -2,7 +2,10 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": false,
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
@@ -32,16 +35,42 @@
         "ciTargetName": "test-ci",
         "testMode": "watch"
       }
+    },
+    {
+      "plugin": "@nx/next/plugin",
+      "options": {
+        "startTargetName": "start",
+        "buildTargetName": "build",
+        "devTargetName": "dev",
+        "serveStaticTargetName": "serve-static",
+        "buildDepsTargetName": "build-deps",
+        "watchDepsTargetName": "watch-deps"
+      }
     }
   ],
   "targetDefaults": {
     "@nx/js:swc": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
+    }
+  },
+  "generators": {
+    "@nx/next": {
+      "application": {
+        "style": "css",
+        "linter": "none"
+      }
     }
   }
 }

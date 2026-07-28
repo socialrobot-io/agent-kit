@@ -1,42 +1,35 @@
-# Example app
+# Example app (Next.js)
 
-Live, end-to-end demo of agent-kit's self-improvement loop: a real model, a
-persistent AgentFS agent home, memory + skill learning behind human approval,
-recall in a later session, and an interactive chat REPL.
-
-See the [root README](../../README.md) and [Models & the loop](../../docs/guides/models.md)
-for the broader toolkit.
-
-## What it shows
-
-1. **Session 1** - `runAgentTurn` with a live model; the agent can call Hermes
-   tools (`memory`, skills, ...).
-2. **Curator** - `runBackgroundReview` (combined) stages durable writes.
-3. **Approve** - replay pending memory + skill writes into the volume.
-4. **Session 2** - a fresh `AgentSessionRuntime` on the same volume sees the
-   frozen snapshot with approved facts.
-5. **Chat** - readline REPL that keeps talking against the same volume.
+Streaming chat over agent-kit via AI SDK UI (`useChat` + UI message stream).
+Persistent AgentFS memory/skills, live DeepSeek by default, and bash-tool
+sandbox tools (`bash`, `readFile`, `writeFile`) behind agent-kit guardrails.
 
 ## Setup
 
 ```bash
 cd examples/example-app
-cp .env.sample .env
-# Add AI_GATEWAY_API_KEY from https://vercel.com/ai-gateway (or a self-hosted gateway)
-# Optionally change MODEL
+cp .env.sample .env.local
+# Preferred: set DEEPSEEK_API_KEY from https://platform.deepseek.com
+# Fallback: set AI_GATEWAY_API_KEY from https://vercel.com/ai-gateway
 ```
 
-Default model is `deepseek/deepseek-v4-flash` via the Vercel AI Gateway. Any
-`"provider/model"` gateway id works.
+Default model is `deepseek-v4-flash` via [`@ai-sdk/deepseek`](https://ai-sdk.dev/providers/ai-sdk-providers/deepseek).
 
-## Commands
+## Run
 
 ```bash
-bun run start   # scripted live demo (needs AI_GATEWAY_API_KEY)
-bun run chat    # interactive REPL (needs AI_GATEWAY_API_KEY)
-bun run test    # offline vitest smoke test (no key, no network)
+npx nx dev example
 ```
 
-The AgentFS volume lives at `.agentfs/example.db` under this package. Re-running
-`start` or `chat` keeps learned memory and skills (seed files are only written
-when absent).
+Open http://localhost:3000. Messages stream token-by-token; memory / skill /
+bash tool calls appear as they run.
+
+- Agent home volume: `.agentfs/example.db`
+- Bash workspace: isolated just-bash FS seeded with `/workspace/README.md`
+
+## Layout
+
+- `agent/` - SOUL.md, AGENTS.md, seed skill
+- `src/lib/agent.ts` - runtime + `createTenantBashToolkit`
+- `src/app/api/chat/route.ts` - `streamAgentTurn` with Hermes + bash tools
+- `src/app/page.tsx` - `@ai-sdk/react` `useChat` UI

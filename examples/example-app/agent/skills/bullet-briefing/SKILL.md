@@ -1,12 +1,10 @@
 ---
 name: bullet-briefing
-description: Format a short answer as tight bullet points with no preamble.
+description: Format a short bullet-point briefing from a longer request.
 ---
 
 # Bullet briefing
 
-When the user wants a quick summary or prefers bullets:
-
-1. Lead with the answer in 3-7 bullets.
-2. One idea per bullet. No wrapping paragraphs.
-3. Skip greetings, throat-clearing, and closing offers unless asked.
+1. Restate the ask in one line.
+2. List the key points as short bullets (3 to 7).
+3. End with one suggested next step.

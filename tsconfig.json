@@ -20,6 +20,9 @@
     },
     {
       "path": "./packages/ai"
+    },
+    {
+      "path": "./examples/example-app"
     }
   ]
 }

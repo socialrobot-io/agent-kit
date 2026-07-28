@@ -9,11 +9,17 @@
  * writes through the write-approval gate.
  */
 
-import { MemoryStore, type MemoryTarget } from "./memory.js";
+import { MemoryStore, applyMemoryArgs } from "./memory.js";
 import { SkillLibrary } from "./skills.js";
 import { PendingWriteStore, evaluateGateAsync, skillGist, type ApprovalSubsystem, type GateContext, type WriteOrigin } from "./approval.js";
 import type { AgentFsLike, AgentDefinition } from "./agent.js";
 import { loadAgentFiles, buildBaseSystemPrompt } from "./agent.js";
+import {
+  MEMORY_SCHEMA,
+  SKILLS_LIST_SCHEMA,
+  SKILL_VIEW_SCHEMA,
+  SKILL_MANAGE_SCHEMA,
+} from "./schemas.js";
 
 export interface SessionToolCall {
   name: string;
@@ -89,55 +95,52 @@ export class AgentSessionRuntime {
 
   private memoryTool(): SessionTool {
     return {
-      name: "memory",
-      description: "Save durable facts to persistent memory across sessions.",
-      inputSchema: {},
+      name: MEMORY_SCHEMA.name,
+      description: MEMORY_SCHEMA.description,
+      inputSchema: { ...MEMORY_SCHEMA.inputSchema },
       execute: async (args) => {
-        const target = (args.target as MemoryTarget) ?? "memory";
-        const summary = (args.content as string)?.slice(0, 60) ?? `memory ${args.action ?? "batch"}`;
-        const decision = await evaluateGateAsync("memory", this.gateCtx(), { summary, detail: args.content as string });
+        const summary = memoryToolSummary(args);
+        const decision = await evaluateGateAsync("memory", this.gateCtx(), {
+          summary,
+          detail: (args.content as string) ?? summary,
+        });
         if (decision.kind === "blocked") return { success: false, error: decision.message };
         if (decision.kind === "stage") {
           await this.pending.stage("memory", args, { summary, origin: this.origin });
           return { success: true, staged: true, message: decision.message };
         }
-        return this.applyMemory(args, target);
+        return applyMemoryArgs(this.memory, args);
       },
     };
   }
 
-  private async applyMemory(args: Record<string, unknown>, target: MemoryTarget) {
-    if (Array.isArray(args.operations)) return this.memory.applyBatch(target, args.operations as never[]);
-    const action = args.action as string;
-    if (action === "add") return this.memory.add(target, (args.content as string) ?? "");
-    if (action === "replace") return this.memory.replace(target, (args.old_text as string) ?? "", (args.content as string) ?? "");
-    if (action === "remove") return this.memory.remove(target, (args.old_text as string) ?? "");
-    return { success: false, error: `unknown memory action '${action}'` };
-  }
-
   private skillsListTool(): SessionTool {
     return {
-      name: "skills_list",
-      description: "List available skills (name + description).",
-      inputSchema: {},
-      execute: async (args) => ({ success: true, skills: await this.skills.list(args.category as string | undefined) }),
+      name: SKILLS_LIST_SCHEMA.name,
+      description: SKILLS_LIST_SCHEMA.description,
+      inputSchema: { ...SKILLS_LIST_SCHEMA.inputSchema },
+      execute: async (args) => ({
+        success: true,
+        skills: await this.skills.list(args.category as string | undefined),
+      }),
     };
   }
 
   private skillViewTool(): SessionTool {
     return {
-      name: "skill_view",
-      description: "Load a skill's SKILL.md or a linked reference/template/script file.",
-      inputSchema: {},
-      execute: async (args) => this.skills.view((args.name as string) ?? "", args.file_path as string | undefined),
+      name: SKILL_VIEW_SCHEMA.name,
+      description: SKILL_VIEW_SCHEMA.description,
+      inputSchema: { ...SKILL_VIEW_SCHEMA.inputSchema },
+      execute: async (args) =>
+        this.skills.view((args.name as string) ?? "", args.file_path as string | undefined),
     };
   }
 
   private skillManageTool(): SessionTool {
     return {
-      name: "skill_manage",
-      description: "Create, update, and delete your own skills (procedural memory).",
-      inputSchema: {},
+      name: SKILL_MANAGE_SCHEMA.name,
+      description: SKILL_MANAGE_SCHEMA.description,
+      inputSchema: { ...SKILL_MANAGE_SCHEMA.inputSchema },
       execute: async (args) => {
         const action = (args.action as string) ?? "";
         const name = (args.name as string) ?? "";
@@ -159,7 +162,13 @@ export class AgentSessionRuntime {
           case "edit":
             return this.skills.edit(name, (args.content as string) ?? "");
           case "patch":
-            return this.skills.patch(name, (args.old_string as string) ?? "", (args.new_string as string) ?? "", args.file_path as string | undefined, (args.replace_all as boolean) ?? false);
+            return this.skills.patch(
+              name,
+              (args.old_string as string) ?? "",
+              (args.new_string as string) ?? "",
+              args.file_path as string | undefined,
+              (args.replace_all as boolean) ?? false,
+            );
           case "delete":
             return this.skills.deleteSkill(name);
           case "write_file":
@@ -172,4 +181,19 @@ export class AgentSessionRuntime {
       },
     };
   }
+}
+
+function memoryToolSummary(args: Record<string, unknown>): string {
+  if (typeof args.content === "string" && args.content.trim()) {
+    return args.content.slice(0, 60);
+  }
+  if (Array.isArray(args.operations)) {
+    const first = args.operations.find(
+      (op): op is { content?: string } =>
+        typeof op === "object" && op != null && typeof (op as { content?: string }).content === "string",
+    );
+    if (first?.content) return `batch: ${first.content.slice(0, 50)}`;
+    return `memory batch (${args.operations.length})`;
+  }
+  return `memory ${String(args.action ?? "batch")}`;
 }

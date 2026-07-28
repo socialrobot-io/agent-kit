@@ -1,23 +1,53 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": false,
-    "declarationMap": false,
-    "emitDeclarationOnly": false,
+    "jsx": "preserve",
     "noEmit": true,
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "target": "es2022",
-    "lib": ["es2022"],
-    "types": ["node"],
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true
+    "emitDeclarationOnly": false,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.js",
+    "src/**/*.jsx",
+    "../../examples/example-app/.next/types/**/*.ts",
+    "../../dist/examples/example-app/.next/types/**/*.ts",
+    "index.d.ts",
+    "next-env.d.ts"
+  ],
+  "exclude": [
+    "out-tsc",
+    "dist",
+    "node_modules",
+    "jest.config.ts",
+    "jest.config.cts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    ".next"
+  ],
   "references": [
     {
-      "path": "../../packages/sessions"
+      "path": "../../packages/sandbox"
     },
     {
       "path": "../../packages/curator"

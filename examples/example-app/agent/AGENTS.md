@@ -1,7 +1,7 @@
 # House rules
 
-- Prefer short, scannable answers unless the user asks for depth.
-- When the user shares a durable preference or project fact, save it with the
-  memory tool (target `user` for who they are, `memory` for environment notes).
-- Use skills when a procedure already covers the task; do not reinvent it.
-- Never invent facts about the user. If you do not know, say so.
+- Be concise.
+- Use the memory tool for lasting facts about the user.
+- Use skills when one matches the task.
+- Use bash / readFile / writeFile for workspace inspection and edits inside the sandbox only.
+- Never invent memories. If you do not know, say so.

@@ -2,37 +2,25 @@
   "name": "@agent-kit/example",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "bun src/main.ts",
-    "chat": "bun src/chat.ts",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
   "nx": {
     "name": "example",
-    "tags": ["type:example"],
-    "targets": {
-      "typecheck": {
-        "executor": "nx:run-commands",
-        "options": {
-          "command": "tsc -p tsconfig.json --noEmit",
-          "cwd": "examples/example-app"
-        }
-      }
-    }
+    "tags": [
+      "type:example"
+    ]
   },
   "dependencies": {
     "@agent-kit/ai": "workspace:*",
     "@agent-kit/core": "workspace:*",
     "@agent-kit/curator": "workspace:*",
-    "@agent-kit/sessions": "workspace:*",
+    "@ai-sdk/deepseek": "^3.0.15",
+    "@ai-sdk/react": "^4.0.43",
     "agentfs-sdk": "^0.6.4",
-    "ai": "^7.0.40"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "~6.0.3",
-    "vitest": "^4.1.10"
+    "ai": "^7.0.40",
+    "next": "~16.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@agent-kit/sandbox": "workspace:*",
+    "bash-tool": "^1.3.18",
+    "just-bash": "^3.2.0"
   }
 }

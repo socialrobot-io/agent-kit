@@ -97,16 +97,17 @@ the same code path pointed at a live model.
 
 ### Example app
 
-[`examples/example-app`](examples/example-app) is a runnable walkthrough against
-a live model: persistent AgentFS home, curator staging, human approval, then
-recall in a second session (plus a chat REPL).
+[`examples/example-app`](examples/example-app) is a streaming Next.js chat over
+agent-kit (AI SDK UI `useChat`), with persistent AgentFS memory, bash-tool
+sandbox tools, and a live model.
 
 ```bash
 cd examples/example-app
-cp .env.sample .env   # set AI_GATEWAY_API_KEY
-bun run start         # scripted live demo
-bun run chat          # interactive REPL
+cp .env.sample .env.local   # set DEEPSEEK_API_KEY (or AI_GATEWAY_API_KEY)
+npx nx dev example          # http://localhost:3000
 ```
+
+Defaults to `@ai-sdk/deepseek` + `deepseek-v4-flash`. Gateway is the fallback.
 
 ---
 

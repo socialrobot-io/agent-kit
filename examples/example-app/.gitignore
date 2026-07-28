@@ -1,2 +1,8 @@
 .env
+.env.local
+.env*.local
 .agentfs/
+.next/
+out/
+dist/
+node_modules/

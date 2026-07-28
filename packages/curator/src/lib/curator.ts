@@ -17,8 +17,8 @@ import {
   PendingWriteStore,
   evaluateGateAsync,
   skillGist,
+  applyMemoryArgs,
   type GateContext,
-  type MemoryTarget,
   type ApprovalSubsystem,
 } from "@agent-kit/core";
 
@@ -154,7 +154,6 @@ async function handleMemoryCall(
   gateCtx: GateContext,
   outcome: CuratorOutcome,
 ): Promise<void> {
-  const target = (args.target as MemoryTarget) ?? "memory";
   const summary = memorySummary(args);
 
   // Background origin always stages when the gate is on.
@@ -168,29 +167,28 @@ async function handleMemoryCall(
     outcome.staged.push({ subsystem: "memory", id: rec.id, summary });
     return;
   }
-  await applyMemory(args, target, deps);
+  const result = await applyMemoryArgs(deps.memory, args);
+  if (!result.success) {
+    outcome.errors.push(result.error ?? "memory apply failed");
+    return;
+  }
   outcome.applied.push({ subsystem: "memory", summary });
 }
 
 function memorySummary(args: Record<string, unknown>): string {
-  const action = (args.action as string) ?? "batch";
-  const content = (args.content as string) ?? "";
-  return content ? `${action}: ${content.slice(0, 60)}` : `memory ${action}`;
-}
-
-async function applyMemory(
-  args: Record<string, unknown>,
-  target: MemoryTarget,
-  deps: CuratorDeps,
-): Promise<void> {
-  if (Array.isArray(args.operations)) {
-    await deps.memory.applyBatch(target, args.operations as never[]);
-    return;
+  if (typeof args.content === "string" && args.content.trim()) {
+    const action = (args.action as string) ?? "add";
+    return `${action}: ${args.content.slice(0, 60)}`;
   }
-  const action = args.action as string;
-  if (action === "add") await deps.memory.add(target, (args.content as string) ?? "");
-  else if (action === "replace") await deps.memory.replace(target, (args.old_text as string) ?? "", (args.content as string) ?? "");
-  else if (action === "remove") await deps.memory.remove(target, (args.old_text as string) ?? "");
+  if (Array.isArray(args.operations)) {
+    const first = args.operations.find(
+      (op): op is { content?: string } =>
+        typeof op === "object" && op != null && typeof (op as { content?: string }).content === "string",
+    );
+    if (first?.content) return `batch: ${first.content.slice(0, 50)}`;
+    return `memory batch (${args.operations.length})`;
+  }
+  return `memory ${(args.action as string) ?? "batch"}`;
 }
 
 async function handleSkillCall(

@@ -2,6 +2,7 @@ export * from "./lib/threats.js";
 export * from "./lib/memory.js";
 export * from "./lib/skills.js";
 export * from "./lib/approval.js";
+export * from "./lib/approve.js";
 export * from "./lib/schemas.js";
 export * from "./lib/in-memory-fs.js";
 export * from "./lib/agent.js";

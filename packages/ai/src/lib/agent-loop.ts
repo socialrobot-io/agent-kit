@@ -1,17 +1,28 @@
 /**
  * A real agent loop over the AI SDK: resolves `defineAgent({ model })`, hands
- * the runtime's frozen system prompt + Hermes tools to `generateText`, and lets
- * the model call tools until it stops (bounded by `stopWhen`).
+ * the runtime's frozen system prompt + Hermes tools to `generateText` /
+ * `streamText`, and lets the model call tools until it stops (bounded by
+ * `stopWhen`).
  *
  * This is the piece that was previously a scripted stub. The memory / skills /
  * approval / sandbox primitives underneath are unchanged — only the model is
  * now live.
  */
 
-import { generateText, stepCountIs, type ModelMessage } from "ai";
+import {
+  generateText,
+  streamText,
+  stepCountIs,
+  type ModelMessage,
+  type StreamTextResult,
+  type ToolSet,
+} from "ai";
 import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@agent-kit/core";
+import { MEMORY_SCHEMA, SKILL_MANAGE_SCHEMA } from "@agent-kit/core";
 import { resolveModel, type ResolveModelOptions, type ModelInput } from "./models.js";
 import { toAiTools } from "./tools.js";
+
+type AgentStreamResult = StreamTextResult<ToolSet, never, any>;
 
 export interface AgentLoopOptions extends ResolveModelOptions {
   runtime: AgentSessionRuntime;
@@ -20,6 +31,8 @@ export interface AgentLoopOptions extends ResolveModelOptions {
   definition?: AgentDefinition;
   /** Extra host tools merged over the runtime's Hermes surface. */
   extraTools?: SessionTool[];
+  /** Extra AI SDK tools (e.g. bash-tool) merged into the ToolSet. */
+  extraAiTools?: ToolSet;
   /** Max model steps (tool-call rounds). Default 8. */
   maxSteps?: number;
 }
@@ -31,6 +44,22 @@ export interface AgentLoopResult {
   toolResults: unknown[];
 }
 
+function resolveLoopModel(opts: AgentLoopOptions) {
+  const modelInput = opts.model ?? opts.definition?.model;
+  if (!modelInput) {
+    throw new Error("Agent loop needs a model: pass `model` or `definition.model`.");
+  }
+  return {
+    model: resolveModel(modelInput, opts),
+    tools: {
+      ...toAiTools([...opts.runtime.tools(), ...(opts.extraTools ?? [])]),
+      ...(opts.extraAiTools ?? {}),
+    },
+    maxSteps: opts.maxSteps ?? 8,
+    system: opts.runtime.systemPrompt(),
+  };
+}
+
 /**
  * Run one agent turn to completion against a live model.
  */
@@ -38,17 +67,11 @@ export async function runAgentTurn(
   messages: ModelMessage[],
   opts: AgentLoopOptions,
 ): Promise<AgentLoopResult> {
-  const modelInput = opts.model ?? opts.definition?.model;
-  if (!modelInput) {
-    throw new Error("runAgentTurn needs a model: pass `model` or `definition.model`.");
-  }
-  const model = resolveModel(modelInput, opts);
-  const tools = toAiTools([...opts.runtime.tools(), ...(opts.extraTools ?? [])]);
-  const maxSteps = opts.maxSteps ?? 8;
+  const { model, tools, maxSteps, system } = resolveLoopModel(opts);
 
   const result = await generateText({
     model,
-    system: opts.runtime.systemPrompt(),
+    system,
     messages,
     tools,
     stopWhen: stepCountIs(maxSteps),
@@ -74,6 +97,23 @@ export async function runAgentTurn(
 }
 
 /**
+ * Stream one agent turn (tools + text) for AI SDK UI / `useChat`.
+ */
+export function streamAgentTurn(
+  messages: ModelMessage[],
+  opts: AgentLoopOptions,
+): AgentStreamResult {
+  const { model, tools, maxSteps, system } = resolveLoopModel(opts);
+  return streamText({
+    model,
+    system,
+    messages,
+    tools,
+    stopWhen: stepCountIs(maxSteps),
+  }) as AgentStreamResult;
+}
+
+/**
  * Adapt a `CuratorModelRunner` (the seam the curator package expects) onto a
  * live model. Returns a runner that asks the model which memory/skill_manage
  * calls to make for a review pass.
@@ -86,15 +126,15 @@ export function aiCuratorRunner(model: ModelInput, opts: ResolveModelOptions = {
     const resolved = resolveModel(model, opts);
     const tools = toAiTools([
       {
-        name: "memory",
-        description: "Save a durable fact to persistent memory (target: memory|user).",
-        inputSchema: {},
+        name: MEMORY_SCHEMA.name,
+        description: MEMORY_SCHEMA.description,
+        inputSchema: { ...MEMORY_SCHEMA.inputSchema },
         execute: async () => ({ staged: true }),
       },
       {
-        name: "skill_manage",
-        description: "Create/update a reusable skill (action, name, content, …).",
-        inputSchema: {},
+        name: SKILL_MANAGE_SCHEMA.name,
+        description: SKILL_MANAGE_SCHEMA.description,
+        inputSchema: { ...SKILL_MANAGE_SCHEMA.inputSchema },
         execute: async () => ({ staged: true }),
       },
     ]);
@@ -113,7 +153,10 @@ export function aiCuratorRunner(model: ModelInput, opts: ResolveModelOptions = {
     const toolCalls: { name: string; args: Record<string, unknown> }[] = [];
     for (const step of result.steps) {
       for (const tc of step.toolCalls ?? []) {
-        toolCalls.push({ name: tc.toolName, args: ((tc as { input?: unknown }).input ?? {}) as Record<string, unknown> });
+        toolCalls.push({
+          name: tc.toolName,
+          args: ((tc as { input?: unknown }).input ?? {}) as Record<string, unknown>,
+        });
       }
     }
     return { text: result.text, toolCalls };

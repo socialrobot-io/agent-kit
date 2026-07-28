@@ -60,9 +60,13 @@ against the tenant's live stores — including the write-approval gate.
 await runAgentTurn(messages, {
   runtime,
   definition,
-  extraTools: [myCustomTool], // merged over the Hermes surface
+  extraTools: [myCustomTool], // SessionTool[] merged over Hermes
+  extraAiTools: bashToolkit.tools, // AI SDK ToolSet (bash-tool, etc.)
 });
 ```
+
+`extraAiTools` is how you mount [`bash-tool`](https://github.com/vercel-labs/bash-tool)
+tools from `@agent-kit/sandbox` (`createTenantBashToolkit`).
 
 ## The curator on a live model
 

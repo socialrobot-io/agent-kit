@@ -35,6 +35,19 @@ describe("AgentSessionRuntime", () => {
     expect(runtime.tools().map((t) => t.name)).toEqual(["memory", "skills_list", "skill_view", "skill_manage"]);
   });
 
+  it("wires real JSON schemas onto tools (not empty objects)", () => {
+    const mem = runtime.tools().find((t) => t.name === "memory")!;
+    expect(mem.inputSchema.type).toBe("object");
+    expect(mem.inputSchema.properties).toBeTruthy();
+    expect((mem.inputSchema.properties as Record<string, unknown>).action).toBeTruthy();
+    expect((mem.inputSchema.properties as Record<string, unknown>).content).toBeTruthy();
+    expect(mem.inputSchema.required).toContain("target");
+
+    const manage = runtime.tools().find((t) => t.name === "skill_manage")!;
+    expect((manage.inputSchema.properties as Record<string, unknown>).action).toBeTruthy();
+    expect(manage.inputSchema.required).toEqual(expect.arrayContaining(["action", "name"]));
+  });
+
   it("memory tool writes are reflected in the next session's snapshot", async () => {
     const mem = runtime.tools().find((t) => t.name === "memory")!;
     await mem.execute({ action: "add", target: "user", content: "User prefers terse replies" });
@@ -82,5 +95,57 @@ describe("AgentSessionRuntime", () => {
     expect(res.staged).toBe(true);
     expect(await gated.pending.count("skills")).toBe(1);
     expect((await gated.skills.list())).toHaveLength(0);
+  });
+
+  it("approvePendingWrites applies operations batches into the next snapshot", async () => {
+    const { approvePendingWrites } = await import("./approve.js");
+    const { applyMemoryArgs } = await import("./memory.js");
+
+    const gated = new AgentSessionRuntime({
+      tenantId: "t1",
+      fs,
+      writeApprovalEnabled: () => true,
+    });
+    await gated.init();
+
+    await gated.pending.stage(
+      "memory",
+      {
+        target: "user",
+        operations: [
+          { action: "add", content: "User is Nico" },
+          { action: "add", content: "Prefers short bullet-point answers" },
+        ],
+      },
+      { summary: "batch: User is Nico", origin: "background_review" },
+    );
+
+    // Broken approve (action-only) would discard without writing.
+    const broken = await gated.pending.list("memory");
+    expect(broken[0].payload.action).toBeUndefined();
+    expect(Array.isArray(broken[0].payload.operations)).toBe(true);
+
+    await approvePendingWrites(
+      { memory: gated.memory, skills: gated.skills, pending: gated.pending },
+      async () => undefined,
+    );
+
+    expect(await gated.pending.count("memory")).toBe(0);
+    expect(gated.memory.getEntries("user")).toEqual(
+      expect.arrayContaining(["User is Nico", "Prefers short bullet-point answers"]),
+    );
+
+    const next = new AgentSessionRuntime({ tenantId: "t1", fs });
+    await next.init();
+    expect(next.systemPrompt()).toContain("User is Nico");
+    expect(next.systemPrompt()).toContain("Prefers short bullet-point answers");
+
+    // Malformed freeform payloads must fail loudly, not silently discard.
+    const bad = await applyMemoryArgs(gated.memory, {
+      target: "user",
+      name: "Nico",
+      prefers: "bullets",
+    });
+    expect(bad.success).toBe(false);
   });
 });
