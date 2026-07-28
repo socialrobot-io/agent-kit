@@ -35,9 +35,12 @@ export const MEMORY_GUIDANCE =
 
 export const SKILLS_GUIDANCE =
   "# Skills\n" +
-  "Use skills when one matches the task (`skills_list` → `skill_view`). After a " +
-  "non-trivial workflow or fix, save or patch it with `skill_manage` so you can " +
-  "reuse it. Prefer patching an existing skill over creating near-duplicates. " +
+  "Use skills when one matches the task (`skills_list` → `skill_view`). Load the " +
+  "full SKILL.md before following a skill; open linked files under that skill " +
+  "directory only when the instructions reference them. After a non-trivial " +
+  "workflow or fix, save or patch it with `skill_manage`. New SKILL.md files need " +
+  "YAML frontmatter with matching `name` + short `description` (≤60 chars, trigger " +
+  "first) and a non-empty body. Prefer patching an existing skill over near-duplicates. " +
   "If a write returns staged:true, tell the user it is pending approval.";
 
 export const SANDBOX_GUIDANCE =

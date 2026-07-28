@@ -73,7 +73,14 @@ describe("runBackgroundReview", () => {
       pending,
       writeApprovalEnabled: () => true,
       model: makeModel([
-        { name: "skill_manage", args: { action: "create", name: "concise-answers", content: "---\ndescription: Be concise\n---\nBe concise." } },
+        {
+          name: "skill_manage",
+          args: {
+            action: "create",
+            name: "concise-answers",
+            content: "---\nname: concise-answers\ndescription: Answer tersely when asked.\n---\n\nLead with the answer.\n",
+          },
+        },
       ]),
     });
     expect(outcome.staged).toHaveLength(1);
@@ -88,7 +95,14 @@ describe("runBackgroundReview", () => {
       pending,
       writeApprovalEnabled: () => false,
       model: makeModel([
-        { name: "skill_manage", args: { action: "create", name: "concise-answers", content: "---\ndescription: Be concise\n---\nBe concise." } },
+        {
+          name: "skill_manage",
+          args: {
+            action: "create",
+            name: "concise-answers",
+            content: "---\nname: concise-answers\ndescription: Answer tersely when asked.\n---\n\nLead with the answer.\n",
+          },
+        },
       ]),
     });
     expect(outcome.applied).toHaveLength(1);

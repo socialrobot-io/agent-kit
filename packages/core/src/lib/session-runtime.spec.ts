@@ -95,7 +95,11 @@ describe("AgentSessionRuntime", () => {
 
   it("skill_manage creates a skill that skills_list then shows", async () => {
     const manage = runtime.tools().find((t) => t.name === "skill_manage")!;
-    await manage.execute({ action: "create", name: "research", content: "---\ndescription: Research workflow\n---\nSteps." });
+    await manage.execute({
+      action: "create",
+      name: "research",
+      content: "---\nname: research\ndescription: Research workflow steps.\n---\n\nSteps.\n",
+    });
     const list = runtime.tools().find((t) => t.name === "skills_list")!;
     const res = (await list.execute({})) as { skills: { name: string }[] };
     expect(res.skills.map((s) => s.name)).toContain("research");
@@ -123,7 +127,11 @@ describe("AgentSessionRuntime", () => {
     });
     await gated.init();
     const manage = gated.tools().find((t) => t.name === "skill_manage")!;
-    const res = (await manage.execute({ action: "create", name: "x", content: "---\ndescription: x\n---" })) as { staged?: boolean };
+    const res = (await manage.execute({
+      action: "create",
+      name: "x",
+      content: "---\nname: x\ndescription: Short skill for staging.\n---\n\nBody.\n",
+    })) as { staged?: boolean };
     expect(res.staged).toBe(true);
     expect(await gated.pending.count("skills")).toBe(1);
     expect((await gated.skills.list())).toHaveLength(0);

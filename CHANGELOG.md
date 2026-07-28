@@ -4,6 +4,7 @@
 
 - **node:** new `@socialrobot-io/agent-kit-node` with `createTenantHome` (volume, transcripts, sandbox, session by convention)
 - **ai:** rename `AgentSessionHandle` → `AgentSession`; expose `memory` / `skills` / `pending` on the session
+- **core:** skill create/edit validate agentskills.io frontmatter (Hermes parity: name, description, body, 60-char index budget)
 
 ### 🩹 Fixes
 

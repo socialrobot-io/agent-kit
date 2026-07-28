@@ -59,7 +59,15 @@ function scriptedCurator(): CuratorModelRunner {
       text: "User dislikes verbosity; saving a preference and a conciseness skill.",
       toolCalls: [
         { name: "memory", args: { action: "add", target: "user", content: "User wants terse, no-fluff answers" } },
-        { name: "skill_manage", args: { action: "create", name: "concise-answers", content: "---\ndescription: Answer tersely\n---\nLead with the answer; skip preamble." } },
+        {
+          name: "skill_manage",
+          args: {
+            action: "create",
+            name: "concise-answers",
+            content:
+              "---\nname: concise-answers\ndescription: Answer tersely when asked.\n---\n\nLead with the answer; skip preamble.\n",
+          },
+        },
       ],
     };
   };

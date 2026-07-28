@@ -232,7 +232,7 @@ describe("interactive write approval regression", () => {
     const res = (await manage.execute({
       action: "create",
       name: "concise",
-      content: "---\ndescription: be terse\n---\nLead with the answer.",
+      content: "---\nname: concise\ndescription: Answer tersely when asked.\n---\n\nLead with the answer.\n",
     })) as { success?: boolean; staged?: boolean };
 
     expect(res.staged).toBeUndefined();

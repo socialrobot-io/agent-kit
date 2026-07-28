@@ -47,9 +47,11 @@ export const SKILL_REVIEW_PROMPT =
   "Preference order: (1) patch a currently-loaded curator-managed skill, " +
   "(2) patch an existing umbrella, (3) add a support file under an existing " +
   "umbrella (references/, templates/, scripts/), (4) create a new class-level " +
-  "umbrella skill. Do NOT edit bundled, pinned, or user-owned skills. " +
-  "Do NOT capture environment-dependent failures, negative tool claims, " +
-  "transient resolved errors, or one-off task narratives. " +
+  "umbrella skill. New SKILL.md files must use agentskills.io frontmatter: " +
+  "required `name` (matching the skill folder) and `description` (≤60 chars, " +
+  "trigger first), then a non-empty body. Do NOT edit bundled, pinned, or " +
+  "user-owned skills. Do NOT capture environment-dependent failures, negative " +
+  "tool claims, transient resolved errors, or one-off task narratives. " +
   "If nothing stands out, say 'Nothing to save.' and stop.";
 
 export const COMBINED_REVIEW_PROMPT =
@@ -58,11 +60,12 @@ export const COMBINED_REVIEW_PROMPT =
   "memory tool.\n\n" +
   "**Skills**: how to do this class of task. Be ACTIVE — most sessions produce " +
   "at least one skill update. Target class-level umbrella skills with a rich " +
-  "SKILL.md and references/ for session-specific detail. Embed user-preference " +
-  "lessons into the governing skill, not just memory. Do NOT edit protected " +
-  "(bundled/pinned/user-owned) skills. Do NOT capture environment-dependent " +
-  "failures, negative tool claims, transient resolved errors, or one-off " +
-  "narratives.\n\n" +
+  "SKILL.md and references/ for session-specific detail. New SKILL.md files " +
+  "need agentskills.io frontmatter (`name` matching the folder, `description` " +
+  "≤60 chars) plus a non-empty body. Embed user-preference lessons into the " +
+  "governing skill, not just memory. Do NOT edit protected (bundled/pinned/" +
+  "user-owned) skills. Do NOT capture environment-dependent failures, negative " +
+  "tool claims, transient resolved errors, or one-off narratives.\n\n" +
   "Act on whichever dimension has real signal. If genuinely nothing stands " +
   "out, say 'Nothing to save.' and stop.";
 

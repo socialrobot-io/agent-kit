@@ -21,14 +21,32 @@ skills/
     scripts/        optional
 ```
 
-`SKILL.md` follows [agentskills.io](https://agentskills.io): YAML frontmatter
-(`name`, `description`, and related fields) plus the procedure body.
+`SKILL.md` follows [agentskills.io](https://agentskills.io) (Hermes-compatible
+create rules):
 
-How the model loads a skill:
+```text
+---
+name: concise-answers
+description: Answer tersely when asked.
+---
 
-1. `skills_list`: see what exists
-2. `skill_view`: open one `SKILL.md`
-3. Open a linked file only when needed
+# Concise answers
+
+1. Lead with the answer.
+2. Skip preamble.
+```
+
+Required frontmatter: `name` and `description`. `name` must match the skill
+folder (lowercase letters, numbers, hyphens, dots, underscores; max 64). New
+skills need a short description (60 chars or fewer, trigger first) so the
+skill index keeps routing signal. Put longer detail in the body. Optional
+support files live under `references/`, `templates/`, `scripts/`, or `assets/`.
+
+How the model loads a skill (progressive disclosure):
+
+1. `skills_list`: name + description only
+2. `skill_view`: full `SKILL.md` plus a `linked_files` map and `skill_dir`
+3. `skill_view` with `file_path`: one linked file, only when needed
 
 ## Curator (propose updates after a chat)
 

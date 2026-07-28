@@ -111,10 +111,16 @@ export const SKILL_VIEW_SCHEMA = {
 export const SKILL_MANAGE_SCHEMA = {
   name: "skill_manage",
   description:
-    "Create, update, and delete your own skills — your procedural memory. When you figure out a non-trivial " +
-    "workflow, save the approach as a skill for future reuse. Actions: create (full SKILL.md), edit (rewrite " +
-    "SKILL.md), patch (targeted string replace), delete, write_file / remove_file (supporting files under " +
-    "references/, templates/, scripts/).",
+    "Manage skills (create, update, delete). Skills are your procedural memory — reusable approaches for " +
+    "recurring task types. Actions: create (full SKILL.md + optional category), patch (old_string/new_string — " +
+    "preferred for fixes), edit (full SKILL.md rewrite — major overhauls only), delete, write_file, remove_file.\n\n" +
+    "SKILL.md must start with YAML frontmatter containing required `name` and `description` (agentskills.io), " +
+    "then a non-empty markdown body. `name` must match the skill directory name (lowercase letters, numbers, " +
+    "hyphens/dots/underscores, max 64). New-skill `description` must be ≤60 chars (trigger first, one sentence) " +
+    "so the skill index keeps routing signal; put detail in the body. Supporting files go under references/, " +
+    "templates/, scripts/, or assets/.\n\n" +
+    "Create when a non-trivial workflow succeeds or the user asks you to remember a procedure. Prefer patching " +
+    "an existing skill over near-duplicates. Confirm with the user before creating or deleting.",
   inputSchema: {
     type: "object",
     properties: {
@@ -123,10 +129,17 @@ export const SKILL_MANAGE_SCHEMA = {
         enum: ["create", "edit", "patch", "delete", "write_file", "remove_file"],
         description: "The skill operation to perform.",
       },
-      name: { type: "string", description: "The skill name." },
+      name: {
+        type: "string",
+        description:
+          "Skill name (lowercase, hyphens/underscores/dots, max 64 chars). Must match an existing skill for " +
+          "patch/edit/delete/write_file/remove_file, and must match frontmatter `name` on create/edit.",
+      },
       content: {
         type: "string",
-        description: "Full SKILL.md text (frontmatter + body). Required for 'create' and 'edit'.",
+        description:
+          "Full SKILL.md content (YAML frontmatter with name + description, then markdown body). " +
+          "Required for 'create' and 'edit'. For 'edit', read the skill first with skill_view().",
       },
       old_string: { type: "string", description: "Text to find. Required for 'patch'." },
       new_string: { type: "string", description: "Replacement text for 'patch'." },
@@ -134,7 +147,9 @@ export const SKILL_MANAGE_SCHEMA = {
       category: { type: "string", description: "Optional category/domain for grouping. Only used on 'create'." },
       file_path: {
         type: "string",
-        description: "Path to a supporting file (e.g., 'references/api.md'). Required for 'write_file'/'remove_file', optional for 'patch'.",
+        description:
+          "Path to a supporting file within the skill directory. For 'write_file'/'remove_file': required, " +
+          "must be under references/, templates/, scripts/, or assets/. For 'patch': optional, defaults to SKILL.md.",
       },
       file_content: { type: "string", description: "Content for 'write_file'." },
     },
