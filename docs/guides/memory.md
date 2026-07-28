@@ -16,7 +16,8 @@ tenant only.
 ## Frozen snapshots (why this stays cheap)
 
 Memory is injected into the system prompt **once**, at session start, as a
-frozen snapshot.
+frozen snapshot — the same pattern as
+[Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory).
 
 Mid-session writes still hit disk immediately (durable), but they do **not**
 change the running prompt. The next session is the first time they appear.
@@ -27,6 +28,17 @@ That is intentional:
 - A 40-message conversation does not pay to re-process a growing memory block
   on every turn.
 - The agent still "remembers" — just at the right grain.
+
+### What counts as a "session"
+
+| Surface | Session boundary |
+| ------- | ---------------- |
+| Hermes CLI / TUI | Process / conversation lifetime |
+| agent-kit example app | One `useChat` id — **New chat** starts a new session and reloads MEMORY/USER into the prompt |
+
+Do **not** reload the snapshot on every HTTP turn. That invalidates the prefix
+cache the frozen design exists to protect. Optional `memory` `action=list`
+reads live disk state without mutating the prompt.
 
 ## Bounded and high-signal
 

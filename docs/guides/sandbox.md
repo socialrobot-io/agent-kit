@@ -42,9 +42,14 @@ const { tools } = await createBashTool({
 
 | Layer | Role |
 | ----- | ---- |
-| just-bash `Bash` | In-memory FS, Unix utilities, optional network allowlist, hardened execution limits |
+| AgentFS volume | Durable SQLite home: `memories/`, `agent/`, `skills/`, and `/workspace/*` |
+| just-bash `Bash` | Default Unix layout + `/workspace` mounted on AgentFS (or ephemeral in-memory FS in tests) |
 | `TenantAgentFSSandbox` | Per-tenant audit + command guardrails on every `executeCommand` / read / write |
 | bash-tool | AI SDK `bash` / `readFile` / `writeFile` tools + `onBeforeBashCall` |
+
+Pass `agentFs: await AgentFS.open(...)` into `createTenantBashToolkit` so workspace
+files land in the same `.db` as memory (under `/workspace/...`). Without it,
+just-bash uses an in-memory FS and those files will not appear in AgentFS.
 
 Defense-in-depth is **off under Next.js** because Next patches `Date.now` /
 `process.env` and just-bash's DID proxies recurse with those patches. Outside

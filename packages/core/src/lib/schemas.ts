@@ -7,33 +7,34 @@
 export const MEMORY_SCHEMA = {
   name: "memory",
   description:
-    "Save durable facts to persistent memory that survive across sessions. Memory is " +
-    "injected into every future turn, so keep entries compact and high-signal.\n\n" +
-    "HOW: make ALL your changes in ONE call via an 'operations' array (each item: " +
-    "{action, content?, old_text?}). The batch applies atomically and the char limit is " +
-    "checked only on the FINAL result — so a single call can remove/replace stale entries " +
-    "to free room AND add new ones, even when an add alone would overflow. The response " +
-    "reports current/limit chars and confirms completion; one batch call finishes the " +
-    "update, so don't repeat it. Use the bare action/content/old_text fields only for a " +
-    "single lone change.\n\n" +
-    "WHEN: save proactively when the user states a preference, correction, or personal " +
-    "detail, or you learn a stable fact about their environment, conventions, or workflow. " +
-    "Priority: user preferences & corrections > environment facts > procedures. The best " +
-    "memory stops the user repeating themselves.\n\n" +
-    "IF FULL: an add is rejected with the current entries shown. Reissue as ONE batch that " +
+    "Save durable facts to persistent memory that survive across sessions. At " +
+    "session start, MEMORY.md and USER.md are injected into the system prompt as a " +
+    "FROZEN snapshot and never change mid-session — that preserves the LLM prefix " +
+    "cache. Writes still persist to disk immediately; they appear in the prompt on " +
+    "the NEXT session. Tool responses always reflect live disk state.\n\n" +
+    "Answer 'who am I' / 'what do you remember' from the USER PROFILE / MEMORY blocks " +
+    "in the system prompt. Do NOT add entries that say you don't know the user.\n\n" +
+    "ACTIONS: add, replace, remove (mutate). Optional list = read live entries without " +
+    "changing the frozen prompt. Prefer an 'operations' array for multiple writes: " +
+    "each item is {action, content?, old_text?}; batches apply atomically and the char " +
+    "limit is checked only on the FINAL result.\n\n" +
+    "WHEN TO WRITE: the user states a preference, correction, or personal detail, or you " +
+    "learn a stable environment/convention fact. Priority: user preferences & corrections > " +
+    "environment facts > procedures.\n\n" +
+    "IF FULL: an add is rejected with current_entries shown. Reissue as ONE batch that " +
     "removes or shortens enough stale entries and adds the new one together.\n\n" +
-    "TARGETS: 'user' = who the user is (name, role, preferences, style). 'memory' = your " +
-    "notes (environment, conventions, tool quirks, lessons).\n\n" +
-    "SKIP: trivial/obvious info, easily re-discovered facts, raw data dumps, task progress, " +
-    "completed-work logs, temporary TODO state (use session_search for those). Reusable " +
-    "procedures belong in a skill, not memory.",
+    "TARGETS: 'user' = who the user is. 'memory' = your notes (environment, conventions).\n\n" +
+    "SKIP: trivial/obvious info, easily re-discovered facts, raw dumps, task progress, " +
+    "temporary TODO state. Reusable procedures belong in a skill.",
   inputSchema: {
     type: "object",
     properties: {
       action: {
         type: "string",
-        enum: ["add", "replace", "remove"],
-        description: "The action to perform (single-op shape). Omit when using 'operations'.",
+        enum: ["list", "add", "replace", "remove"],
+        description:
+          "list = read live entries (no write; does not change the frozen prompt). " +
+          "add/replace/remove = mutate disk. Omit when using 'operations'.",
       },
       target: {
         type: "string",

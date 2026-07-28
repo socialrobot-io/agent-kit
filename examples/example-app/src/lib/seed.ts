@@ -24,9 +24,9 @@ async function resolvePackageRoot(): Promise<string> {
   return process.cwd();
 }
 
-const SEEDS: { diskRelative: string; volumePath: string }[] = [
-  { diskRelative: "SOUL.md", volumePath: "agent/SOUL.md" },
-  { diskRelative: "AGENTS.md", volumePath: "agent/AGENTS.md" },
+const SEEDS: { diskRelative: string; volumePath: string; always?: boolean }[] = [
+  { diskRelative: "SOUL.md", volumePath: "agent/SOUL.md", always: true },
+  { diskRelative: "AGENTS.md", volumePath: "agent/AGENTS.md", always: true },
   {
     diskRelative: "skills/bullet-briefing/SKILL.md",
     volumePath: "skills/bullet-briefing/SKILL.md",
@@ -41,10 +41,11 @@ export async function seedAgentHome(fs: AgentFsLike): Promise<string[]> {
   const root = await resolvePackageRoot();
   const onDisk = join(root, "agent");
   const written: string[] = [];
-  for (const { diskRelative, volumePath } of SEEDS) {
+  for (const { diskRelative, volumePath, always } of SEEDS) {
     const existing = await fs.readFile(volumePath);
-    if (existing != null) continue;
+    if (existing != null && !always) continue;
     const content = await readFile(join(onDisk, diskRelative), "utf8");
+    if (existing === content) continue;
     await fs.writeFile(volumePath, content);
     written.push(volumePath);
   }

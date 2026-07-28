@@ -81,6 +81,26 @@ export class AgentSessionRuntime {
     this.ready = true;
   }
 
+  /**
+   * Rebuild the memory snapshot from disk without reloading SOUL/AGENTS.
+   * Use between HTTP requests when the runtime is process-scoped.
+   */
+  async refreshMemory(): Promise<void> {
+    if (!this.ready) throw new Error("call init() first");
+    await this.memory.refreshSnapshot();
+  }
+
+  /**
+   * Reload SOUL/AGENTS + memory snapshot from the agent home.
+   * Needed when seed files change under a long-lived process singleton.
+   */
+  async reload(): Promise<void> {
+    const files = await loadAgentFiles(this.opts.fs, this.opts.agentDir ?? "agent");
+    this.basePrompt = buildBaseSystemPrompt(files);
+    await this.memory.refreshSnapshot();
+    this.ready = true;
+  }
+
   /** The frozen system prompt for this session (base + memory snapshot). */
   systemPrompt(): string {
     if (!this.ready) throw new Error("call init() first");
@@ -99,6 +119,11 @@ export class AgentSessionRuntime {
       description: MEMORY_SCHEMA.description,
       inputSchema: { ...MEMORY_SCHEMA.inputSchema },
       execute: async (args) => {
+        const action = args.action as string | undefined;
+        // Reads never go through write-approval.
+        if (action === "list" || action === "get" || action === "read") {
+          return applyMemoryArgs(this.memory, args);
+        }
         const summary = memoryToolSummary(args);
         const decision = await evaluateGateAsync("memory", this.gateCtx(), {
           summary,

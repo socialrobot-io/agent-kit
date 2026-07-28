@@ -132,4 +132,25 @@ describe("MemoryStore", () => {
     await store2.loadFromDisk();
     expect(store2.getEntries("user")).toEqual(["User is a founder"]);
   });
+
+  it("lists live entries without changing the frozen snapshot", async () => {
+    await store.add("user", "User goes by Batman");
+    await store.loadFromDisk();
+    const frozen = store.formatForSystemPrompt("user");
+    await store.add("user", "Prefers dark mode");
+    const listed = await store.list("user");
+    expect(listed.success).toBe(true);
+    expect(listed.entries).toEqual(["User goes by Batman", "Prefers dark mode"]);
+    expect(store.formatForSystemPrompt("user")).toBe(frozen);
+  });
+
+  it("refreshSnapshot pulls mid-session writes into the system prompt", async () => {
+    await store.add("user", "User goes by Batman");
+    await store.loadFromDisk();
+    expect(store.formatForSystemPrompt("user")).toContain("Batman");
+    await store.add("user", "Lives in Gotham");
+    expect(store.formatForSystemPrompt("user")).not.toContain("Gotham");
+    await store.refreshSnapshot();
+    expect(store.formatForSystemPrompt("user")).toContain("Gotham");
+  });
 });

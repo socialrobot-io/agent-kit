@@ -147,6 +147,33 @@ export class MemoryStore {
     this.loaded = true;
   }
 
+  /**
+   * Re-read MEMORY.md / USER.md and rebuild the system-prompt snapshot.
+   * Call at the start of each HTTP chat request when the runtime is a
+   * long-lived process singleton (e.g. Next.js) so mid-session writes from
+   * earlier requests appear in the next turn's system prompt.
+   */
+  async refreshSnapshot(): Promise<void> {
+    await this.loadFromDisk();
+  }
+
+  /** Live list of entries for a target (does not change the frozen snapshot). */
+  async list(target: MemoryTarget): Promise<MemoryResult> {
+    await this.reloadTarget(target);
+    const entries = this.getEntries(target);
+    const current = this.charCount(target);
+    const limit = this.charLimit(target);
+    return {
+      success: true,
+      target,
+      entries,
+      usage: `${current}/${limit}`,
+      message: entries.length
+        ? `${entries.length} entr${entries.length === 1 ? "y" : "ies"} in '${target}'.`
+        : `No entries in '${target}' yet.`,
+    };
+  }
+
   private async readEntries(target: MemoryTarget): Promise<string[]> {
     const raw = await this.fs.readFile(this.pathFor(target));
     if (raw == null || raw.trim() === "") return [];
@@ -438,6 +465,7 @@ export async function applyMemoryArgs(
     return store.applyBatch(target, args.operations as MemoryOperation[]);
   }
   const action = args.action as string | undefined;
+  if (action === "list" || action === "get" || action === "read") return store.list(target);
   if (action === "add") return store.add(target, (args.content as string) ?? "");
   if (action === "replace") {
     return store.replace(target, (args.old_text as string) ?? "", (args.content as string) ?? "");
@@ -447,6 +475,6 @@ export async function applyMemoryArgs(
     success: false,
     error:
       `unknown memory action '${action ?? ""}'. ` +
-      `Use action=add|replace|remove with content/old_text, or an operations array.`,
+      `Use action=list|add|replace|remove with content/old_text, or an operations array.`,
   };
 }

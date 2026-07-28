@@ -6,11 +6,18 @@ import {
 } from "ai";
 import { NextResponse } from "next/server";
 import { streamAgentTurn } from "@agent-kit/ai";
-import { getAgent } from "@/lib/agent";
+import { getSessionAgent, getSharedAgent } from "@/lib/agent";
 import { hasApiKey } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type ChatBody = {
+  messages?: UIMessage[];
+  /** Hermes chat session id — memory snapshot freezes once per id. */
+  id?: string;
+  sessionId?: string;
+};
 
 export async function POST(req: Request) {
   if (!hasApiKey()) {
@@ -23,20 +30,28 @@ export async function POST(req: Request) {
     );
   }
 
-  let messages: UIMessage[];
+  let body: ChatBody;
   try {
-    const body = (await req.json()) as { messages?: UIMessage[] };
-    messages = body.messages ?? [];
+    body = (await req.json()) as ChatBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
+  const messages = body.messages ?? [];
+  const sessionId = (body.sessionId ?? body.id ?? "").trim();
+  if (!sessionId) {
+    return NextResponse.json(
+      { error: "Missing chat session id. The client must send `id` (useChat) so memory can freeze per session." },
+      { status: 400 },
+    );
+  }
   if (!messages.length) {
     return NextResponse.json({ error: "Send at least one message." }, { status: 400 });
   }
 
   try {
-    const agent = await getAgent();
+    // Snapshot loads only on first request for this sessionId (Hermes session start).
+    const agent = await getSessionAgent(sessionId);
     const modelMessages = await convertToModelMessages(messages);
     const result = streamAgentTurn(modelMessages, {
       runtime: agent.runtime,
@@ -49,6 +64,7 @@ export async function POST(req: Request) {
       headers: {
         "x-agent-kit-model": agent.label,
         "x-agent-kit-provider": agent.provider,
+        "x-agent-kit-session": sessionId,
         "x-agent-kit-sandbox": "bash-tool",
       },
       stream: toUIMessageStream({ stream: result.stream }),
@@ -68,13 +84,21 @@ export async function GET() {
     });
   }
   try {
-    const agent = await getAgent();
+    const agent = await getSharedAgent();
     return NextResponse.json({
       ok: true,
       model: agent.label,
       provider: agent.provider,
       sandbox: true,
       tools: ["memory", "skills_list", "skill_view", "skill_manage", "bash", "readFile", "writeFile"],
+      // Live disk state (not a frozen session snapshot). New chat sessions
+      // load this into the system prompt once at session start.
+      memoryOnDisk: {
+        user: agent.liveUserMemory,
+        notes: agent.liveNotesMemory,
+      },
+      workspacePersistedInAgentFs: agent.bash.persisted,
+      openSessions: agent.openSessions,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

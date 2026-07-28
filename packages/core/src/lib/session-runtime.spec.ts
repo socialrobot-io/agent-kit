@@ -61,6 +61,25 @@ describe("AgentSessionRuntime", () => {
     expect(next.systemPrompt()).toContain("terse replies");
   });
 
+  it("refreshMemory updates the frozen snapshot in-place", async () => {
+    const mem = runtime.tools().find((t) => t.name === "memory")!;
+    await mem.execute({ action: "add", target: "user", content: "User goes by Batman" });
+    expect(runtime.systemPrompt()).not.toContain("Batman");
+    await runtime.refreshMemory();
+    expect(runtime.systemPrompt()).toContain("Batman");
+  });
+
+  it("memory action=list returns live entries", async () => {
+    const mem = runtime.tools().find((t) => t.name === "memory")!;
+    await mem.execute({ action: "add", target: "user", content: "User goes by Batman" });
+    const listed = (await mem.execute({ action: "list", target: "user" })) as {
+      success: boolean;
+      entries: string[];
+    };
+    expect(listed.success).toBe(true);
+    expect(listed.entries).toContain("User goes by Batman");
+  });
+
   it("skill_manage creates a skill that skills_list then shows", async () => {
     const manage = runtime.tools().find((t) => t.name === "skill_manage")!;
     await manage.execute({ action: "create", name: "research", content: "---\ndescription: Research workflow\n---\nSteps." });

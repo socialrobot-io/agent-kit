@@ -19,6 +19,10 @@ const SUGGESTIONS = [
   "Write a short note to notes/agent-kit.txt saying the bash sandbox works",
 ];
 
+function newSessionId(): string {
+  return crypto.randomUUID();
+}
+
 function toolNameFromPartType(type: string): string {
   return type.startsWith("tool-") ? type.slice(5) : type;
 }
@@ -85,10 +89,25 @@ function MessageBubble({
 export default function Index() {
   const [input, setInput] = useState("");
   const [modelStatus, setModelStatus] = useState<Status | null>(null);
+  // Hermes: one frozen memory snapshot per chat session. "New chat" mints a
+  // new id so the next turn reloads MEMORY/USER from disk into the prompt.
+  const [sessionId, setSessionId] = useState(newSessionId);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
 
-  const { messages, sendMessage, status, stop, error, clearError } = useChat({
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        // useChat's `id` is the Hermes session boundary — freeze memory once per id.
+        prepareSendMessagesRequest: ({ id, messages }) => ({
+          body: { id, messages },
+        }),
+      }),
+    [],
+  );
+
+  const { messages, sendMessage, status, stop, error, clearError, setMessages } = useChat({
+    id: sessionId,
     transport,
     throttle: 40,
   });
@@ -119,6 +138,13 @@ export default function Index() {
     await sendMessage({ text: trimmed });
   }
 
+  function onNewChat() {
+    if (busy) return;
+    clearError();
+    setMessages([]);
+    setSessionId(newSessionId());
+  }
+
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
@@ -127,9 +153,10 @@ export default function Index() {
           <span className={styles.badge}>live</span>
         </div>
         <p>
-          Streaming chat over a persistent AgentFS home plus a just-bash
-          sandbox (bash / readFile / writeFile). Memory, skills, and workspace
-          tools stick across reloads.
+          Streaming chat over a persistent AgentFS home. Memory freezes into the
+          system prompt once per chat session (Hermes prefix-cache). Bash
+          workspace files also live in the same SQLite volume via
+          agentfs-sdk/just-bash.
         </p>
         <div className={styles.meta}>
           <span
@@ -145,6 +172,9 @@ export default function Index() {
             : modelStatus?.ok
               ? `${modelStatus.provider} / ${modelStatus.model}`
               : modelStatus?.error || "checking model…"}
+          <button type="button" className={styles.ghostLink} onClick={onNewChat} disabled={busy}>
+            New chat
+          </button>
         </div>
       </header>
 
@@ -153,8 +183,8 @@ export default function Index() {
           <div className={styles.empty}>
             <h2>Try the flywheel</h2>
             <p>
-              Share something durable, then ask what it remembers. Tool calls
-              stream in as they happen.
+              Share something durable, then open New chat and ask what it
+              remembers — that is when the frozen snapshot refreshes.
             </p>
             <div className={styles.suggestions}>
               {SUGGESTIONS.map((s) => (
