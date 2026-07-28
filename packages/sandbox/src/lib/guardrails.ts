@@ -38,12 +38,14 @@ const DESTRUCTIVE: RegExp[] = [
 
 const EXFIL: RegExp[] = [
   /\b(curl|wget|nc|ncat)\b[^\n]*(\$\{?\w*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)\w*\}?)/i,
-  /\bcat\b[^\n]*(\.env|credentials|\.netrc|\.pgpass|\.npmrc|\.ssh\/id_)/i,
+  /\b(cat|head|less|more|tail)\b[^\n]*(\.env|credentials|\.netrc|\.pgpass|\.npmrc|\.ssh\/id_)/i,
   /\b(authorized_keys)\b/i,
   /\bbase64\b[^\n]*\|\s*(curl|wget|nc)\b/i,
 ];
 
+/** Match hostnames in URLs or bare curl/wget host args. */
 const URL_RE = /\b(?:https?|ftp):\/\/([a-z0-9.-]+)(?::\d+)?/gi;
+const BARE_HOST_RE = /\b(?:curl|wget)\s+(?:-[^\s]+\s+)*([a-z0-9.-]+\.[a-z]{2,})(?:\/|\s|$)/gi;
 
 function redactSecrets(command: string, secrets: string[]): string {
   let out = command;
@@ -56,8 +58,10 @@ function redactSecrets(command: string, secrets: string[]): string {
 function extractHosts(command: string): string[] {
   const hosts: string[] = [];
   let m: RegExpExecArray | null;
-  const re = new RegExp(URL_RE);
-  while ((m = re.exec(command)) !== null) hosts.push(m[1].toLowerCase());
+  const urlRe = new RegExp(URL_RE);
+  while ((m = urlRe.exec(command)) !== null) hosts.push(m[1].toLowerCase());
+  const bareRe = new RegExp(BARE_HOST_RE);
+  while ((m = bareRe.exec(command)) !== null) hosts.push(m[1].toLowerCase());
   return hosts;
 }
 

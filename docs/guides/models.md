@@ -1,41 +1,42 @@
 # Models & the Agent Loop
 
-How `defineAgent({ model })` becomes a live model, and how the loop runs.
-Provided by `@agent-kit/ai`, built on the [Vercel AI SDK](https://sdk.vercel.ai)
-(`ai` v7 + `@ai-sdk/gateway`).
+`@agent-kit/ai` on the [Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7,
+`@ai-sdk/gateway`).
 
-## From a string to a live model
-
-`defineAgent({ model: "anthropic/claude-sonnet-4-5" })` stores a **string id**.
-`@agent-kit/ai` resolves it into a ready `LanguageModel`:
+## Resolve a model
 
 ```ts
+import { defineAgent } from "@agent-kit/core";
 import { resolveModel, resolveAgentModel } from "@agent-kit/ai";
 
-resolveModel("anthropic/claude-sonnet-4-5");        // AI Gateway LanguageModel
-resolveModel(myOpenAIModel);                        // passed through unchanged
-resolveAgentModel(defineAgent({ model: "openai/gpt-5" }));
+// String id → AI Gateway (needs AI_GATEWAY_API_KEY, or { apiKey, baseURL })
+const fromGateway = resolveModel("anthropic/claude-sonnet-4-5");
+
+// Or pass a ready LanguageModel from any AI SDK provider package:
+// import { openai } from "@ai-sdk/openai";
+// const passedThrough = resolveModel(openai("gpt-4o"));
+
+const fromDefinition = resolveAgentModel(
+  defineAgent({ model: "openai/gpt-5" }),
+);
 ```
 
-- **String ids** (`"provider/model"`) resolve through the **AI Gateway**, which
-  routes to OpenAI, Anthropic, Google, Mistral, Groq, OpenRouter, Azure,
-  Bedrock, and more with a single `AI_GATEWAY_API_KEY`.
-- **A ready `LanguageModel`** (from any provider package, or your own) is
-  returned as-is.
+| Input | Result |
+| ----- | ------ |
+| `"provider/model"` string | AI Gateway |
+| Ready `LanguageModel` | Unchanged |
 
-Set `AI_GATEWAY_API_KEY` in the environment, or pass `{ apiKey, baseURL }` to
-target a self-hosted gateway / proxy.
-
-## Running a turn
-
-`runAgentTurn` is the loop: it hands the runtime's frozen system prompt and the
-Hermes tool surface to `generateText`, lets the model call tools until it stops
-(bounded by `stopWhen`), and returns the result.
+## Run a turn
 
 ```ts
-import { AgentSessionRuntime, defineAgent } from "@agent-kit/core";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
 import { runAgentTurn } from "@agent-kit/ai";
 
+const fs = new InMemoryFs();
+await fs.writeFile("agent/SOUL.md", "You are helpful.");
+await fs.writeFile("agent/AGENTS.md", "Be brief.");
+
+const tenantId = "brand-123";
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const runtime = new AgentSessionRuntime({ tenantId, fs, definition });
 await runtime.init();
@@ -45,49 +46,66 @@ const turn = await runAgentTurn(
   { runtime, definition, maxSteps: 8 },
 );
 
-turn.text;        // the model's reply
-turn.toolCalls;   // e.g. [{ name: "memory", args: { action: "add", … } }]
-turn.toolResults; // the tool outputs
+console.log(turn.text);
+console.log(turn.toolCalls);
+console.log(turn.toolResults);
 ```
 
-Under the hood the runtime's `tools()` are adapted to an AI SDK `ToolSet` with
-`toAiTools`, so `memory` / `skills_list` / `skill_view` / `skill_manage` run
-against the tenant's live stores — including the write-approval gate.
+Hermes tools hit the tenant stores (write-approval gate included).
 
-### Bring your own tools
+Custom tools: prefer [Tools](tools.md) (`composeTools`). Or pass them on the
+same `runtime` / `definition` from above:
 
 ```ts
-await runAgentTurn(messages, {
-  runtime,
-  definition,
-  extraTools: [myCustomTool], // SessionTool[] merged over Hermes
-  extraAiTools: bashToolkit.tools, // AI SDK ToolSet (bash-tool, etc.)
+import type { SessionTool } from "@agent-kit/core";
+import { createTenantBashToolkit } from "@agent-kit/sandbox";
+
+const myCustomTool: SessionTool = {
+  name: "ping",
+  description: "Return pong.",
+  inputSchema: { type: "object", properties: {} },
+  execute: async () => ({ ok: true }),
+};
+
+const bash = await createTenantBashToolkit({
+  tenantId,
+  files: { "README.md": "# workspace\n" },
+  destination: "/workspace",
 });
+
+await runAgentTurn(
+  [{ role: "user", content: "Ping." }],
+  {
+    runtime,
+    definition,
+    addTools: [myCustomTool],
+    addAiTools: bash.tools,
+  },
+);
 ```
 
-`extraAiTools` is how you mount [`bash-tool`](https://github.com/vercel-labs/bash-tool)
-tools from `@agent-kit/sandbox` (`createTenantBashToolkit`).
+## Curator on a live model
 
-## The curator on a live model
-
-The curator package expects a `CuratorModelRunner`. `aiCuratorRunner` builds one
-on a live model, so the background review reads the real transcript and emits
-real `memory` / `skill_manage` calls:
+Reuse `runtime` from **Run a turn** above.
 
 ```ts
+import type { ModelMessage } from "ai";
 import { runBackgroundReview } from "@agent-kit/curator";
 import { aiCuratorRunner } from "@agent-kit/ai";
 
-const outcome = await runBackgroundReview(transcript, {
-  memory, skills, pending,
+const transcript: ModelMessage[] = [
+  { role: "user", content: "Stop being so verbose." },
+  { role: "assistant", content: "Got it. I will be brief." },
+];
+
+await runBackgroundReview(transcript, {
+  memory: runtime.memory,
+  skills: runtime.skills,
+  pending: runtime.pending,
   writeApprovalEnabled: () => true,
   mode: "combined",
-  model: aiCuratorRunner("anthropic/claude-haiku-4-5"), // a cheap model is fine
+  model: aiCuratorRunner("anthropic/claude-haiku-4-5"),
 });
 ```
 
-## Offline by default
-
-The demo and all tests use an **offline mock** implementing the same
-`LanguageModel` interface — no network, no keys. The live path is the identical
-code pointed at a real model, which is why the whole suite stays deterministic.
+Demo/tests use an offline `LanguageModel` mock. Same code path as live.

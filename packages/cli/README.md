@@ -1,11 +1,22 @@
-# cli
+# @agent-kit/cli
 
-This library was generated with [Nx](https://nx.dev).
+Offline demo of the production loop: session, curator, approval, recall, and
+tenant isolation.
 
-## Building
+## Build
 
-Run `nx build cli` to build the library.
+```bash
+npx nx build cli
+```
 
-## Running unit tests
+## Test
 
-Run `nx test cli` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test cli
+```
+
+## Demo
+
+```bash
+bun packages/cli/src/lib/demo.ts
+```

@@ -1,11 +1,16 @@
-# ai
+# @agent-kit/ai
 
-This library was generated with [Nx](https://nx.dev).
+Live model loop on the Vercel AI SDK. Resolves `defineAgent({ model })`, runs
+turns, streams, and builds curator runners.
 
-## Building
+## Build
 
-Run `nx build ai` to build the library.
+```bash
+npx nx build ai
+```
 
-## Running unit tests
+## Test
 
-Run `nx test ai` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test ai
+```

@@ -11,6 +11,19 @@ describe("defineAgent", () => {
     expect(() => defineAgent({ model: "" })).toThrow();
     expect(defineAgent({ model: "openai/gpt-5" }).model).toBe("openai/gpt-5");
   });
+
+  it("defaults writeApproval to on", () => {
+    const d = defineAgent({ model: "openai/gpt-5" });
+    expect(d.config?.writeApproval).toEqual({ memory: true, skills: true });
+  });
+
+  it("allows explicit writeApproval off", () => {
+    const d = defineAgent({
+      model: "openai/gpt-5",
+      config: { writeApproval: { memory: false, skills: false } },
+    });
+    expect(d.config?.writeApproval).toEqual({ memory: false, skills: false });
+  });
 });
 
 describe("AgentSessionRuntime", () => {

@@ -35,3 +35,6 @@ jobs:
 
       - name: Build packages
         run: bunx nx run-many -t build --projects=core,sessions,ai,sandbox,curator,cli --parallel=3
+
+      - name: Typecheck (packages with clean declaration emit)
+        run: bunx nx run-many -t typecheck --projects=core,sessions,ai,curator --parallel=3

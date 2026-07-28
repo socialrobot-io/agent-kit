@@ -1,5 +1,6 @@
 /**
  * Adapts agentfs-sdk's FileSystem to @agent-kit/core's AgentFsLike.
+ * Call serializeAgentFs(afs.fs) from @agent-kit/sandbox before adapting.
  */
 
 import type { FileSystem } from "agentfs-sdk";
@@ -8,56 +9,6 @@ import type { AgentFsLike } from "@agent-kit/core";
 export type AgentFsAdapter = AgentFsLike & {
   deleteFile(path: string): Promise<void>;
 };
-
-type Exclusive = <T>(fn: () => Promise<T>) => Promise<T>;
-
-function createMutex(): Exclusive {
-  let tail: Promise<unknown> = Promise.resolve();
-  return function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const next = tail.then(fn, fn);
-    tail = next.then(
-      () => undefined,
-      () => undefined,
-    );
-    return next;
-  };
-}
-
-/**
- * Patch AgentFS FileSystem methods so memory, transcripts, and the just-bash
- * AgentFsWrapper share one queue. Turso rejects overlapping ops / second opens
- * with "database is locked".
- */
-export function serializeAgentFs(fs: FileSystem): Exclusive {
-  const exclusive = createMutex();
-  const methods = [
-    "readFile",
-    "writeFile",
-    "readdir",
-    "mkdir",
-    "rmdir",
-    "unlink",
-    "rename",
-    "stat",
-    "lstat",
-    "access",
-    "copyFile",
-    "symlink",
-    "readlink",
-    "truncate",
-    "open",
-  ] as const;
-
-  for (const name of methods) {
-    const original = (fs as unknown as Record<string, unknown>)[name];
-    if (typeof original !== "function") continue;
-    const bound = (original as (...args: unknown[]) => Promise<unknown>).bind(fs);
-    (fs as unknown as Record<string, unknown>)[name] = (...args: unknown[]) =>
-      exclusive(() => bound(...args));
-  }
-
-  return exclusive;
-}
 
 export function adaptAgentFs(fs: FileSystem): AgentFsAdapter {
   return {

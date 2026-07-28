@@ -69,7 +69,8 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
    across tenants is a bug.
 4. **Docs coupling.** Behavior changes update `README.md` and the relevant
    `docs/guides/*.md` in the same change. Examples must keep compiling against
-   the public API they teach.
+   the public API they teach. Technical docs (`docs/**`, READMEs) follow
+   `.cursor/rules/technical-docs.mdc` (STE100 + Orwell).
 5. **Approval semantics.** If a change lets an agent write to memory, skills,
    or the filesystem, state where the approval boundary is and how it is
    enforced.

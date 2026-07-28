@@ -4,10 +4,9 @@
  * Port of the contracts in Nous Research Hermes Agent `hermes_state.py` and
  * `tools/session_search_tool.py` (MIT), behind a pluggable store interface.
  *
- * Hermes uses a local SQLite DB with FTS5. agent-kit abstracts the backend so
- * a SaaS consumer can use Postgres (tsvector / pg_trgm) while local/dev uses
- * an in-memory or SQLite FTS5 adapter. The tool surface (`session_search`)
- * is identical either way.
+ * Hermes uses a local SQLite DB with FTS5. agent-kit's file/in-memory adapters
+ * use substring scan (fine for short-lived sessions). Hosts can plug Postgres
+ * later. The tool surface (`session_search`) stays the same.
  */
 
 export type SessionSource = "generic" | "mcp" | "composer" | string;
@@ -37,13 +36,15 @@ export interface SearchHit {
 }
 
 /**
- * Pluggable transcript store. Implementations must be tenant-scoped: a query
- * for one tenant must never return another tenant's messages.
+ * Pluggable transcript store.
+ *
+ * Prefer one store (and one AgentFS volume) per tenant. When a store holds
+ * multiple tenants, every query must filter by tenantId and never leak.
  */
 export interface TranscriptStore {
   createSession(session: Session): Promise<void>;
   appendMessage(message: SessionMessage): Promise<void>;
-  /** Full-text search across messages for one tenant. */
+  /** Search across messages for one tenant (substring in built-in adapters). */
   search(tenantId: string, query: string, limit?: number): Promise<SearchHit[]>;
   /** Read a window of messages from a session, oldest-first from offset. */
   scroll(sessionId: string, offset?: number, limit?: number): Promise<SessionMessage[]>;
@@ -51,7 +52,24 @@ export interface TranscriptStore {
   listSessions(tenantId: string): Promise<Session[]>;
 }
 
-/** In-memory transcript store with naive substring FTS (dev / tests). */
+/**
+ * Ensure `sessionId` belongs to `tenantId`. Use before scrolling or returning
+ * history to a caller. Throws if the session is missing or owned by another tenant.
+ */
+export async function assertTenantSession(
+  store: TranscriptStore,
+  tenantId: string,
+  sessionId: string,
+): Promise<Session> {
+  const sessions = await store.listSessions(tenantId);
+  const found = sessions.find((s) => s.id === sessionId);
+  if (!found) {
+    throw new Error(`Session '${sessionId}' not found for tenant '${tenantId}'.`);
+  }
+  return found;
+}
+
+/** In-memory transcript store with naive substring search (dev / tests). */
 export class InMemoryTranscriptStore implements TranscriptStore {
   private sessions = new Map<string, Session>();
   private messages = new Map<string, SessionMessage[]>(); // sessionId -> messages
@@ -99,10 +117,6 @@ export class InMemoryTranscriptStore implements TranscriptStore {
   }
 
   async scroll(sessionId: string, offset = 0, limit = 20): Promise<SessionMessage[]> {
-    const session = this.sessions.get(sessionId);
-    // Tenant check happens in sessionSearch for discovery; scroll by id is
-    // gated by knowing the id. Callers should still filter by tenant.
-    void session;
     const msgs = this.messages.get(sessionId) ?? [];
     return msgs.slice(offset, offset + limit);
   }

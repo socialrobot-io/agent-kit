@@ -6,6 +6,7 @@ import {
 } from "ai";
 import { NextResponse } from "next/server";
 import { streamAgentTurn } from "@agent-kit/ai";
+import { assertTenantSession } from "@agent-kit/sessions";
 import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
 import { persistUiMessages, transcriptToUiMessages } from "@/lib/transcripts";
 import { hasApiKey } from "@/lib/env";
@@ -52,16 +53,15 @@ export async function POST(req: Request) {
 
   try {
     const agent = await getSessionAgent(sessionId);
+    const { toolSet } = agent.session.composeTools();
 
-    // Persist inbound user turn(s) before streaming so a crash mid-reply still keeps the ask.
     await persistUiMessages(agent.transcripts, sessionId, messages.filter((m) => m.role === "user"));
 
     const modelMessages = await convertToModelMessages(messages);
     const result = streamAgentTurn(modelMessages, {
-      runtime: agent.runtime,
+      runtime: agent.session.runtime,
       model: agent.model,
-      extraAiTools: agent.bashTools,
-      extraTools: agent.extraTools,
+      toolSet,
       maxSteps: 12,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;
@@ -106,8 +106,9 @@ export async function GET(req: Request) {
   try {
     if (sessionId) {
       const transcripts = await getTranscripts();
-      const sessions = await transcripts.listSessions(TENANT_ID);
-      if (!sessions.some((s) => s.id === sessionId)) {
+      try {
+        await assertTenantSession(transcripts, TENANT_ID, sessionId);
+      } catch {
         return NextResponse.json({ ok: true, sessionId, messages: [] });
       }
       const stored = await transcripts.scroll(sessionId, 0, 10_000);
@@ -134,16 +135,11 @@ export async function GET(req: Request) {
         "readFile",
         "writeFile",
       ],
-      // Virtual paths inside the SQLite volume (not plain SQL tables).
-      volumeHint:
-        "Chat transcripts live at sessions/*.jsonl inside AgentFS; inspect via GET ?sessionId= or session_search — opening example.db with a second process while the server runs will often fail with 'database is locked'.",
-      memoryOnDisk: {
-        user: agent.liveUserMemory,
-        notes: agent.liveNotesMemory,
-      },
-      workspacePersistedInAgentFs: agent.bash.persisted,
       openSessions: agent.openSessions,
       savedSessions: agent.savedSessions,
+      ...(agent.liveUserMemory
+        ? { memoryOnDisk: { user: agent.liveUserMemory, notes: agent.liveNotesMemory } }
+        : {}),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

@@ -191,8 +191,9 @@ export default function Index() {
         <p>
           Streaming chat with durable transcripts in AgentFS (
           <code>sessions/</code>
-          ). Memory freezes per chat session (Hermes prefix-cache). Workspace
-          files persist under <code>/workspace</code>.
+          ). Batteries-included tools via <code>openAgentSession</code>. Memory
+          freezes per chat session. Local volume only — see docs/roadmap for
+          multi-machine.
         </p>
         <div className={styles.meta}>
           <span

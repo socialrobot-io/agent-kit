@@ -1,7 +1,7 @@
 # Example app (Next.js)
 
-Streaming chat over agent-kit via AI SDK UI (`useChat` + UI message stream).
-Persistent AgentFS memory/skills, live DeepSeek by default, and bash-tool
+Streaming chat over agent-kit via AI SDK UI (`useChat` and UI message stream).
+Persistent AgentFS memory and skills, live DeepSeek by default, and bash-tool
 sandbox tools (`bash`, `readFile`, `writeFile`) behind agent-kit guardrails.
 
 ## Setup
@@ -21,7 +21,7 @@ Default model is `deepseek-v4-flash` via [`@ai-sdk/deepseek`](https://ai-sdk.dev
 npx nx dev example
 ```
 
-Open http://localhost:3000. Messages stream token-by-token; memory / skill /
+Open http://localhost:3000. Messages stream token-by-token. Memory, skill, and
 bash tool calls appear as they run.
 
 - Agent home volume: `.agentfs/example.db`
@@ -29,7 +29,7 @@ bash tool calls appear as they run.
 
 ## Layout
 
-- `agent/` - SOUL.md, AGENTS.md, seed skill
-- `src/lib/agent.ts` - runtime + `createTenantBashToolkit`
-- `src/app/api/chat/route.ts` - `streamAgentTurn` with Hermes + bash tools
-- `src/app/page.tsx` - `@ai-sdk/react` `useChat` UI
+- `agent/` — SOUL.md, AGENTS.md, seed skill
+- `src/lib/agent.ts` — runtime and `createTenantBashToolkit`
+- `src/app/api/chat/route.ts` — `streamAgentTurn` with Hermes and bash tools
+- `src/app/page.tsx` — `@ai-sdk/react` `useChat` UI

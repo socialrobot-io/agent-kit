@@ -1,67 +1,56 @@
 # Getting started
 
-Ship a production-grade agent in a few minutes.
-
-## Install
-
 ```bash
 git clone git@github.com:ntgussoni/agent-kit.git
 cd agent-kit
 bun install
+bun packages/cli/src/lib/demo.ts   # offline; no API keys
 ```
 
-No API keys required for the demo or the tests — everything runs offline with
-in-memory adapters.
-
-## Watch the production loop
-
-```bash
-bun packages/cli/src/lib/demo.ts
-```
-
-You'll see the full story: a session, a curated memory + skill staged for
-approval, a human approve step, recall in a second session, and a second tenant
-that sees none of it.
+Demo covers: session → curator stages memory/skill → approve → recall → tenant B sees nothing.
 
 ## Author an agent
 
-An agent is a directory:
-
 ```text
 agent/
-  SOUL.md       who the agent is
-  AGENTS.md     house rules and persistent context
+  SOUL.md       identity (always in the system prompt)
+  AGENTS.md     house rules
   skills/       reusable procedures
-  memories/     curated MEMORY.md + USER.md (written by the agent)
-  tools/        host-registered actions
+  memories/     MEMORY.md + USER.md (agent-written)
 ```
 
-**SOUL.md** — identity. Always in the system prompt.
-
 ```md
+<!-- SOUL.md -->
 You are a concise research assistant for a fintech startup.
 ```
 
-**AGENTS.md** — how it should behave.
-
 ```md
+<!-- AGENTS.md -->
 Prefer short, factual answers. Cite a source for every non-obvious claim.
 Never invent numbers.
 ```
 
-## Run a session
+Custom tools: [Tools](tools.md).
+
+## Run a turn
+
+Needs `AI_GATEWAY_API_KEY` (or your own `LanguageModel`). Uses `InMemoryFs` so
+you can try without opening a SQLite volume. Production: [Hosting](hosting.md).
 
 ```ts
-import { AgentSessionRuntime, defineAgent } from "@agent-kit/core";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
 import { runAgentTurn } from "@agent-kit/ai";
+
+const fs = new InMemoryFs();
+await fs.writeFile("agent/SOUL.md", "You are a concise research assistant.");
+await fs.writeFile("agent/AGENTS.md", "Prefer short, factual answers.");
 
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const runtime = new AgentSessionRuntime({
   tenantId: "brand-123",
-  fs, // this tenant's AgentFS volume
+  fs,
   definition,
 });
-
 await runtime.init();
 
 const turn = await runAgentTurn(
@@ -71,22 +60,5 @@ const turn = await runAgentTurn(
 console.log(turn.text);
 ```
 
-`runAgentTurn` hands the runtime's frozen system prompt + Hermes tools to a live
-model via the AI SDK. Set `AI_GATEWAY_API_KEY` to reach any provider through the
-AI Gateway, or pass your own `LanguageModel`. Each `tenantId` gets its own agent
-home — that is the multi-tenancy wall. See [Models & the loop](models.md).
-
-## What happens after the session
-
-1. The **curator** reviews the transcript and proposes memory + skills.
-2. Proposals land in `pending/` for **human approval**.
-3. On approve, they become permanent.
-4. The next session starts with those lessons already in the frozen snapshot.
-
-## Next
-
-- [Models & the loop](models.md) — connect a live AI SDK model
-- [Security & isolation](security.md) — why this is safe enough for SaaS
-- [Memory](memory.md) — what the agent remembers
-- [Skills & learning](skills-and-learning.md) — how it gets better
-- [Sandbox](sandbox.md) — how it executes safely
+After the session: curator proposes → `pending/` → human approve → next session
+snapshot. Details: [Models](models.md), [Hosting](hosting.md), [Security](security.md).

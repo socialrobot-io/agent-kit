@@ -69,4 +69,12 @@ describe("FileTranscriptStore", () => {
     const res = await sessionSearch(store, "t2", { session_id: "a" });
     expect(res.success).toBe(false);
   });
+
+  it("appends a second message without dropping the first", async () => {
+    await store.createSession({ id: "s1", tenantId: "t1", source: "generic", createdAt: 1 });
+    await store.appendMessage({ id: "m1", sessionId: "s1", role: "user", content: "one", createdAt: 2 });
+    await store.appendMessage({ id: "m2", sessionId: "s1", role: "assistant", content: "two", createdAt: 3 });
+    const msgs = await store.scroll("s1");
+    expect(msgs.map((m) => m.content)).toEqual(["one", "two"]);
+  });
 });

@@ -1,11 +1,16 @@
-# core
+# @agent-kit/core
 
-This library was generated with [Nx](https://nx.dev).
+Agent definition, session runtime, memory, skills, and Hermes tool primitives.
+Leaf package. No `@agent-kit/*` dependencies.
 
-## Building
+## Build
 
-Run `nx build core` to build the library.
+```bash
+npx nx build core
+```
 
-## Running unit tests
+## Test
 
-Run `nx test core` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test core
+```

@@ -23,6 +23,7 @@ describe("evaluateCommand", () => {
 
   it("blocks reading .env", () => {
     expect(evaluateCommand("cat .env").blocked).toMatch(/exfiltration/i);
+    expect(evaluateCommand("head .env").blocked).toMatch(/exfiltration/i);
   });
 
   it("blocks non-allowlisted network egress", () => {

@@ -67,7 +67,7 @@ export class TenantAgentFSSandbox implements Sandbox {
     const decision = evaluateCommand(command, this.guardrails);
     if (decision.blocked) {
       const result: CommandResult = { stdout: "", stderr: decision.blocked, exitCode: 1 };
-      await this.record("bash", command, { exitCode: 1 });
+      await this.record("guardrail_block", command, { exitCode: 1 });
       return result;
     }
     const result = await this.executor(decision.command ?? command);
@@ -92,7 +92,7 @@ export class TenantAgentFSSandbox implements Sandbox {
   }
 
   private async record(
-    kind: "bash" | "readFile" | "writeFile",
+    kind: "bash" | "readFile" | "writeFile" | "guardrail_block",
     subject: string,
     extra: { filesTouched?: string[]; exitCode?: number } = {},
   ): Promise<void> {

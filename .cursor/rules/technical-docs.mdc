@@ -1,0 +1,58 @@
+---
+description: STE100 + Orwell voice for technical documentation
+globs: docs/**/*.md,**/README.md
+alwaysApply: false
+---
+
+# Technical docs voice
+
+Write docs for operators and integrators. Prefer clarity over cleverness.
+Follow ASD-STE100 Simplified Technical English for structure, and Orwell's six
+rules for word choice. When they conflict, prefer the clearer sentence.
+
+## Orwell (always)
+
+1. No stale metaphors or stock figures of speech.
+2. Prefer a short word over a long one.
+3. Cut every word you can cut.
+4. Prefer active voice over passive.
+5. Prefer everyday English over jargon when the meaning stays exact.
+6. Break a rule rather than write something unclear or false.
+
+## STE100 (docs structure)
+
+- One idea per sentence. Prefer short sentences.
+- One word, one meaning. Do not swap synonyms for variety.
+- Use approved simple verbs when possible: `use`, `add`, `remove`, `replace`,
+  `do not`, `must`, `can`.
+- API identifiers, option names, and package names are technical names. Keep
+  them exact (`disableTools`, `openAgentSession`).
+- Avoid packed cells: no slash lists (`a / b / c`) or semicolon stacks when two
+  short sentences are clearer.
+- Prefer commands and facts over marketing tone.
+
+## Examples
+
+```md
+<!-- BAD -->
+Drop builtins (and prior adds) by name.
+Full replace; ignore defaults / add / disable.
+
+<!-- GOOD -->
+Remove default tools and tools that you added. Use the tool names.
+Use only these tools. Do not use the default tools, `addTools`, or `disableTools`.
+```
+
+```md
+<!-- BAD -->
+Batteries included. Override when you need to.
+
+<!-- GOOD -->
+The runtime includes default tools. You can change them when you need to.
+```
+
+## Also keep repo prose rules
+
+- No em dashes.
+- No emojis.
+- Behavior changes update `docs/guides/*.md` in the same change.

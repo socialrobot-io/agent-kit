@@ -1,11 +1,16 @@
-# sessions
+# @agent-kit/sessions
 
-This library was generated with [Nx](https://nx.dev).
+Tenant-scoped transcript stores and full-text `session_search`.
+Leaf package. No `@agent-kit/*` dependencies.
 
-## Building
+## Build
 
-Run `nx build sessions` to build the library.
+```bash
+npx nx build sessions
+```
 
-## Running unit tests
+## Test
 
-Run `nx test sessions` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test sessions
+```

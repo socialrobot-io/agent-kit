@@ -1,11 +1,16 @@
-# sandbox
+# @agent-kit/sandbox
 
-This library was generated with [Nx](https://nx.dev).
+Per-tenant AgentFS volumes, bash-tool wiring, command guardrails, and audit.
+Leaf package. No `@agent-kit/*` dependencies.
 
-## Building
+## Build
 
-Run `nx build sandbox` to build the library.
+```bash
+npx nx build sandbox
+```
 
-## Running unit tests
+## Test
 
-Run `nx test sandbox` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test sandbox
+```

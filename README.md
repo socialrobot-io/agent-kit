@@ -6,8 +6,8 @@
 
 ### Production-grade agents.<br/>Secure. Sandboxed. Self-improving.
 
-A TypeScript toolkit for shipping AI agents that are safe enough for multi-tenant SaaS —
-with curated memory, human-gated learning, and a real execution sandbox.
+A TypeScript toolkit for shipping AI agents that are safe enough for multi-tenant SaaS.
+Curated memory, human-gated learning, and a real execution sandbox.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-7C5CFF.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)](https://www.typescriptlang.org/)
@@ -15,29 +15,29 @@ with curated memory, human-gated learning, and a real execution sandbox.
 [![Bun](https://img.shields.io/badge/Bun-runtime-F9F1E1.svg)](https://bun.sh)
 [![Tests](https://img.shields.io/badge/tests-73%20passing-22D3EE.svg)](#)
 
-[Why](#the-moat) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Security](#security) · [Docs](docs/)
+[Why](#why) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Security](#security) · [Docs](docs/)
 
 </div>
 
 ---
 
-## The moat
+## Why
 
-Most agent frameworks optimize for demos. agent-kit optimizes for **shipping agents
-into production** — where a single mistake can delete files, leak secrets, or cross
-tenant boundaries.
+Most agent frameworks optimize for demos. agent-kit optimizes for shipping
+agents into production, where one mistake can delete files, leak secrets, or
+cross tenant boundaries.
 
 | Pillar | What you get |
 | ------ | ------------ |
-| **Secure by default** | Prompt-injection / promptware / exfiltration scanning on every memory and skill write. Threats never reach the system prompt. |
-| **Sandboxed execution** | Per-tenant [AgentFS](https://www.agentfs.ai/) volumes + [bash-tool](https://github.com/vercel-labs/bash-tool) guardrails. Destructive commands, secret exfil, and non-allowlisted network egress are blocked before they run. |
+| **Secure by default** | Prompt-injection, promptware, and exfiltration scanning on every memory and skill write. Threats never reach the system prompt. |
+| **Sandboxed execution** | Per-tenant [AgentFS](https://www.agentfs.ai/) volumes and [bash-tool](https://github.com/vercel-labs/bash-tool) guardrails. Destructive commands, secret exfil, and non-allowlisted network egress are blocked before they run. |
 | **Production multi-tenancy** | One isolated filesystem, memory, skill library, transcript store, and audit trail per tenant. A bug in tenant A cannot touch tenant B. |
-| **Self-improving under approval** | A background curator distills sessions into durable memory and reusable skills — staged for human review, never applied silently. |
+| **Self-improving under approval** | A background curator distills sessions into durable memory and reusable skills. Writes stage for human review. They are never applied silently. |
 
 Learning without a sandbox is a liability. A sandbox without learning is just a
 cage. agent-kit is both.
 
-It's a **library**, not a hosted service. Author an agent as a directory, hand
+It is a **library**, not a hosted service. Author an agent as a directory, hand
 the runtime a per-tenant filesystem, and the production stack comes with it.
 
 ---
@@ -89,10 +89,10 @@ const turn = await runAgentTurn(
 // turn.text — the model's reply; it called `memory` to save the preference.
 ```
 
-**Models:** any AI SDK provider — OpenAI, Anthropic, Google, Mistral, Groq,
+**Models:** any AI SDK provider: OpenAI, Anthropic, Google, Mistral, Groq,
 OpenRouter, Azure, Bedrock, or your own gateway. Pass a `"provider/model"`
 string (resolved through the AI Gateway) or a ready `LanguageModel` instance.
-The demo runs on an offline mock so it works with zero keys; `runAgentTurn` is
+The demo runs on an offline mock so it works with zero keys. `runAgentTurn` is
 the same code path pointed at a live model.
 
 ### Example app
@@ -107,7 +107,7 @@ cp .env.sample .env.local   # set DEEPSEEK_API_KEY (or AI_GATEWAY_API_KEY)
 npx nx dev example          # http://localhost:3000
 ```
 
-Defaults to `@ai-sdk/deepseek` + `deepseek-v4-flash`. Gateway is the fallback.
+Defaults to `@ai-sdk/deepseek` and `deepseek-v4-flash`. Gateway is the fallback.
 
 ---
 
@@ -123,22 +123,22 @@ Defaults to `@ai-sdk/deepseek` + `deepseek-v4-flash`. Gateway is the fallback.
 `AGENTS.md` for house rules, `skills/` for procedures, `memories/` for curated
 facts.
 
-**2. Run** a session. The system prompt is built once — SOUL + AGENTS.md + a
-**frozen** memory snapshot — so your provider's prefix cache stays hot. The
-model gets a small, proven tool surface.
+**2. Run** a session. The system prompt is built once: SOUL + AGENTS.md + a
+**frozen** memory snapshot. Your provider's prefix cache stays hot. The model
+gets a small, proven tool surface.
 
 **3. Guard** every write and every command. Content is threat-scanned before it
 can enter the prompt. Shell commands hit guardrails before they execute. Every
 action lands in an append-only audit log with snapshot ids.
 
-**4. Curate** after the turn. A background reviewer with a *restricted* toolset
+**4. Curate** after the turn. A background reviewer with a restricted toolset
 proposes durable memory and reusable skills.
 
 **5. Approve.** Nothing autonomous becomes permanent. Writes stage to
 `pending/` and replay only on human approval.
 
 **6. Recall.** The next session's snapshot includes what was approved. Prior
-sessions are searchable via full-text recall — scoped to that tenant only.
+sessions are searchable via full-text recall, scoped to that tenant only.
 
 ---
 
@@ -148,10 +148,10 @@ Four walls, not one:
 
 | Layer | Stops |
 | ----- | ----- |
-| **Threat scanning** | Prompt injection, promptware/C2, credential exfil patterns, invisible unicode — scanned before content reaches the system prompt. Poisoned on-disk entries render as `[BLOCKED]` in the snapshot. |
+| **Threat scanning** | Prompt injection, promptware/C2, credential exfil patterns, invisible unicode. Scanned before content reaches the system prompt. Poisoned on-disk entries render as `[BLOCKED]` in the snapshot. |
 | **Write approval** | Silent self-modification. Background and skill writes always stage for review. |
 | **Sandbox guardrails** | `rm -rf /`, fork bombs, `curl $SECRET`, `cat .env`, non-allowlisted hosts. Secrets are redacted from the command line. |
-| **Tenant isolation** | Per-tenant AgentFS volume + audit trail. Snapshots for rollback. Cross-tenant FTS returns nothing. |
+| **Tenant isolation** | Per-tenant AgentFS volume and audit trail. Snapshots for rollback. Cross-tenant FTS returns nothing. |
 
 This is the difference between an agent you demo and an agent you put behind a
 paying customer.
@@ -164,11 +164,11 @@ paying customer.
 | ---------- | ----------- |
 | **Curated memory** | Bounded `MEMORY.md` / `USER.md` with char budgets, consolidation guidance, and frozen system-prompt snapshots |
 | **Progressive skills** | `agentskills.io`-style procedures: list → view → drill into references/templates/scripts |
-| **Background curator** | Distills sessions into memory + skills with Hermes-proven review prompts |
+| **Background curator** | Distills sessions into memory and skills with Hermes-proven review prompts |
 | **Human approval gate** | Stage → review → replay. No silent writes from autonomous processes |
-| **Per-tenant sandbox** | AgentFS volumes + bash-tool backend + command guardrails + audit |
+| **Per-tenant sandbox** | AgentFS volumes, bash-tool backend, command guardrails, audit |
 | **Cross-session recall** | Full-text `session_search` scoped per tenant |
-| **Eve-like authoring** | `defineAgent` + an `agent/` directory — SOUL, AGENTS, skills, memories |
+| **Eve-like authoring** | `defineAgent` plus an `agent/` directory: SOUL, AGENTS, skills, memories |
 | **Live model loop** | `@agent-kit/ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
 
 Primitives are ported from [Nous Research Hermes](https://github.com/NousResearch/hermes-agent)
@@ -181,11 +181,15 @@ Primitives are ported from [Nous Research Hermes](https://github.com/NousResearc
 | Guide | For |
 | ----- | --- |
 | [Getting started](docs/guides/getting-started.md) | Install, first agent, first session |
-| [Models & the loop](docs/guides/models.md) | `defineAgent({ model })` → a live AI SDK model |
+| [Hosting](docs/guides/hosting.md) | Local volumes, tenants, auth boundaries |
+| [Tools](docs/guides/tools.md) | Default primitives and overrides |
+| [Models & the loop](docs/guides/models.md) | `defineAgent({ model })` to a live AI SDK model |
 | [Security & isolation](docs/guides/security.md) | Threat scan, approval, sandbox, tenants |
-| [Memory](docs/guides/memory.md) | What the agent remembers, and why it's cheap |
+| [Memory](docs/guides/memory.md) | What the agent remembers, and why it stays cheap |
 | [Skills & learning](docs/guides/skills-and-learning.md) | How skills work and how the curator teaches |
 | [Sandbox](docs/guides/sandbox.md) | Safe execution, guardrails, audit |
+
+Deferred: [Multi-machine roadmap](docs/roadmap/multi-machine.md).
 
 ---
 
@@ -202,7 +206,7 @@ npx nx run-many -t build --all
 
 `@agent-kit/ai` is the bridge to a live model. It exports:
 
-- `resolveModel(model)` — a `"provider/model"` string → AI Gateway
+- `resolveModel(model)` — a `"provider/model"` string to AI Gateway
   `LanguageModel`, or pass a ready `LanguageModel` straight through.
 - `toAiTools(tools)` — adapt the runtime's Hermes tools into an AI SDK `ToolSet`.
 - `runAgentTurn(messages, { runtime, model | definition })` — run one turn to
@@ -210,17 +214,17 @@ npx nx run-many -t build --all
 - `aiCuratorRunner(model)` — a `CuratorModelRunner` on a live model, so the
   background curator reviews real transcripts with a real model.
 
-Works with AI SDK **v7** (`ai` + `@ai-sdk/gateway`). The offline mock in the
+Works with AI SDK **v7** (`ai` and `@ai-sdk/gateway`). The offline mock in the
 demo and tests uses the same `LanguageModel` interface, so the live path is
 identical.
 
 ## License
 
-MIT. Hermes Agent primitives are MIT © Nous Research —
-see [`NOTICE`](NOTICE) and [`vendor/hermes/LICENSE`](vendor/hermes/LICENSE).
+MIT. Hermes Agent primitives are MIT © Nous Research.
+See [`NOTICE`](NOTICE) and [`vendor/hermes/LICENSE`](vendor/hermes/LICENSE).
 
 <div align="center">
 <img src="docs/assets/logo.png" alt="agent-kit" width="72"/>
 <br/>
-<b>agent-kit</b> — agents you can actually ship.
+<b>agent-kit</b> — agents you can ship.
 </div>

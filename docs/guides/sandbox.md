@@ -1,106 +1,60 @@
 # Sandbox
 
-A safe body for the agent — isolated storage and a guarded shell.
-
-## Why it exists
-
-An agent with raw shell access is a liability. It can delete files, dump
-credentials, or call arbitrary hosts. In a multi-tenant product, one bad
-command can become someone else's breach.
-
-agent-kit does not hand the agent your host. It hands the agent a
-**per-tenant [AgentFS](https://www.agentfs.ai/) volume** for durable home
-state, and runs tool commands inside
+Per-tenant [AgentFS](https://www.agentfs.ai/) volume +
 [just-bash](https://github.com/vercel-labs/just-bash) via
-[bash-tool](https://github.com/vercel-labs/bash-tool) with guardrails.
+[bash-tool](https://github.com/vercel-labs/bash-tool).
 
-## How just-bash is wired
-
-We follow the official bash-tool pattern: construct a `Bash` instance, then
-pass it (through our tenant wrapper) to `createBashTool({ sandbox })`.
+## Create the toolkit
 
 ```ts
-import { Bash } from "just-bash";
-import { createBashTool } from "bash-tool";
+import { openAgentFs, createTenantBashToolkit } from "@agent-kit/sandbox";
 
-const bash = new Bash({
-  cwd: "/workspace",
-  files: { "/workspace/README.md": "…" },
-  executionLimitProfile: "hardened",
-  network: undefined, // curl off until you set allowedUrlPrefixes
-  defenseInDepth: { enabled: "auto" }, // false under Next.js
+const tenantId = "brand-123";
+const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);
+
+const bash = await createTenantBashToolkit({
+  tenantId,
+  agentFs: afs, // same .db as memory; workspace under /workspace
+  files: { "README.md": "# workspace\n" },
+  destination: "/workspace",
+  allowedHosts: ["https://api.example.com"], // optional; enables curl for these
+  secrets: ["MY_API_KEY"],                   // redacted from cmdline + logs
 });
 
-const { tools } = await createBashTool({
-  sandbox: bash,
+// bash.tools → AI SDK ToolSet: bash, readFile, writeFile
+```
+
+Without `agentFs`, workspace is in-memory and does not land in AgentFS:
+
+```ts
+const ephemeral = await createTenantBashToolkit({
+  tenantId: "brand-123",
+  files: { "README.md": "# workspace\n" },
   destination: "/workspace",
-  onBeforeBashCall: …, // agent-kit guardrails
 });
 ```
 
-`createTenantBashToolkit` does that for you and adds:
-
 | Layer | Role |
 | ----- | ---- |
-| AgentFS volume | Durable SQLite home: `memories/`, `agent/`, `skills/`, and `/workspace/*` |
-| just-bash `Bash` | Default Unix layout + `/workspace` mounted on AgentFS (or ephemeral in-memory FS in tests) |
-| `TenantAgentFSSandbox` | Per-tenant audit + command guardrails on every `executeCommand` / read / write |
-| bash-tool | AI SDK `bash` / `readFile` / `writeFile` tools + `onBeforeBashCall` |
+| AgentFS | Durable home: `memories/`, `skills/`, `/workspace/*` |
+| just-bash | Unix layout; `/workspace` on AgentFS when persisted |
+| `TenantAgentFSSandbox` | Guardrails + audit on execute/read/write |
+| bash-tool | AI SDK tools + `onBeforeBashCall` |
 
-Pass `agentFs: await AgentFS.open(...)` into `createTenantBashToolkit` so workspace
-files land in the same `.db` as memory (under `/workspace/...`). Without it,
-just-bash uses an in-memory FS and those files will not appear in AgentFS.
+Defense-in-depth is off under Next.js (Next patches `Date.now` / `process.env`).
+Elsewhere: `{ enabled: "auto" }`. Python and `js-exec` stay off unless you opt in.
 
-Defense-in-depth is **off under Next.js** because Next patches `Date.now` /
-`process.env` and just-bash's DID proxies recurse with those patches. Outside
-Next it uses `{ enabled: "auto" }` as recommended by just-bash.
-
-Python and `js-exec` stay off unless you opt in — they add security surface.
-
-## What is isolated
-
-Each tenant gets:
-
-- Its own filesystem (skills, memory, pending writes, workspace files)
-- Its own command audit trail
-- Its own snapshots (rollback-ready)
-
-Tenant A's files and commands never share storage with tenant B.
-
-## Guardrails (before execution)
-
-Every bash command is evaluated first:
+## Guardrails (before run)
 
 | Blocked | Examples |
 | ------- | -------- |
-| Destructive | `rm -rf /`, fork bombs, writing block devices, shutdown |
-| Credential exfil | `curl … $SECRET`, `cat .env`, SSH private key paths |
-| Bad egress | Any URL whose host is not on your allowlist |
+| Destructive | `rm -rf /`, fork bombs, block devices, shutdown |
+| Credential exfil | `curl … $SECRET`, `cat .env`, SSH private keys |
+| Bad egress | Host not on `allowedHosts` |
 
-Configured secrets are **redacted** from the command line before it runs or is
-logged. A blocked command returns a clear error to the agent instead of
-running.
+Blocked commands return an error to the agent. They do not run.
 
-When you pass `allowedHosts`, just-bash also gets a matching
-`network.allowedUrlPrefixes` so `curl` only exists for those origins.
+## Audit record
 
-## Audit trail
-
-Every command, file read, and file write is recorded with:
-
-- the tenant
-- the command or path
-- files touched (best-effort)
-- exit code
-- the post-action snapshot id
-
-That is what you show in a compliance UI — and what you use to roll a volume
-back.
-
-## Fit with the rest of the stack
-
-The sandbox is one wall of the [security model](security.md). Content is
-scanned before it reaches the prompt. Learning is gated by human approval.
-Actions are sandboxed. Tenants are isolated.
-
-Together: agents you can put behind a paying customer.
+Each command / file read / write logs: tenant, command or path, files touched
+(best-effort), exit code, post-action snapshot id.

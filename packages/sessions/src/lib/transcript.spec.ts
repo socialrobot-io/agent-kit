@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { InMemoryTranscriptStore, sessionSearch, type Session, type SessionMessage } from "./transcript.js";
+import {
+  assertTenantSession,
+  InMemoryTranscriptStore,
+  sessionSearch,
+  type Session,
+  type SessionMessage,
+} from "./transcript.js";
 
 function makeSession(id: string, tenantId: string): Session {
   return { id, tenantId, source: "generic", createdAt: Date.now() / 1000 };
@@ -48,5 +54,14 @@ describe("InMemoryTranscriptStore + sessionSearch", () => {
   it("errors without query or session_id", async () => {
     const res = await sessionSearch(store, "tenantA", {});
     expect(res.success).toBe(false);
+  });
+
+  it("assertTenantSession accepts owned sessions and rejects others", async () => {
+    await store.createSession(makeSession("s1", "tenantA"));
+    await expect(assertTenantSession(store, "tenantA", "s1")).resolves.toMatchObject({
+      id: "s1",
+      tenantId: "tenantA",
+    });
+    await expect(assertTenantSession(store, "tenantB", "s1")).rejects.toThrow(/not found/);
   });
 });

@@ -3,10 +3,6 @@
  * the runtime's frozen system prompt + Hermes tools to `generateText` /
  * `streamText`, and lets the model call tools until it stops (bounded by
  * `stopWhen`).
- *
- * This is the piece that was previously a scripted stub. The memory / skills /
- * approval / sandbox primitives underneath are unchanged — only the model is
- * now live.
  */
 
 import {
@@ -20,7 +16,7 @@ import {
 import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@agent-kit/core";
 import { MEMORY_SCHEMA, SKILL_MANAGE_SCHEMA } from "@agent-kit/core";
 import { resolveModel, type ResolveModelOptions, type ModelInput } from "./models.js";
-import { toAiTools } from "./tools.js";
+import { composeAgentTools } from "./compose-tools.js";
 
 type AgentStreamResult = StreamTextResult<ToolSet, never, any>;
 
@@ -29,14 +25,38 @@ export interface AgentLoopOptions extends ResolveModelOptions {
   /** Override the model (else resolved from `definition`). */
   model?: ModelInput;
   definition?: AgentDefinition;
-  /** Extra host tools merged over the runtime's Hermes surface. */
+  /**
+   * Extra builtins beyond `runtime.tools()` (e.g. session_search).
+   * Prefer `openAgentSession` which wires this for you.
+   */
+  builtinTools?: SessionTool[];
+  /** Append or replace by name on top of defaults. */
+  addTools?: SessionTool[];
+  /** Drop tools by name. */
+  disableTools?: string[];
+  /** Full SessionTool replace. */
+  tools?: SessionTool[];
+  /** AI SDK tools (bash toolkit, etc.). */
+  addAiTools?: ToolSet;
+  /**
+   * @deprecated Use `addTools`.
+   */
   extraTools?: SessionTool[];
-  /** Extra AI SDK tools (e.g. bash-tool) merged into the ToolSet. */
+  /**
+   * @deprecated Use `addAiTools`.
+   */
   extraAiTools?: ToolSet;
   /** Max model steps (tool-call rounds). Default 8. */
   maxSteps?: number;
+  /**
+   * Full AI SDK ToolSet from `openAgentSession().composeTools().toolSet`.
+   * When set, skips internal compose (addTools / disableTools ignored).
+   */
+  toolSet?: ToolSet;
   /** Called when a streamed turn finishes (persist transcripts, curator, …). */
   onFinish?: (event: { text: string }) => void | Promise<void>;
+  /** Retry transient provider failures. Default 2 retries. */
+  maxRetries?: number;
 }
 
 export interface AgentLoopResult {
@@ -46,19 +66,47 @@ export interface AgentLoopResult {
   toolResults: unknown[];
 }
 
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /rate limit|timeout|429|503|ECONNRESET|ETIMEDOUT|temporarily/i.test(msg);
+}
+
+async function withRetries<T>(fn: () => Promise<T>, maxRetries: number): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      if (!isTransientError(err) || attempt === maxRetries) throw err;
+      await new Promise((r) => setTimeout(r, 200 * 2 ** attempt));
+    }
+  }
+  throw last instanceof Error ? last : new Error(String(last));
+}
+
 function resolveLoopModel(opts: AgentLoopOptions) {
   const modelInput = opts.model ?? opts.definition?.model;
   if (!modelInput) {
     throw new Error("Agent loop needs a model: pass `model` or `definition.model`.");
   }
+  const tools =
+    opts.toolSet ??
+    composeAgentTools({
+      builtins: opts.builtinTools ?? opts.runtime.tools(),
+      addTools: opts.addTools,
+      disableTools: opts.disableTools,
+      tools: opts.tools,
+      addAiTools: opts.addAiTools,
+      extraTools: opts.extraTools,
+      extraAiTools: opts.extraAiTools,
+    }).toolSet;
   return {
     model: resolveModel(modelInput, opts),
-    tools: {
-      ...toAiTools([...opts.runtime.tools(), ...(opts.extraTools ?? [])]),
-      ...(opts.extraAiTools ?? {}),
-    },
+    tools,
     maxSteps: opts.maxSteps ?? 8,
     system: opts.runtime.systemPrompt(),
+    maxRetries: opts.maxRetries ?? 2,
   };
 }
 
@@ -69,15 +117,19 @@ export async function runAgentTurn(
   messages: ModelMessage[],
   opts: AgentLoopOptions,
 ): Promise<AgentLoopResult> {
-  const { model, tools, maxSteps, system } = resolveLoopModel(opts);
+  const { model, tools, maxSteps, system, maxRetries } = resolveLoopModel(opts);
 
-  const result = await generateText({
-    model,
-    system,
-    messages,
-    tools,
-    stopWhen: stepCountIs(maxSteps),
-  });
+  const result = await withRetries(
+    () =>
+      generateText({
+        model,
+        system,
+        messages,
+        tools,
+        stopWhen: stepCountIs(maxSteps),
+      }),
+    maxRetries,
+  );
 
   const toolCalls: { name: string; args: unknown }[] = [];
   const toolResults: unknown[] = [];
@@ -131,20 +183,22 @@ export function aiCuratorRunner(model: ModelInput, opts: ResolveModelOptions = {
     messages: { role: string; content: string }[];
   }): Promise<{ text: string; toolCalls: { name: string; args: Record<string, unknown> }[] }> => {
     const resolved = resolveModel(model, opts);
-    const tools = toAiTools([
-      {
-        name: MEMORY_SCHEMA.name,
-        description: MEMORY_SCHEMA.description,
-        inputSchema: { ...MEMORY_SCHEMA.inputSchema },
-        execute: async () => ({ staged: true }),
-      },
-      {
-        name: SKILL_MANAGE_SCHEMA.name,
-        description: SKILL_MANAGE_SCHEMA.description,
-        inputSchema: { ...SKILL_MANAGE_SCHEMA.inputSchema },
-        execute: async () => ({ staged: true }),
-      },
-    ]);
+    const { toolSet } = composeAgentTools({
+      builtins: [
+        {
+          name: MEMORY_SCHEMA.name,
+          description: MEMORY_SCHEMA.description,
+          inputSchema: { ...MEMORY_SCHEMA.inputSchema },
+          execute: async () => ({ staged: true }),
+        },
+        {
+          name: SKILL_MANAGE_SCHEMA.name,
+          description: SKILL_MANAGE_SCHEMA.description,
+          inputSchema: { ...SKILL_MANAGE_SCHEMA.inputSchema },
+          execute: async () => ({ staged: true }),
+        },
+      ],
+    });
 
     const result = await generateText({
       model: resolved,
@@ -153,7 +207,7 @@ export function aiCuratorRunner(model: ModelInput, opts: ResolveModelOptions = {
         role: m.role as ModelMessage["role"],
         content: m.content,
       })) as ModelMessage[],
-      tools,
+      tools: toolSet,
       stopWhen: stepCountIs(4),
     });
 

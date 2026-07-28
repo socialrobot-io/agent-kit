@@ -1,15 +1,14 @@
 # Docs
 
-User-facing guides for shipping production agents with agent-kit.
+| Guide | Answers |
+| ----- | ------- |
+| [Getting started](guides/getting-started.md) | Install, demo, author `agent/`, run a turn |
+| [Hosting](guides/hosting.md) | Auth → `tenantId` → volume, local composition |
+| [Tools](guides/tools.md) | Defaults; `addTools` / `disableTools` / `tools` |
+| [Models & the loop](guides/models.md) | Resolve model, `runAgentTurn`, curator runner |
+| [Security](guides/security.md) | Threat → control map, approval, isolation |
+| [Memory](guides/memory.md) | USER/MEMORY budgets, frozen snapshot rules |
+| [Skills & learning](guides/skills-and-learning.md) | Skill layout, curator, approve/reject |
+| [Sandbox](guides/sandbox.md) | `createTenantBashToolkit`, guardrails, audit |
 
-| Guide | What you'll learn |
-| ----- | ----------------- |
-| [Getting started](guides/getting-started.md) | Install, author an agent, run the first session |
-| [Models & the loop](guides/models.md) | `defineAgent({ model })` → a live AI SDK model |
-| [Security & isolation](guides/security.md) | Threat scan, write approval, sandbox, multi-tenancy |
-| [Memory](guides/memory.md) | Curated USER/MEMORY stores and frozen snapshots |
-| [Skills & learning](guides/skills-and-learning.md) | Progressive skills and the human-gated curator |
-| [Sandbox](guides/sandbox.md) | Per-tenant execution, guardrails, audit |
-
-For the high-level pitch and architecture diagram, see the
-[root README](../README.md).
+Deferred: [Multi-machine](roadmap/multi-machine.md). Pitch: [root README](../README.md).

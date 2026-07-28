@@ -26,7 +26,7 @@ import {
 } from "just-bash";
 import { AgentFsWrapper, type AgentFsHandle } from "agentfs-sdk/just-bash";
 import { TenantAgentFSSandbox } from "./tenant-sandbox.js";
-import { InMemorySandboxAuditStore, type SandboxAuditStore } from "./audit.js";
+import { InMemorySandboxAuditStore, FileSandboxAuditStore, type SandboxAuditStore } from "./audit.js";
 import { makeBeforeBashCall, type GuardrailOptions } from "./guardrails.js";
 
 export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
@@ -218,7 +218,24 @@ export async function createTenantBashToolkit(
   options: CreateTenantBashToolkitOptions,
 ): Promise<TenantBashToolkit> {
   const destination = options.destination ?? "/workspace";
-  const audit = options.audit ?? new InMemorySandboxAuditStore();
+  const audit =
+    options.audit ??
+    (options.agentFs
+      ? new FileSandboxAuditStore({
+          fs: {
+            readFile: async (path) => {
+              try {
+                return await options.agentFs!.fs.readFile(path, "utf8");
+              } catch {
+                return null;
+              }
+            },
+            writeFile: async (path, content) => {
+              await options.agentFs!.fs.writeFile(path, content, "utf8");
+            },
+          },
+        })
+      : new InMemorySandboxAuditStore());
   const seedFiles = toAbsoluteSeedFiles(options.files, destination);
   const persisted = Boolean(options.agentFs);
 

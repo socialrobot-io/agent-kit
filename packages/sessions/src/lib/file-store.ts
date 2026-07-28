@@ -5,9 +5,8 @@
  *   index.json          — Session[] metadata for the volume
  *   {sessionId}.jsonl   — one SessionMessage JSON object per line
  *
- * Tenant isolation: every Session carries tenantId; search/list filter on it.
- * session_id scroll also checks the session belongs to the requesting tenant
- * when used via sessionSearch (caller must pass tenantId).
+ * Prefer one FileTranscriptStore per tenant volume. Messages append as JSONL
+ * lines (idempotent by message id).
  */
 
 import type {
@@ -22,6 +21,7 @@ export interface TranscriptFs {
   readFile(path: string): Promise<string | null>;
   writeFile(path: string, content: string): Promise<void>;
   list?(dir: string): Promise<string[]>;
+  rename?(from: string, to: string): Promise<void>;
 }
 
 export interface FileTranscriptStoreOptions {
@@ -35,14 +35,30 @@ export class FileTranscriptStore implements TranscriptStore {
   private readonly rootDir: string;
   private indexLoaded = false;
   private sessions = new Map<string, Session>();
+  /** sessionId → known message ids (for idempotent append without full rewrite). */
+  private messageIds = new Map<string, Set<string>>();
+  private chain: Promise<unknown> = Promise.resolve();
 
   constructor(options: FileTranscriptStoreOptions) {
     this.fs = options.fs;
     this.rootDir = (options.rootDir ?? "sessions").replace(/\/$/, "");
   }
 
+  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.chain.then(fn, fn);
+    this.chain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
   private indexPath(): string {
     return `${this.rootDir}/index.json`;
+  }
+
+  private indexTmpPath(): string {
+    return `${this.rootDir}/index.json.tmp`;
   }
 
   private messagesPath(sessionId: string): string {
@@ -58,15 +74,64 @@ export class FileTranscriptStore implements TranscriptStore {
         const parsed = JSON.parse(raw) as Session[];
         for (const s of parsed) this.sessions.set(s.id, s);
       } catch {
-        // Corrupt index — start fresh; message files may still be recoverable.
+        await this.recoverIndexFromFiles();
       }
     }
     this.indexLoaded = true;
   }
 
+  /** When index.json is corrupt, rebuild from *.jsonl basenames if list() exists. */
+  private async recoverIndexFromFiles(): Promise<void> {
+    if (!this.fs.list) {
+      throw new Error(
+        `Corrupt sessions index at ${this.indexPath()} and FS cannot list() to recover.`,
+      );
+    }
+    const names = await this.fs.list(this.rootDir);
+    for (const name of names) {
+      if (!name.endsWith(".jsonl")) continue;
+      const id = name.slice(0, -".jsonl".length);
+      if (!this.sessions.has(id)) {
+        this.sessions.set(id, {
+          id,
+          tenantId: "unknown",
+          source: "recovered",
+          createdAt: Date.now() / 1000,
+        });
+      }
+    }
+  }
+
   private async persistIndex(): Promise<void> {
     const list = [...this.sessions.values()].sort((a, b) => b.createdAt - a.createdAt);
-    await this.fs.writeFile(this.indexPath(), JSON.stringify(list, null, 2));
+    const body = JSON.stringify(list, null, 2);
+    if (this.fs.rename) {
+      await this.fs.writeFile(this.indexTmpPath(), body);
+      await this.fs.rename(this.indexTmpPath(), this.indexPath());
+    } else {
+      await this.fs.writeFile(this.indexPath(), body);
+    }
+  }
+
+  private async ensureMessageIds(sessionId: string): Promise<Set<string>> {
+    let set = this.messageIds.get(sessionId);
+    if (set) return set;
+    set = new Set<string>();
+    const raw = await this.fs.readFile(this.messagesPath(sessionId));
+    if (raw?.trim()) {
+      for (const line of raw.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const msg = JSON.parse(trimmed) as SessionMessage;
+          if (msg.id) set.add(msg.id);
+        } catch {
+          // skip bad line
+        }
+      }
+    }
+    this.messageIds.set(sessionId, set);
+    return set;
   }
 
   private async readMessages(sessionId: string): Promise<SessionMessage[]> {
@@ -85,31 +150,33 @@ export class FileTranscriptStore implements TranscriptStore {
     return out;
   }
 
-  private async writeMessages(sessionId: string, messages: SessionMessage[]): Promise<void> {
-    const body = messages.map((m) => JSON.stringify(m)).join("\n") + (messages.length ? "\n" : "");
-    await this.fs.writeFile(this.messagesPath(sessionId), body);
-  }
-
   async createSession(session: Session): Promise<void> {
-    await this.loadIndex();
-    if (this.sessions.has(session.id)) return;
-    this.sessions.set(session.id, session);
-    await this.persistIndex();
-    const existing = await this.readMessages(session.id);
-    if (existing.length === 0) {
-      await this.writeMessages(session.id, []);
-    }
+    return this.runExclusive(async () => {
+      await this.loadIndex();
+      if (this.sessions.has(session.id)) return;
+      this.sessions.set(session.id, session);
+      await this.persistIndex();
+      const existing = await this.fs.readFile(this.messagesPath(session.id));
+      if (existing == null) {
+        await this.fs.writeFile(this.messagesPath(session.id), "");
+      }
+      this.messageIds.set(session.id, new Set());
+    });
   }
 
   async appendMessage(message: SessionMessage): Promise<void> {
-    await this.loadIndex();
-    if (!this.sessions.has(message.sessionId)) {
-      throw new Error(`Unknown session '${message.sessionId}'. Call createSession first.`);
-    }
-    const list = await this.readMessages(message.sessionId);
-    if (list.some((m) => m.id === message.id)) return;
-    list.push(message);
-    await this.writeMessages(message.sessionId, list);
+    return this.runExclusive(async () => {
+      await this.loadIndex();
+      if (!this.sessions.has(message.sessionId)) {
+        throw new Error(`Unknown session '${message.sessionId}'. Call createSession first.`);
+      }
+      const ids = await this.ensureMessageIds(message.sessionId);
+      if (ids.has(message.id)) return;
+      const line = `${JSON.stringify(message)}\n`;
+      const prev = (await this.fs.readFile(this.messagesPath(message.sessionId))) ?? "";
+      await this.fs.writeFile(this.messagesPath(message.sessionId), prev + line);
+      ids.add(message.id);
+    });
   }
 
   async search(tenantId: string, query: string, limit = 20): Promise<SearchHit[]> {

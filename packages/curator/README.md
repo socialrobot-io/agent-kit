@@ -1,11 +1,16 @@
-# curator
+# @agent-kit/curator
 
-This library was generated with [Nx](https://nx.dev).
+Background review of session transcripts. Proposes memory and skill writes for
+human approval.
 
-## Building
+## Build
 
-Run `nx build curator` to build the library.
+```bash
+npx nx build curator
+```
 
-## Running unit tests
+## Test
 
-Run `nx test curator` to execute the unit tests via [Vitest](https://vitest.dev/).
+```bash
+npx nx test curator
+```
