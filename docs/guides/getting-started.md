@@ -55,25 +55,22 @@ try without opening a tenant volume.
 Do not use this path for multi-tenant production. Use [Hosting](hosting.md).
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
-import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are a concise research assistant.");
 await fs.writeFile("agent/AGENTS.md", "Prefer short, factual answers.");
 
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
-const runtime = new AgentSessionRuntime({
+const session = await openAgentSession({
   tenantId: "brand-123",
   fs,
-  definition,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
 });
-await runtime.init();
 
-const turn = await runAgentTurn(
-  [{ role: "user", content: "Help me plan a product launch." }],
-  { runtime, definition },
-);
+const turn = await session.run([
+  { role: "user", content: "Help me plan a product launch." },
+]);
 console.log(turn.text);
 ```
 

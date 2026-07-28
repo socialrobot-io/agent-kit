@@ -5,24 +5,24 @@ the host or leak secrets.
 
 It combines:
 
-- a per-tenant [AgentFS](https://www.agentfs.ai/) volume (durable files), and
+- a per-tenant volume from `openTenantVolume` (durable files), and
 - [bash-tool](https://github.com/vercel-labs/bash-tool) /
   [just-bash](https://github.com/vercel-labs/just-bash) (the shell the model calls).
 
 ## Create the toolkit
 
-Pass the same AgentFS handle you use for memory so workspace files persist on
-that tenant’s volume under `/workspace`.
+Pass the same `volume` you use for memory so workspace files persist under
+`/workspace` on that tenant’s SQLite file.
 
 ```ts
-import { openAgentFs, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
+import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 
 const tenantId = "brand-123";
-const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);
+const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
 
 const bash = await createTenantBashToolkit({
   tenantId,
-  agentFs: afs,
+  volume,
   files: { "README.md": "# workspace\n" },
   destination: "/workspace",
   // optional: allow curl only to these hosts
@@ -37,9 +37,9 @@ const bash = await createTenantBashToolkit({
 Pass `bash.tools` into `openAgentSession` as `sandboxTools`. See
 [Hosting](hosting.md).
 
-### Ephemeral workspace (no AgentFS)
+### Ephemeral workspace (no volume)
 
-If you omit `agentFs`, the workspace stays in memory and is discarded when the
+If you omit `volume`, the workspace stays in memory and is discarded when the
 process ends.
 
 ```ts
@@ -54,7 +54,7 @@ const ephemeral = await createTenantBashToolkit({
 
 | Piece | Role |
 | ----- | ---- |
-| AgentFS | Durable home for `memories/`, `skills/`, and `/workspace/*` |
+| Tenant volume | Durable home for `memories/`, `skills/`, and `/workspace/*` |
 | just-bash | Unix-like shell layout |
 | Kit sandbox layer | Checks commands before they run; writes audit records |
 | bash-tool | Exposes `bash`, `readFile`, and `writeFile` to the model |

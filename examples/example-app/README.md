@@ -30,6 +30,6 @@ bash tool calls appear as they run.
 ## Layout
 
 - `agent/` — SOUL.md, AGENTS.md, seed skill
-- `src/lib/agent.ts` — runtime and `createTenantBashToolkit`
-- `src/app/api/chat/route.ts` — `streamAgentTurn` with built-in and bash tools
+- `src/lib/agent.ts` — `openTenantVolume`, bash toolkit, `openAgentSession`
+- `src/app/api/chat/route.ts` — `session.stream` with built-in and bash tools
 - `src/app/page.tsx` — `@ai-sdk/react` `useChat` UI

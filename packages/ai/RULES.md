@@ -30,7 +30,8 @@ The model layer: resolves `defineAgent({ model })` to a live Vercel AI SDK
 
 | Change | Also update |
 | ------ | ----------- |
-| `AgentLoopOptions` / result shape | CLI demo, examples (`main.ts`, `chat.ts`), `docs/guides/models.md` |
+| `AgentLoopOptions` / result shape | CLI demo, examples, `docs/guides/models.md` |
+| `openAgentSession` / `session.run` | `open-session.spec.ts`, hosting + tools guides, example-app chat route |
 | `ai` / gateway versions | mock models in every spec, `docs/guides/models.md`, example READMEs |
 | Tool adaptation (`toAiTools`) | core `schemas.ts` parity, `agent-loop.spec.ts` |
 

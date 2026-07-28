@@ -4,7 +4,7 @@ Tools are functions the model can call during a turn (look up memory, run
 bash, call your API, and so on).
 
 `openAgentSession` builds a default set. You add or remove tools in code.
-The runtime does **not** load tools from an `agent/tools/` folder.
+The runtime does **not** load tools from an `agent/tools/` directory.
 
 ## Default tools
 
@@ -23,15 +23,18 @@ This example uses in-memory files. For a tenant volume, see [Hosting](hosting.md
 ```ts
 import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession, runAgentTurn, resolveModel } from "@socialrobot-io/agent-kit-ai";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 
 const tenantId = "brand-123";
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are a helpful assistant.");
 await fs.writeFile("agent/AGENTS.md", "Be brief.");
 
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
-const session = await openAgentSession({ tenantId, fs, definition });
+const session = await openAgentSession({
+  tenantId,
+  fs,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
+});
 
 const weather: SessionTool = {
   name: "weather",
@@ -48,26 +51,20 @@ const weather: SessionTool = {
   }),
 };
 
-const { toolSet } = session.composeTools({
-  addTools: [weather],
-  disableTools: ["skill_manage"],
-});
-
-const turn = await runAgentTurn(
+const turn = await session.run(
   [{ role: "user", content: "Weather in Paris?" }],
   {
-    runtime: session.runtime,
-    model: resolveModel(definition.model),
-    toolSet,
+    addTools: [weather],
+    disableTools: ["skill_manage"],
   },
 );
 console.log(turn.text);
 ```
 
-For streaming chat UIs (`useChat`), call `streamAgentTurn` with the same
-`runtime`, `model`, and `toolSet`.
+For streaming chat UIs (`useChat`), call `session.stream` with the same
+override options.
 
-## How `composeTools` options work
+## How turn overrides work
 
 | Option | Effect |
 | ------ | ------ |
@@ -80,7 +77,7 @@ Each `SessionTool` needs `{ name, description, inputSchema, execute }`.
 
 ## Add search and sandbox to the same session
 
-Reuse `tenantId`, `fs`, and `definition` from the example above.
+Reuse `tenantId`, `fs`, and the definition from the example above.
 
 ```ts
 import { createSessionSearchTool, FileTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
@@ -96,13 +93,14 @@ const bash = await createTenantBashToolkit({
 const sessionWithExtras = await openAgentSession({
   tenantId,
   fs,
-  definition,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
   sessionSearchTool: createSessionSearchTool(transcripts, tenantId),
   sandboxTools: bash.tools,
 });
 ```
 
-Prefer `addTools` over the older `extraTools` and `extraAiTools` names.
+Prefer `addTools` on `session.run` over the older `extraTools` / `extraAiTools`
+names on low-level `runAgentTurn`.
 
 ## Next
 

@@ -1,12 +1,13 @@
 /**
- * Local AgentFS open + FS serialization helpers.
+ * Local AgentFS open helpers.
  *
  * Turso/AgentFS takes an exclusive lock on the volume file. Concurrent
  * AgentFS.open() on the same path fails with "database is locked". Overlapping
- * FS ops on one connection are also unsafe. Use one open per volume per process
- * and serialize all FS method calls.
+ * FS ops on one connection are also unsafe. Prefer `openTenantVolume`: one
+ * open per path, queued FS methods, kit-ready filesystem methods on the same
+ * object.
  *
- * Multi-machine access is deferred — see docs/roadmap/multi-machine.md.
+ * Multi-machine access is deferred. See docs/roadmap/multi-machine.md.
  */
 
 import { AgentFS } from "agentfs-sdk";
@@ -31,12 +32,31 @@ export function createExclusiveQueue(): Exclusive {
   };
 }
 
-/** In-flight opens keyed by absolute/normalized path. */
+/**
+ * Kit-facing tenant volume: one SQLite file, filesystem methods the kit uses,
+ * plus the SDK handle for bash when needed.
+ */
+export interface TenantVolume {
+  readFile(path: string): Promise<string | null>;
+  writeFile(path: string, content: string): Promise<void>;
+  list(dir: string): Promise<string[]>;
+  rename(from: string, to: string): Promise<void>;
+  deleteFile(path: string): Promise<void>;
+  /** AgentFS SDK handle. Prefer passing `volume` into createTenantBashToolkit. */
+  readonly agentFs: AgentFS;
+}
+
+/** In-flight opens keyed by path. */
 const boots = new Map<string, Promise<AgentFS>>();
+/** TenantVolume cache keyed by path (same lifetime as boots). */
+const volumes = new Map<string, Promise<TenantVolume>>();
+/** FileSystem objects already wrapped by serializeAgentFs. */
+const serialized = new WeakSet<object>();
 
 /**
  * Open an AgentFS volume with single-flight + lock retries.
- * Callers must keep one handle per path for the process lifetime.
+ * FS methods on the handle are queued (safe for concurrent callers).
+ * Prefer `openTenantVolume` for host code.
  */
 export async function openAgentFs(volumePath: string): Promise<AgentFS> {
   const key = volumePath;
@@ -47,7 +67,9 @@ export async function openAgentFs(volumePath: string): Promise<AgentFS> {
     let last: unknown;
     for (let attempt = 0; attempt < 8; attempt++) {
       try {
-        return await AgentFS.open({ path: volumePath });
+        const afs = await AgentFS.open({ path: volumePath });
+        serializeAgentFs(afs.fs);
+        return afs;
       } catch (err) {
         last = err;
         if (!isLockError(err) || attempt === 7) throw err;
@@ -66,16 +88,79 @@ export async function openAgentFs(volumePath: string): Promise<AgentFS> {
   }
 }
 
-/** Clear the open cache (tests only). Does not close live handles. */
+/**
+ * Open one tenant volume for host wiring.
+ * Returns a kit-ready filesystem (the volume itself) plus `.agentFs` for bash.
+ */
+export async function openTenantVolume(volumePath: string): Promise<TenantVolume> {
+  const existing = volumes.get(volumePath);
+  if (existing) return existing;
+
+  const boot = (async () => {
+    const agentFs = await openAgentFs(volumePath);
+    return createTenantVolume(agentFs);
+  })();
+
+  volumes.set(volumePath, boot);
+  try {
+    return await boot;
+  } catch (err) {
+    volumes.delete(volumePath);
+    throw err;
+  }
+}
+
+/** Build a TenantVolume around an already-open AgentFS handle. */
+export function createTenantVolume(agentFs: AgentFS): TenantVolume {
+  serializeAgentFs(agentFs.fs);
+  const inner = agentFs.fs;
+  return {
+    agentFs,
+    async readFile(path: string): Promise<string | null> {
+      try {
+        return await inner.readFile(path, "utf8");
+      } catch {
+        return null;
+      }
+    },
+    async writeFile(path: string, content: string): Promise<void> {
+      await inner.writeFile(path, content, "utf8");
+    },
+    async list(dir: string): Promise<string[]> {
+      try {
+        return await inner.readdir(dir);
+      } catch {
+        return [];
+      }
+    },
+    async rename(from: string, to: string): Promise<void> {
+      await inner.rename(from, to);
+    },
+    async deleteFile(path: string): Promise<void> {
+      try {
+        await inner.unlink(path);
+      } catch {
+        // Already gone is fine.
+      }
+    },
+  };
+}
+
+/** Clear open caches (tests only). Does not close live handles. */
 export function resetAgentFsOpenCache(): void {
   boots.clear();
+  volumes.clear();
 }
 
 /**
- * Patch AgentFS FileSystem methods so all callers (adapters, AgentFsWrapper)
- * share one exclusive queue.
+ * Patch AgentFS FileSystem methods so all callers share one exclusive queue.
+ * Idempotent: safe to call more than once on the same handle.
  */
 export function serializeAgentFs(fs: FileSystem): Exclusive {
+  if (serialized.has(fs as object)) {
+    return createExclusiveQueue();
+  }
+
   const exclusive = createExclusiveQueue();
   const methods = [
     "readFile",
@@ -103,5 +188,6 @@ export function serializeAgentFs(fs: FileSystem): Exclusive {
       exclusive(() => bound(...args));
   }
 
+  serialized.add(fs as object);
   return exclusive;
 }

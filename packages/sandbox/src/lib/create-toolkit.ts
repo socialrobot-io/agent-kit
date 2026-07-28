@@ -28,13 +28,18 @@ import { AgentFsWrapper, type AgentFsHandle } from "agentfs-sdk/just-bash";
 import { TenantAgentFSSandbox } from "./tenant-sandbox.js";
 import { InMemorySandboxAuditStore, FileSandboxAuditStore, type SandboxAuditStore } from "./audit.js";
 import { makeBeforeBashCall, type GuardrailOptions } from "./guardrails.js";
+import type { TenantVolume } from "./agentfs-open.js";
 
 export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   tenantId: string;
   /**
-   * Open AgentFS handle (`AgentFS.open(...)`). When set, `/workspace` is backed
-   * by AgentFS so files persist in the tenant SQLite volume (alongside
-   * `memories/`, `agent/`, `skills/`). Omit for an ephemeral in-memory FS.
+   * Tenant volume from `openTenantVolume`. When set, `/workspace` persists in
+   * that SQLite file (alongside `memories/`, `agent/`, `skills/`).
+   */
+  volume?: TenantVolume;
+  /**
+   * Raw AgentFS handle. Prefer `volume` from `openTenantVolume`.
+   * Omit both for an ephemeral in-memory workspace.
    */
   agentFs?: AgentFsHandle;
   /** Working directory inside the just-bash volume. Default `/workspace`. */
@@ -251,35 +256,36 @@ function buildPersistedWorkspaceFs(agentFs: AgentFsHandle, destination: string):
 /**
  * Create AI SDK bash / readFile / writeFile tools for one tenant.
  * Commands run in just-bash (not the host shell), behind agent-kit guardrails.
- * Pass `agentFs` to persist `/workspace` in the tenant AgentFS SQLite volume.
+ * Pass `volume` from `openTenantVolume` to persist `/workspace` on that volume.
  */
 export async function createTenantBashToolkit(
   options: CreateTenantBashToolkitOptions,
 ): Promise<TenantBashToolkit> {
+  const agentFs = options.volume?.agentFs ?? options.agentFs;
   const destination = options.destination ?? "/workspace";
   const audit =
     options.audit ??
-    (options.agentFs
+    (agentFs
       ? new FileSandboxAuditStore({
           fs: {
             readFile: async (path) => {
               try {
-                return await options.agentFs!.fs.readFile(path, "utf8");
+                return await agentFs.fs.readFile(path, "utf8");
               } catch {
                 return null;
               }
             },
             writeFile: async (path, content) => {
-              await options.agentFs!.fs.writeFile(path, content, "utf8");
+              await agentFs.fs.writeFile(path, content, "utf8");
             },
           },
         })
       : new InMemorySandboxAuditStore());
   const seedFiles = toAbsoluteSeedFiles(options.files, destination);
-  const persisted = Boolean(options.agentFs);
+  const persisted = Boolean(agentFs);
 
-  const fs: IFileSystem | undefined = options.agentFs
-    ? buildPersistedWorkspaceFs(options.agentFs, destination)
+  const fs: IFileSystem | undefined = agentFs
+    ? buildPersistedWorkspaceFs(agentFs, destination)
     : undefined;
 
   if (fs && Object.keys(seedFiles).length) {

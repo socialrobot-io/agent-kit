@@ -17,8 +17,7 @@ tenant on local disk. Multi-machine hosting is not ready yet
 | `tenantId` | Stable id for one customer’s data. You create it from your login system. |
 | Volume | One SQLite file for that tenant. Memory, skills, workspace, chat logs, and audit live here. |
 | `sessionId` | Id for one chat conversation. |
-| AgentFS | The SQLite-backed filesystem ([agentfs.ai](https://www.agentfs.ai/)). |
-| `adaptAgentFs` | Small function **in your app** that makes AgentFS look like the kit’s filesystem interface. |
+| `openTenantVolume` | Opens that file and returns a kit-ready `volume` object. |
 
 ## What your app must do
 
@@ -30,55 +29,13 @@ tenant on local disk. Multi-machine hosting is not ready yet
 The kit stores data under the `tenantId` you pass. It does not check whether
 that caller is allowed to use it.
 
-## Build the session (step by step)
-
-### A. Bridge AgentFS to the kit
-
-AgentFS has its own `FileSystem` type. The kit uses a smaller interface
-(`AgentFsLike`: read, write, list, rename). Put this bridge in your app so the
-kit packages do not depend on AgentFS types.
-
-```ts
-import type { FileSystem } from "agentfs-sdk";
-import type { AgentFsLike } from "@socialrobot-io/agent-kit-core";
-
-function adaptAgentFs(inner: FileSystem): AgentFsLike {
-  return {
-    async readFile(path) {
-      try {
-        return await inner.readFile(path, "utf8");
-      } catch {
-        return null;
-      }
-    },
-    async writeFile(path, content) {
-      await inner.writeFile(path, content, "utf8");
-    },
-    async list(dir) {
-      try {
-        return await inner.readdir(dir);
-      } catch {
-        return [];
-      }
-    },
-    async rename(from, to) {
-      await inner.rename(from, to);
-    },
-  };
-}
-```
-
-You can also copy
-[`examples/example-app/src/lib/fs-adapter.ts`](../../examples/example-app/src/lib/fs-adapter.ts).
-
-### B. Open the volume and compose tools
+## Build the session
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession, resolveModel, runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 import {
-  openAgentFs,
-  serializeAgentFs,
+  openTenantVolume,
   createTenantBashToolkit,
 } from "@socialrobot-io/agent-kit-sandbox";
 import {
@@ -89,14 +46,11 @@ import {
 
 const tenantId = "brand-123"; // from your auth layer
 const sessionId = "chat-abc"; // from your chat API
-const volumePath = `/data/tenants/${tenantId}.db`;
 
-// One open handle per volume per process.
-const afs = await openAgentFs(volumePath);
-serializeAgentFs(afs.fs); // required before concurrent FS use
-const fs = adaptAgentFs(afs.fs);
+// One SQLite file per tenant. Pass this volume into session, transcripts, bash.
+const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
 
-const transcripts = new FileTranscriptStore({ fs });
+const transcripts = new FileTranscriptStore({ fs: volume });
 await transcripts.createSession({
   id: sessionId,
   tenantId,
@@ -106,29 +60,22 @@ await transcripts.createSession({
 // Throws if this sessionId belongs to another tenant.
 await assertTenantSession(transcripts, tenantId, sessionId);
 
-const bash = await createTenantBashToolkit({ tenantId, agentFs: afs });
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
+const bash = await createTenantBashToolkit({ tenantId, volume });
 const search = createSessionSearchTool(transcripts, tenantId, {
   currentSessionId: sessionId,
 });
 
 const session = await openAgentSession({
   tenantId,
-  fs,
-  definition,
+  fs: volume,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
   sessionSearchTool: search,
   sandboxTools: bash.tools,
 });
 
-const { toolSet } = session.composeTools();
-const turn = await runAgentTurn(
-  [{ role: "user", content: "Summarize /workspace." }],
-  {
-    runtime: session.runtime,
-    model: resolveModel(definition.model),
-    toolSet,
-  },
-);
+const turn = await session.run([
+  { role: "user", content: "Summarize /workspace." },
+]);
 ```
 
 A full streaming chat with the same shape lives in
@@ -137,10 +84,9 @@ A full streaming chat with the same shape lives in
 ## Rules you must keep
 
 1. One volume file per tenant. Never open tenant A’s path for tenant B.
-2. Do not share one open AgentFS handle across tenants.
-3. Call `serializeAgentFs` on the volume you opened before concurrent use.
-4. Leave write approval on unless you opt out for a local demo.
-5. Call `assertTenantSession` before you load or append history for a `sessionId`.
+2. Do not share one open volume across tenants.
+3. Leave write approval on unless you opt out for a local demo.
+4. Call `assertTenantSession` before you load or append history for a `sessionId`.
 
 | Detail | Fact |
 | ------ | ---- |

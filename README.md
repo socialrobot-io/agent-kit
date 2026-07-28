@@ -67,46 +67,42 @@ agent-kit does not host your app. You authenticate the user, map them to a
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession, resolveModel, runAgentTurn } from "@socialrobot-io/agent-kit-ai";
-import { openAgentFs, serializeAgentFs, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
+import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 import { FileTranscriptStore, assertTenantSession, createSessionSearchTool } from "@socialrobot-io/agent-kit-sessions";
 
 // From your auth layer. Do not trust a client-supplied tenantId.
 const tenantId = "brand-123";
 const sessionId = "chat-abc";
 
-const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);
-serializeAgentFs(afs.fs);
-// adaptAgentFs: ~20-line bridge from agentfs-sdk → agent-kit (paste from Hosting guide)
-const fs = adaptAgentFs(afs.fs);
+// One SQLite file per tenant. Pass this volume into session, transcripts, bash.
+const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
 
-const transcripts = new FileTranscriptStore({ fs });
+const transcripts = new FileTranscriptStore({ fs: volume });
 await transcripts.createSession({ id: sessionId, tenantId, source: "chat", createdAt: Date.now() / 1000 });
 await assertTenantSession(transcripts, tenantId, sessionId);
 
-const bash = await createTenantBashToolkit({ tenantId, agentFs: afs });
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
+const bash = await createTenantBashToolkit({ tenantId, volume });
 const search = createSessionSearchTool(transcripts, tenantId, { currentSessionId: sessionId });
 
 const session = await openAgentSession({
-  tenantId, fs, definition,
+  tenantId,
+  fs: volume,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
   sessionSearchTool: search,
   sandboxTools: bash.tools,
 });
 
-const { toolSet } = session.composeTools();
-const turn = await runAgentTurn(
-  [{ role: "user", content: "Summarize /workspace; prefer short answers going forward." }],
-  { runtime: session.runtime, model: resolveModel(definition.model), toolSet },
-);
+const turn = await session.run([
+  { role: "user", content: "Summarize /workspace; prefer short answers going forward." },
+]);
 ```
 
 What this does:
 
-1. Opens one AgentFS volume for the tenant (memory, skills, workspace, chat logs).
-2. Wraps that volume with `adaptAgentFs` so the kit can read and write it.
-3. Binds `sessionId` to the tenant, then adds guarded bash + cross-session search.
-4. Runs one model turn with the default tool surface.
+1. Opens one volume for the tenant (memory, skills, workspace, chat logs).
+2. Binds `sessionId` to the tenant, then adds guarded bash + cross-session search.
+3. Runs one model turn with the default tool surface (`session.run`).
 
 Learning is a later step: the curator stages memory/skill proposals under
 `pending/`; a human approves them; the **next** session snapshot picks them up.

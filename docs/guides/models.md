@@ -7,58 +7,52 @@ This guide shows how to pick a model and run one agent turn. The kit uses the
 
 Pass either:
 
-- a `"provider/model"` string (resolved through the AI Gateway), or
-- a ready `LanguageModel` from any AI SDK provider package.
+- a `"provider/model"` string on `defineAgent` (resolved through the AI Gateway
+  when you run a turn), or
+- a ready `LanguageModel` via `openAgentSession({ model })` (any AI SDK provider).
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { resolveModel, resolveAgentModel } from "@socialrobot-io/agent-kit-ai";
+import { openAgentSession, resolveModel } from "@socialrobot-io/agent-kit-ai";
 
-// Needs AI_GATEWAY_API_KEY, or pass { apiKey, baseURL } into resolveModel.
-const fromGateway = resolveModel("anthropic/claude-sonnet-4-5");
+// String id on the definition (needs AI_GATEWAY_API_KEY at run time):
+const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 
-// Or pass a provider model through unchanged:
+// Or resolve / pass a provider model yourself:
 // import { openai } from "@ai-sdk/openai";
-// const passedThrough = resolveModel(openai("gpt-4o"));
+// const session = await openAgentSession({
+//   tenantId, fs, definition,
+//   model: openai("gpt-4o"),
+// });
 
-const fromDefinition = resolveAgentModel(
-  defineAgent({ model: "openai/gpt-5" }),
-);
+// Low-level helper if you need a LanguageModel outside a session:
+const fromGateway = resolveModel("anthropic/claude-sonnet-4-5");
 ```
 
 | You pass | What happens |
 | -------- | ------------ |
-| `"provider/model"` string | Resolved via AI Gateway |
-| Ready `LanguageModel` | Used as-is |
+| `"provider/model"` on `defineAgent` | Resolved via AI Gateway on `session.run` / `session.stream` |
+| `model: LanguageModel` on `openAgentSession` | Used as-is |
 
 ## Run a turn
 
-Preferred path: open a session, compose tools, then call `runAgentTurn`.
-
 ```ts
 import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession, resolveModel, runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are helpful.");
 await fs.writeFile("agent/AGENTS.md", "Be brief.");
 
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const session = await openAgentSession({
   tenantId: "brand-123",
   fs,
-  definition,
+  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
 });
 
-const { toolSet } = session.composeTools();
-const turn = await runAgentTurn(
+const turn = await session.run(
   [{ role: "user", content: "Stop being so verbose." }],
-  {
-    runtime: session.runtime,
-    model: resolveModel(definition.model),
-    toolSet,
-    maxSteps: 8,
-  },
+  { maxSteps: 8 },
 );
 
 console.log(turn.text);
@@ -72,8 +66,11 @@ To add product tools, see [Tools](tools.md).
 
 ## Stream a turn
 
-Use `streamAgentTurn` with the same options. The example app uses this with
-AI SDK UI `useChat`.
+```ts
+const stream = session.stream(messages, { maxSteps: 12 });
+```
+
+The example app uses this with AI SDK UI `useChat`.
 
 ## Run the curator on a live model
 

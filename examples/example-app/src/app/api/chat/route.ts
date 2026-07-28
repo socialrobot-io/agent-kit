@@ -5,7 +5,6 @@ import {
   type UIMessage,
 } from "ai";
 import { NextResponse } from "next/server";
-import { streamAgentTurn } from "@socialrobot-io/agent-kit-ai";
 import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
 import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
 import { persistUiMessages, transcriptToUiMessages } from "@/lib/transcripts";
@@ -53,15 +52,11 @@ export async function POST(req: Request) {
 
   try {
     const agent = await getSessionAgent(sessionId);
-    const { toolSet } = agent.session.composeTools();
 
     await persistUiMessages(agent.transcripts, sessionId, messages.filter((m) => m.role === "user"));
 
     const modelMessages = await convertToModelMessages(messages);
-    const result = streamAgentTurn(modelMessages, {
-      runtime: agent.session.runtime,
-      model: agent.model,
-      toolSet,
+    const result = agent.session.stream(modelMessages, {
       maxSteps: 12,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;

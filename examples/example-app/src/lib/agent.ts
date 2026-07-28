@@ -1,22 +1,21 @@
 /**
- * Process-wide AgentFS + bash toolkit + durable chat transcripts.
+ * Process-wide tenant volume + bash toolkit + durable chat transcripts.
  *
  * Host pattern (see docs/guides/hosting.md):
- *   auth → tenantId → local volume path → openAgentFs + serializeAgentFs
+ *   auth → tenantId → openTenantVolume(path)
  * Multi-machine is deferred: docs/roadmap/multi-machine.md
  */
 
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ToolSet } from "ai";
-import type { AgentFS } from "agentfs-sdk";
 import { defineAgent, MemoryStore, type SessionTool } from "@socialrobot-io/agent-kit-core";
 import { openAgentSession, type AgentSessionHandle } from "@socialrobot-io/agent-kit-ai";
 import {
   createTenantBashToolkit,
-  openAgentFs,
-  serializeAgentFs,
+  openTenantVolume,
   type TenantBashToolkit,
+  type TenantVolume,
 } from "@socialrobot-io/agent-kit-sandbox";
 import {
   FileTranscriptStore,
@@ -24,7 +23,6 @@ import {
   type TranscriptStore,
 } from "@socialrobot-io/agent-kit-sessions";
 import type { LanguageModel } from "ai";
-import { adaptAgentFs, type AgentFsAdapter } from "./fs-adapter";
 import { examplePackageRoot, seedAgentHome } from "./seed";
 import { resolveLiveModel, type LiveModel } from "./env";
 
@@ -34,8 +32,7 @@ export const TENANT_ID = "demo-user";
 const allowUnapproved = process.env.ALLOW_UNAPPROVED_WRITES === "1";
 
 type SharedState = {
-  afs: AgentFS;
-  fs: AgentFsAdapter;
+  volume: TenantVolume;
   live: LiveModel;
   bash: TenantBashToolkit;
   transcripts: TranscriptStore;
@@ -81,24 +78,21 @@ async function bootShared(): Promise<SharedState> {
   await mkdir(volumeDir, { recursive: true });
 
   // Host would set tenantId from auth and open that tenant's volume path.
-  const afs = await openAgentFs(volumePath);
-  serializeAgentFs(afs.fs);
-  const fs = adaptAgentFs(afs.fs);
-  await seedAgentHome(fs);
+  const volume = await openTenantVolume(volumePath);
+  await seedAgentHome(volume);
 
   const bash = await createTenantBashToolkit({
     tenantId: TENANT_ID,
-    agentFs: afs,
+    volume,
     files: WORKSPACE_FILES,
     destination: "/workspace",
   });
 
-  const transcripts = new FileTranscriptStore({ fs });
+  const transcripts = new FileTranscriptStore({ fs: volume });
   const sessionSearchTool = createSessionSearchTool(transcripts, TENANT_ID) as SessionTool;
 
   return {
-    afs,
-    fs,
+    volume,
     live,
     bash,
     transcripts,
@@ -146,7 +140,7 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   const shared = await getShared();
   let session = shared.sessions.get(sessionId);
   if (!session) {
-    await seedAgentHome(shared.fs);
+    await seedAgentHome(shared.volume);
 
     const definition = defineAgent({
       model: shared.live.label,
@@ -160,8 +154,9 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
 
     session = await openAgentSession({
       tenantId: TENANT_ID,
-      fs: shared.fs,
+      fs: shared.volume,
       definition,
+      model: shared.live.model,
       sessionSearchTool: shared.sessionSearchTool,
       sandboxTools: shared.bash.tools as unknown as ToolSet,
     });
@@ -179,7 +174,7 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   return {
     sessionId,
     session,
-    model: shared.live.model,
+    model: session.model,
     label: shared.live.label,
     provider: shared.live.provider,
     bashTools: shared.bash.tools as unknown as ToolSet,
@@ -218,7 +213,7 @@ export async function getSharedAgent(): Promise<{
   let liveUserMemory: string[] | undefined;
   let liveNotesMemory: string[] | undefined;
   if (debug) {
-    const mem = new MemoryStore(shared.fs);
+    const mem = new MemoryStore(shared.volume);
     await mem.loadFromDisk();
     liveUserMemory = mem.getEntries("user");
     liveNotesMemory = mem.getEntries("memory");
