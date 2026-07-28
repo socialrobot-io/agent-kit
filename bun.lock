@@ -31,7 +31,7 @@
     },
     "examples/example-app": {
       "name": "@agent-kit/example",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/ai": "workspace:*",
         "@agent-kit/core": "workspace:*",
@@ -41,7 +41,7 @@
         "@ai-sdk/deepseek": "^3.0.15",
         "@ai-sdk/react": "^4.0.43",
         "agentfs-sdk": "^0.6.4",
-        "ai": "^7.0.40",
+        "ai": "^7.0.41",
         "bash-tool": "^1.3.18",
         "just-bash": "^3.2.0",
         "next": "16.2.12",
@@ -51,17 +51,17 @@
     },
     "packages/ai": {
       "name": "@agent-kit/ai",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/core": "workspace:*",
         "@ai-sdk/gateway": "^4.0.30",
         "@swc/helpers": "~0.5.18",
-        "ai": "^7.0.40",
+        "ai": "^7.0.41",
       },
     },
     "packages/cli": {
       "name": "@agent-kit/cli",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/ai": "workspace:*",
         "@agent-kit/core": "workspace:*",
@@ -73,14 +73,14 @@
     },
     "packages/core": {
       "name": "@agent-kit/core",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@agent-kit/curator",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/core": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -88,7 +88,7 @@
     },
     "packages/sandbox": {
       "name": "@agent-kit/sandbox",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -98,7 +98,7 @@
     },
     "packages/sessions": {
       "name": "@agent-kit/sessions",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
@@ -121,7 +121,7 @@
 
     "@ai-sdk/deepseek": ["@ai-sdk/deepseek@3.0.15", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ajZySPn1s/CXYrxdCWiwrX0x1dl7KbhKmxgdavxw5Cc853NczRhgi1BcQX6aZqA4w6jEF/E2zGniSqtFFAeXWA=="],
 
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-nhgR5U6N0wRg+32Mnd8YrOknWQhWfn3ZAKhEOEf6u3dWzhNxTAAPIB7nnz5gRf8Us8K45yIsTrk0OtH897z7Mw=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.31", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-gEBBUP7nyfQY+K+xFllYJ374RbJoRUa5RN2NyLPu12OfMv5U09kNzZTvBDHnqx78P/7qEELyIg9C5k+RPiBkjg=="],
 
     "@ai-sdk/mcp": ["@ai-sdk/mcp@2.0.18", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "pkce-challenge": "^5.0.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-0NEiqoS3PzkITQFldRuuPyO+CckgUPb9wWkp2hQlcaGxKu9ebFJDyjxGYEySE7TQN7mYc8PUuaNEODvky51NaA=="],
 
@@ -901,7 +901,7 @@
 
     "agentfs-sdk": ["agentfs-sdk@0.6.4", "", { "dependencies": { "@tursodatabase/database": "^0.4.0-pre.18", "@tursodatabase/database-common": "^0.4.0-pre.18", "buffer": "^6.0.3" }, "peerDependencies": { "@tursodatabase/serverless": "^0.2.4", "just-bash": ">=2.0.0" }, "optionalPeers": ["@tursodatabase/serverless", "just-bash"] }, "sha512-exhzph6u+jZlh2V24O0Af9j9iweNYQ4Yb7M1SEYKE9ljxB/kKVaiaumK2zsTW/Pmi8kqPSezGvqqpi4+vkZTfQ=="],
 
-    "ai": ["ai@7.0.40", "", { "dependencies": { "@ai-sdk/gateway": "4.0.30", "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Q113Nory1PNgWzo2X7x/bUnJhd95UPNEtWlv+nnM5bSuEkA9iy+VZ3WZFcOvGMZjNDQzD5sZnJgIKQjGh8lv9Q=="],
+    "ai": ["ai@7.0.41", "", { "dependencies": { "@ai-sdk/gateway": "4.0.31", "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-GvV7uet1dz3wZFAnLd8rS+rSwIh57b8YvbV/gPaSxKsJkj1wGVnlWbu9pqKG3Op68/mglkz0lIkpsJXy2rBX1A=="],
 
     "ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 
@@ -2149,6 +2149,8 @@
 
     "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
+    "@ai-sdk/react/ai": ["ai@7.0.40", "", { "dependencies": { "@ai-sdk/gateway": "4.0.30", "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Q113Nory1PNgWzo2X7x/bUnJhd95UPNEtWlv+nnM5bSuEkA9iy+VZ3WZFcOvGMZjNDQzD5sZnJgIKQjGh8lv9Q=="],
+
     "@babel/core/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
     "@babel/helper-compilation-targets/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
@@ -2332,6 +2334,8 @@
     "vite/picomatch": ["picomatch@4.0.5", "", {}, "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A=="],
 
     "webpack/eslint-scope": ["eslint-scope@5.1.1", "", { "dependencies": { "esrecurse": "^4.3.0", "estraverse": "^4.1.1" } }, "sha512-2NxwbF/hZ0KpepYN0cNbo+FN6XoK7GaHlQhgx/hIZl6Va0bF45RQOOwhLIy8lQDbuCiadSLCBnH2CFYquit5bw=="],
+
+    "@ai-sdk/react/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-nhgR5U6N0wRg+32Mnd8YrOknWQhWfn3ZAKhEOEf6u3dWzhNxTAAPIB7nnz5gRf8Us8K45yIsTrk0OtH897z7Mw=="],
 
     "@rolldown/binding-wasm32-wasi/@emnapi/core/@emnapi/wasi-threads": ["@emnapi/wasi-threads@1.2.2", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA=="],
 
