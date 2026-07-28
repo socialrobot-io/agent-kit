@@ -1,20 +1,25 @@
 :root {
   color-scheme: light;
-  --bg: #f4f2ec;
-  --fg: #171717;
-  --muted: #5f5a52;
-  --line: #d8d2c6;
-  --panel: rgba(255, 255, 255, 0.78);
-  --panel-solid: #fffcf7;
-  --accent: #1f4d3a;
-  --accent-soft: #e5f0ea;
-  --accent-fg: #f4faf7;
-  --user: #ebe4d6;
-  --assistant: #fffcf7;
-  --danger: #8b2e2e;
-  --shadow: 0 18px 40px rgba(40, 32, 18, 0.08);
+  /*
+    SocialRobot Clay tokens — violet-anchored neutrals (hue ~258).
+  */
+  --bg: hsl(260 25% 98.5%);
+  --fg: hsl(258 30% 10%);
+  --muted: hsl(258 8% 44%);
+  --line: hsl(258 15% 90%);
+  --panel: hsl(0 0% 100% / 0.82);
+  --panel-solid: hsl(0 0% 100%);
+  --accent: hsl(258 72% 56%);
+  --accent-soft: hsl(258 55% 93%);
+  --accent-fg: hsl(0 0% 100%);
+  --user: hsl(258 35% 94%);
+  --assistant: hsl(0 0% 100%);
+  --danger: hsl(0 62% 50%);
+  --radius: 0.75rem;
+  --shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(0 0 0 / 0.08);
+  --display: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --mono: var(--font-mono), "SF Mono", ui-monospace, Menlo, monospace;
-  --sans: var(--font-sans), "Segoe UI", system-ui, sans-serif;
+  --sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -24,7 +29,8 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--sans);
@@ -32,16 +38,27 @@ body {
 
 body {
   background-image:
-    radial-gradient(ellipse 70% 45% at 8% -8%, #dfece4 0%, transparent 58%),
-    radial-gradient(ellipse 55% 35% at 100% 0%, #ebe3d4 0%, transparent 52%),
-    linear-gradient(180deg, transparent 0%, rgba(244, 242, 236, 0.9) 70%);
+    radial-gradient(ellipse 65% 40% at 0% -5%, hsl(258 55% 93% / 0.9) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, hsl(258 35% 94% / 0.75) 0%, transparent 50%),
+    linear-gradient(180deg, transparent 0%, hsl(260 25% 98.5% / 0.92) 72%);
   background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  letter-spacing: -0.02em;
 }
 
 button,
 textarea,
 input {
   font: inherit;
+}
+
+a {
+  color: inherit;
 }
 
 @keyframes rise-in {

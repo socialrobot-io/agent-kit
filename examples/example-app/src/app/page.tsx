@@ -1,8 +1,14 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  type UIMessage,
+} from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import styles from "./page.module.css";
 
 type Status = {
@@ -16,10 +22,10 @@ type Status = {
 const STORAGE_KEY = "agent-kit.sessionId";
 
 const SUGGESTIONS = [
-  "I'm Nico. Keep answers in short bullets. My project is post-scheduler (Bun + Nx).",
-  "What do you remember about me?",
-  "Search past chats for Batman",
-  "List the sandbox workspace and summarize README.md",
+  "Walk me through how you'd approach a tricky debugging session.",
+  "Given a vague product brief, how do you turn it into a clear plan?",
+  "Compare two solutions to a problem and say which you'd pick.",
+  "Explain a concept step by step, then check my understanding.",
 ];
 
 function newSessionId(): string {
@@ -30,15 +36,80 @@ function toolNameFromPartType(type: string): string {
   return type.startsWith("tool-") ? type.slice(5) : type;
 }
 
-function ToolPart({ part }: { part: { type: string; [key: string]: unknown } }) {
+function MarkdownText({
+  text,
+  streaming,
+  showCaret,
+}: {
+  text: string;
+  streaming: boolean;
+  showCaret: boolean;
+}) {
+  return (
+    <div className={styles.prose}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          ),
+          pre: ({ children }) => <pre className={styles.codeBlock}>{children}</pre>,
+          code: ({ className, children }) => {
+            const isBlock = Boolean(className);
+            if (isBlock) {
+              return <code className={className}>{children}</code>;
+            }
+            return <code className={styles.inlineCode}>{children}</code>;
+          },
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+      {streaming && showCaret ? <span className={styles.caret} aria-hidden /> : null}
+    </div>
+  );
+}
+
+function ToolPart({
+  part,
+  onApprove,
+}: {
+  part: { type: string; [key: string]: unknown };
+  onApprove?: (id: string, approved: boolean) => void;
+}) {
   const name = toolNameFromPartType(part.type);
   const state = typeof part.state === "string" ? part.state : "running";
   const input = part.input ?? part.args;
   const output = part.output ?? part.result;
+  const approval = part.approval as { id?: string; isAutomatic?: boolean } | undefined;
+
+  if (state === "approval-requested" && approval?.id && !approval.isAutomatic && onApprove) {
+    return (
+      <div className={styles.tool}>
+        <div className={styles.toolHead}>
+          <span>{name}</span>
+          <span>needs approval</span>
+        </div>
+        <div className={styles.toolBody}>{JSON.stringify(input ?? {}, null, 2)}</div>
+        <div className={styles.approvalRow}>
+          <button type="button" className={styles.approve} onClick={() => onApprove(approval.id!, true)}>
+            Approve
+          </button>
+          <button type="button" className={styles.deny} onClick={() => onApprove(approval.id!, false)}>
+            Deny
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   let body = "";
   if (state === "output-available" || state === "result") {
     body = JSON.stringify(output ?? input ?? {}, null, 2);
+  } else if (state === "output-denied") {
+    body = "Denied - write was not applied.";
   } else if (input != null) {
     body = JSON.stringify(input, null, 2);
   } else {
@@ -59,9 +130,11 @@ function ToolPart({ part }: { part: { type: string; [key: string]: unknown } }) 
 function MessageBubble({
   message,
   streaming,
+  onApprove,
 }: {
   message: UIMessage;
   streaming: boolean;
+  onApprove?: (id: string, approved: boolean) => void;
 }) {
   const parts = message.parts ?? [];
   return (
@@ -72,14 +145,22 @@ function MessageBubble({
           if (part.type === "text") {
             const text = "text" in part ? String(part.text ?? "") : "";
             return (
-              <div key={`${message.id}-text-${i}`} className={styles.text}>
-                {text}
-                {streaming && i === parts.length - 1 ? <span className={styles.caret} aria-hidden /> : null}
-              </div>
+              <MarkdownText
+                key={`${message.id}-text-${i}`}
+                text={text}
+                streaming={streaming}
+                showCaret={i === parts.length - 1}
+              />
             );
           }
           if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-            return <ToolPart key={`${message.id}-tool-${i}`} part={part as { type: string }} />;
+            return (
+              <ToolPart
+                key={`${message.id}-tool-${i}`}
+                part={part as { type: string }}
+                onApprove={onApprove}
+              />
+            );
           }
           return null;
         })}
@@ -97,7 +178,7 @@ export default function Index() {
   // Empty until mount so we restore localStorage before any history fetch.
   const [sessionId, setSessionId] = useState("");
   const [sessionReady, setSessionReady] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const threadRef = useRef<HTMLElement | null>(null);
 
   const transport = useMemo(
     () =>
@@ -111,11 +192,13 @@ export default function Index() {
     [],
   );
 
-  const { messages, sendMessage, status, stop, error, clearError, setMessages } = useChat({
-    id: sessionId || "pending",
-    transport,
-    throttle: 40,
-  });
+  const { messages, sendMessage, status, stop, error, clearError, setMessages, addToolApprovalResponse } =
+    useChat({
+      id: sessionId || "pending",
+      transport,
+      throttle: 40,
+      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    });
 
   const busy = status === "submitted" || status === "streaming";
 
@@ -161,7 +244,10 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const thread = threadRef.current;
+    if (!thread) return;
+    // Keep the viewport pinned to the latest message without scrolling the page.
+    thread.scrollTop = thread.scrollHeight;
   }, [messages, status]);
 
   async function onSend(text: string) {
@@ -184,16 +270,34 @@ export default function Index() {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <div className={styles.brand}>
-          <h1>agent-kit</h1>
-          <span className={styles.badge}>live</span>
+        <div className={styles.brandRow}>
+          <div className={styles.brand}>
+            <img
+              src="/brand-icon.png"
+              alt="SocialRobot"
+              width={40}
+              height={40}
+              className={styles.logo}
+            />
+            <div className={styles.brandText}>
+              <div className={styles.titleRow}>
+                <h1>agent-kit</h1>
+                <span className={styles.badge}>live</span>
+              </div>
+              <a
+                className={styles.byline}
+                href="https://socialrobot.io"
+                target="_blank"
+                rel="noreferrer"
+              >
+                By <strong>SocialRobot</strong>
+              </a>
+            </div>
+          </div>
         </div>
         <p>
-          Streaming chat with durable transcripts in AgentFS (
-          <code>sessions/</code>
-          ). Batteries-included tools via <code>openAgentSession</code>. Memory
-          freezes per chat session. Local volume only — see docs/roadmap for
-          multi-machine.
+          Talk to an agent that remembers this chat and can use tools. Start a
+          new chat anytime for a fresh start.
         </p>
         <div className={styles.meta}>
           <span
@@ -218,13 +322,13 @@ export default function Index() {
         </div>
       </header>
 
-      <section className={styles.thread} aria-live="polite">
+      <section ref={threadRef} className={styles.thread} aria-live="polite">
         {messages.length === 0 ? (
           <div className={styles.empty}>
-            <h2>Try the flywheel</h2>
+            <h2>Start a conversation</h2>
             <p>
-              Share something durable, then open New chat and ask what it
-              remembers — or search past chats with session_search.
+              Ask anything. The agent reasons step by step, uses tools when
+              needed, and keeps context across this chat.
             </p>
             <div className={styles.suggestions}>
               {SUGGESTIONS.map((s) => (
@@ -250,10 +354,12 @@ export default function Index() {
                 message.role === "assistant" &&
                 index === messages.length - 1
               }
+              onApprove={(id, approved) => {
+                void addToolApprovalResponse({ id, approved });
+              }}
             />
           ))
         )}
-        <div ref={bottomRef} />
       </section>
 
       <form
@@ -290,7 +396,16 @@ export default function Index() {
         </div>
         {error ? <p className={styles.error}>{error.message}</p> : null}
       </form>
+
+      <footer className={styles.footer}>
+        <img src="/brand-icon.png" alt="" width={17} height={17} className={styles.footerLogo} />
+        <span>
+          By{" "}
+          <a href="https://socialrobot.io" target="_blank" rel="noreferrer">
+            SocialRobot
+          </a>
+        </span>
+      </footer>
     </main>
   );
 }
-

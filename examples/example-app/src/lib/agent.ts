@@ -73,6 +73,8 @@ async function bootShared(): Promise<SharedState> {
         sandboxEnabled: true,
       },
     }),
+    // Chat UI Approve/Deny for memory/skill writes (pairs toolApproval + apply).
+    interactiveApproval: !allowUnapproved,
     workspaceFiles: WORKSPACE_FILES,
   });
   await seedAgentHome(home.volume);

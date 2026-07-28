@@ -1,18 +1,52 @@
 .shell {
   max-width: 760px;
   margin: 0 auto;
-  min-height: 100dvh;
+  height: 100dvh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   padding: 1.35rem 1rem 1.1rem;
   gap: 1rem;
+  overflow: hidden;
 }
 
 .header {
   animation: rise-in 420ms ease both;
 }
 
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: calc(var(--radius) + 0.15rem);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: var(--panel-solid);
+  box-shadow: var(--shadow);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.titleRow {
   display: flex;
   align-items: baseline;
   gap: 0.55rem;
@@ -20,9 +54,34 @@
 
 .header h1 {
   margin: 0;
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+  width: fit-content;
+  transition: color 140ms ease;
+}
+
+.byline:hover {
+  color: var(--accent);
+}
+
+.byline strong {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.byline:hover strong {
+  color: var(--accent);
 }
 
 .badge {
@@ -33,14 +92,15 @@
   color: var(--accent);
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-  padding: 0.18rem 0.42rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
 }
 
 .header p {
-  margin: 0.4rem 0 0;
+  margin: 0.75rem 0 0;
   color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.5;
   max-width: 38rem;
 }
 
@@ -52,6 +112,7 @@
   font-family: var(--mono);
   font-size: 0.74rem;
   color: var(--muted);
+  flex-wrap: wrap;
 }
 
 .dot {
@@ -76,12 +137,14 @@
 }
 
 .thread {
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   padding: 0.35rem 0.15rem 0.75rem;
-  scroll-behavior: smooth;
 }
 
 .empty {
@@ -91,17 +154,23 @@
   max-width: 34rem;
   line-height: 1.5;
   animation: rise-in 500ms ease both;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: calc(var(--radius) + 0.35rem);
+  background: var(--panel-solid);
+  box-shadow: var(--shadow);
 }
 
 .empty h2 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.35rem;
   color: var(--fg);
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 650;
 }
 
 .empty p {
-  margin: 0 0 1rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.875rem;
 }
 
 .suggestions {
@@ -111,29 +180,34 @@
 }
 
 .suggestion {
-  border: 1px solid var(--line);
-  background: var(--panel-solid);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: var(--bg);
   color: var(--fg);
-  padding: 0.55rem 0.75rem;
+  padding: 0.5rem 0.7rem;
   text-align: left;
   cursor: pointer;
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  line-height: 1.45;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .suggestion:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
   background: var(--accent-soft);
   transform: translateY(-1px);
 }
 
 .bubble {
   max-width: min(92%, 40rem);
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--line);
-  line-height: 1.5;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: calc(var(--radius) + 0.25rem);
+  line-height: 1.55;
   word-break: break-word;
   animation: rise-in 280ms ease both;
   box-shadow: var(--shadow);
+  font-size: 0.875rem;
 }
 
 .bubble.user {
@@ -148,24 +222,156 @@
 
 .role {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
-.text {
-  white-space: pre-wrap;
+.prose {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  max-width: 65ch;
+}
+
+.prose :where(p, ul, ol, pre, blockquote, table, h1, h2, h3, h4) {
+  margin: 0 0 0.65em;
+}
+
+.prose :where(p, ul, ol, pre, blockquote, table, h1, h2, h3, h4):last-child {
+  margin-bottom: 0;
+}
+
+.prose :where(ul, ol) {
+  padding-left: 1.25em;
+}
+
+.prose :where(ul) {
+  list-style: disc;
+}
+
+.prose :where(ol) {
+  list-style: decimal;
+}
+
+.prose :where(li) {
+  margin: 0.15em 0;
+}
+
+.prose :where(li > ul, li > ol) {
+  margin: 0.2em 0 0.35em;
+}
+
+.prose :where(h1, h2, h3, h4) {
+  font-family: var(--display);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--fg);
+  margin-top: 0.9em;
+}
+
+.prose :where(h1, h2, h3, h4):first-child {
+  margin-top: 0;
+}
+
+.prose :where(h1) {
+  font-size: 1.15em;
+}
+
+.prose :where(h2) {
+  font-size: 1.05em;
+}
+
+.prose :where(h3),
+.prose :where(h4) {
+  font-size: 1em;
+}
+
+.prose :where(a) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  word-break: break-all;
+}
+
+.prose :where(blockquote) {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  padding-left: 0.75em;
+  color: var(--muted);
+}
+
+.prose :where(hr) {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0.85em 0;
+}
+
+.prose :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+
+.prose :where(th, td) {
+  border: 1px solid var(--line);
+  padding: 0.35em 0.5em;
+  text-align: left;
+}
+
+.prose :where(th) {
+  background: color-mix(in srgb, var(--accent-soft) 70%, white);
+  font-weight: 600;
+}
+
+.prose :where(strong) {
+  font-weight: 650;
+}
+
+.inlineCode {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: color-mix(in srgb, var(--accent-soft) 75%, white);
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--line));
+  border-radius: 0.3rem;
+  padding: 0.08em 0.32em;
+}
+
+.codeBlock {
+  margin: 0 0 0.65em;
+  padding: 0.65rem 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: hsl(258 20% 97%);
+  font-family: var(--mono);
+  font-size: 0.8em;
+  line-height: 1.45;
+}
+
+.codeBlock:last-child {
+  margin-bottom: 0;
+}
+
+.codeBlock code {
+  font-family: inherit;
+  font-size: inherit;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .caret {
   display: inline-block;
-  width: 0.45rem;
-  height: 1em;
+  width: 0.4rem;
+  height: 0.95em;
   margin-left: 0.1rem;
   vertical-align: text-bottom;
   background: var(--accent);
+  border-radius: 1px;
   animation: caret-blink 1s steps(1) infinite;
 }
 
@@ -176,8 +382,9 @@
 
 .tool {
   border: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--line));
-  background: color-mix(in srgb, var(--accent-soft) 70%, white);
+  background: color-mix(in srgb, var(--accent-soft) 80%, white);
   padding: 0.55rem 0.65rem;
+  border-radius: var(--radius);
   font-family: var(--mono);
   font-size: 0.72rem;
   color: var(--muted);
@@ -199,12 +406,45 @@
   opacity: 0.9;
 }
 
+.approvalRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.approve,
+.deny {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  cursor: pointer;
+}
+
+.approve {
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel-solid));
+  color: var(--fg);
+}
+
+.deny {
+  background: transparent;
+  color: var(--muted);
+}
+
+.approve:hover,
+.deny:hover {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
 .composer {
   display: grid;
   gap: 0.65rem;
   background: var(--panel);
   backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: calc(var(--radius) + 0.35rem);
   padding: 0.8rem;
   box-shadow: var(--shadow);
   animation: rise-in 480ms ease both;
@@ -214,7 +454,8 @@
   width: 100%;
   min-height: 5.25rem;
   resize: vertical;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: var(--radius);
   background: var(--panel-solid);
   color: var(--fg);
   padding: 0.75rem 0.8rem;
@@ -223,7 +464,7 @@
 }
 
 .composer textarea:focus {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
@@ -249,12 +490,15 @@
   background: var(--accent);
   color: var(--accent-fg);
   padding: 0.55rem 1rem;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: transform 140ms ease, opacity 140ms ease;
+  font-weight: 550;
+  transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
 }
 
 .composer button:hover:not(:disabled) {
   transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent) 88%, black);
 }
 
 .composer button:disabled {
@@ -265,7 +509,13 @@
 .composer button.ghost {
   background: transparent;
   color: var(--fg);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-weight: 500;
+}
+
+.composer button.ghost:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
 }
 
 .ghostLink {
@@ -291,4 +541,32 @@
   color: var(--danger);
   font-size: 0.85rem;
   margin: 0;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  animation: rise-in 560ms ease both;
+}
+
+.footerLogo {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 0.3rem;
+  object-fit: cover;
+}
+
+.footer a {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--accent);
 }
