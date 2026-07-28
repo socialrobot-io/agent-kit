@@ -30,16 +30,16 @@
       },
     },
     "examples/example-app": {
-      "name": "@agent-kit/example",
+      "name": "@socialrobot-io/agent-kit-example",
       "version": "0.1.0",
       "dependencies": {
-        "@agent-kit/ai": "workspace:*",
-        "@agent-kit/core": "workspace:*",
-        "@agent-kit/curator": "workspace:*",
-        "@agent-kit/sandbox": "workspace:*",
-        "@agent-kit/sessions": "workspace:*",
         "@ai-sdk/deepseek": "^3.0.15",
         "@ai-sdk/react": "^4.0.43",
+        "@socialrobot-io/agent-kit-ai": "workspace:*",
+        "@socialrobot-io/agent-kit-core": "workspace:*",
+        "@socialrobot-io/agent-kit-curator": "workspace:*",
+        "@socialrobot-io/agent-kit-sandbox": "workspace:*",
+        "@socialrobot-io/agent-kit-sessions": "workspace:*",
         "agentfs-sdk": "^0.6.4",
         "ai": "^7.0.41",
         "bash-tool": "^1.3.18",
@@ -50,44 +50,44 @@
       },
     },
     "packages/ai": {
-      "name": "@agent-kit/ai",
+      "name": "@socialrobot-io/agent-kit-ai",
       "version": "0.1.0",
       "dependencies": {
-        "@agent-kit/core": "workspace:*",
         "@ai-sdk/gateway": "^4.0.31",
+        "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
         "ai": "^7.0.41",
       },
     },
     "packages/cli": {
-      "name": "@agent-kit/cli",
+      "name": "@socialrobot-io/agent-kit-cli",
       "version": "0.1.0",
       "dependencies": {
-        "@agent-kit/ai": "workspace:*",
-        "@agent-kit/core": "workspace:*",
-        "@agent-kit/curator": "workspace:*",
-        "@agent-kit/sandbox": "workspace:*",
-        "@agent-kit/sessions": "workspace:*",
+        "@socialrobot-io/agent-kit-ai": "workspace:*",
+        "@socialrobot-io/agent-kit-core": "workspace:*",
+        "@socialrobot-io/agent-kit-curator": "workspace:*",
+        "@socialrobot-io/agent-kit-sandbox": "workspace:*",
+        "@socialrobot-io/agent-kit-sessions": "workspace:*",
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/core": {
-      "name": "@agent-kit/core",
+      "name": "@socialrobot-io/agent-kit-core",
       "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
-      "name": "@agent-kit/curator",
+      "name": "@socialrobot-io/agent-kit-curator",
       "version": "0.1.0",
       "dependencies": {
-        "@agent-kit/core": "workspace:*",
+        "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/sandbox": {
-      "name": "@agent-kit/sandbox",
+      "name": "@socialrobot-io/agent-kit-sandbox",
       "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
@@ -97,7 +97,7 @@
       },
     },
     "packages/sessions": {
-      "name": "@agent-kit/sessions",
+      "name": "@socialrobot-io/agent-kit-sessions",
       "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
@@ -105,20 +105,6 @@
     },
   },
   "packages": {
-    "@agent-kit/ai": ["@agent-kit/ai@workspace:packages/ai"],
-
-    "@agent-kit/cli": ["@agent-kit/cli@workspace:packages/cli"],
-
-    "@agent-kit/core": ["@agent-kit/core@workspace:packages/core"],
-
-    "@agent-kit/curator": ["@agent-kit/curator@workspace:packages/curator"],
-
-    "@agent-kit/example": ["@agent-kit/example@workspace:examples/example-app"],
-
-    "@agent-kit/sandbox": ["@agent-kit/sandbox@workspace:packages/sandbox"],
-
-    "@agent-kit/sessions": ["@agent-kit/sessions@workspace:packages/sessions"],
-
     "@ai-sdk/deepseek": ["@ai-sdk/deepseek@3.0.15", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ajZySPn1s/CXYrxdCWiwrX0x1dl7KbhKmxgdavxw5Cc853NczRhgi1BcQX6aZqA4w6jEF/E2zGniSqtFFAeXWA=="],
 
     "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.31", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-gEBBUP7nyfQY+K+xFllYJ374RbJoRUa5RN2NyLPu12OfMv5U09kNzZTvBDHnqx78P/7qEELyIg9C5k+RPiBkjg=="],
@@ -684,6 +670,20 @@
     "@sindresorhus/is": ["@sindresorhus/is@7.2.0", "", {}, "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="],
 
     "@sindresorhus/merge-streams": ["@sindresorhus/merge-streams@4.0.0", "", {}, "sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ=="],
+
+    "@socialrobot-io/agent-kit-ai": ["@socialrobot-io/agent-kit-ai@workspace:packages/ai"],
+
+    "@socialrobot-io/agent-kit-cli": ["@socialrobot-io/agent-kit-cli@workspace:packages/cli"],
+
+    "@socialrobot-io/agent-kit-core": ["@socialrobot-io/agent-kit-core@workspace:packages/core"],
+
+    "@socialrobot-io/agent-kit-curator": ["@socialrobot-io/agent-kit-curator@workspace:packages/curator"],
+
+    "@socialrobot-io/agent-kit-example": ["@socialrobot-io/agent-kit-example@workspace:examples/example-app"],
+
+    "@socialrobot-io/agent-kit-sandbox": ["@socialrobot-io/agent-kit-sandbox@workspace:packages/sandbox"],
+
+    "@socialrobot-io/agent-kit-sessions": ["@socialrobot-io/agent-kit-sessions@workspace:packages/sessions"],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

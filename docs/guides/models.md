@@ -1,13 +1,13 @@
 # Models & the Agent Loop
 
-`@agent-kit/ai` on the [Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7,
+`@socialrobot-io/agent-kit-ai` on the [Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7,
 `@ai-sdk/gateway`).
 
 ## Resolve a model
 
 ```ts
-import { defineAgent } from "@agent-kit/core";
-import { resolveModel, resolveAgentModel } from "@agent-kit/ai";
+import { defineAgent } from "@socialrobot-io/agent-kit-core";
+import { resolveModel, resolveAgentModel } from "@socialrobot-io/agent-kit-ai";
 
 // String id → AI Gateway (needs AI_GATEWAY_API_KEY, or { apiKey, baseURL })
 const fromGateway = resolveModel("anthropic/claude-sonnet-4-5");
@@ -29,8 +29,8 @@ const fromDefinition = resolveAgentModel(
 ## Run a turn
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
-import { runAgentTurn } from "@agent-kit/ai";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are helpful.");
@@ -57,8 +57,8 @@ Custom tools: prefer [Tools](tools.md) (`composeTools`). Or pass them on the
 same `runtime` / `definition` from above:
 
 ```ts
-import type { SessionTool } from "@agent-kit/core";
-import { createTenantBashToolkit } from "@agent-kit/sandbox";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
+import { createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 
 const myCustomTool: SessionTool = {
   name: "ping",
@@ -90,8 +90,8 @@ Reuse `runtime` from **Run a turn** above.
 
 ```ts
 import type { ModelMessage } from "ai";
-import { runBackgroundReview } from "@agent-kit/curator";
-import { aiCuratorRunner } from "@agent-kit/ai";
+import { runBackgroundReview } from "@socialrobot-io/agent-kit-curator";
+import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
 
 const transcript: ModelMessage[] = [
   { role: "user", content: "Stop being so verbose." },

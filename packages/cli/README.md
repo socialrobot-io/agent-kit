@@ -1,4 +1,4 @@
-# @agent-kit/cli
+# @socialrobot-io/agent-kit-cli
 
 Offline demo of the production loop: session, curator, approval, recall, and
 tenant isolation.

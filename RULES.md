@@ -28,7 +28,7 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
 ## Architecture invariants
 
 - Dependency direction (never introduce a cycle):
-  - Leaves (no `@agent-kit/*` deps): `core`, `sessions`, `sandbox`.
+  - Leaves (no `@socialrobot-io/agent-kit-*` deps): `core`, `sessions`, `sandbox`.
   - `curator` and `ai` may depend on `core` only.
   - `cli` and `examples/*` are top-level consumers and may depend on anything.
 - `vendor/hermes` is a pinned, read-only upstream snapshot (see

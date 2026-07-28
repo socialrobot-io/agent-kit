@@ -20,7 +20,7 @@ export type ApplySkillFn = (
 
 /**
  * Approve every pending memory and skill write.
- * Pass `applySkill` from `@agent-kit/curator` (kept there to avoid a core↔curator cycle).
+ * Pass `applySkill` from `@socialrobot-io/agent-kit-curator` (kept there to avoid a core↔curator cycle).
  */
 export async function approvePendingWrites(
   deps: ApprovePendingDeps,

@@ -12,8 +12,8 @@ import {
   type StreamTextResult,
   type ToolSet,
 } from "ai";
-import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@agent-kit/core";
-import { MEMORY_SCHEMA, SKILL_MANAGE_SCHEMA } from "@agent-kit/core";
+import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@socialrobot-io/agent-kit-core";
+import { MEMORY_SCHEMA, SKILL_MANAGE_SCHEMA } from "@socialrobot-io/agent-kit-core";
 import { resolveModel, type ResolveModelOptions, type ModelInput } from "./models.js";
 import { composeAgentTools } from "./compose-tools.js";
 

@@ -1,4 +1,4 @@
-# RULES.md (@agent-kit/core)
+# RULES.md (@socialrobot-io/agent-kit-core)
 
 The foundation: agent definition (`defineAgent`), the `AgentSessionRuntime`
 composition root, and memory, skills, approval, and threat primitives.
@@ -6,7 +6,7 @@ Everything else depends on this package; it depends on nothing.
 
 ## Non-negotiables
 
-1. **Zero dependencies.** Never add a runtime dependency or an `@agent-kit/*`
+1. **Zero dependencies.** Never add a runtime dependency or an `@socialrobot-io/agent-kit-*`
    sibling dep to this package. If a helper needs one, it lives elsewhere
    (example: skill replay for approvals takes `applySkill` as an injected
    function in `approve.ts` precisely to avoid a core-curator cycle).

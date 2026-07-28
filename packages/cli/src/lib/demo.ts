@@ -16,10 +16,10 @@
  * AI SDK `streamText`) in production.
  */
 
-import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@agent-kit/core";
-import { runBackgroundReview, applySkill, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@agent-kit/curator";
-import { InMemoryTranscriptStore } from "@agent-kit/sessions";
-import { aiCuratorRunner } from "@agent-kit/ai";
+import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@socialrobot-io/agent-kit-core";
+import { runBackgroundReview, applySkill, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@socialrobot-io/agent-kit-curator";
+import { InMemoryTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
+import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
 
 /** Set AI_GATEWAY_API_KEY (and optionally DEMO_MODEL) to run the curator live. */
 const LIVE_MODEL = process.env.AI_GATEWAY_API_KEY ? (process.env.DEMO_MODEL ?? "anthropic/claude-haiku-4-5") : null;

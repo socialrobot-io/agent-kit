@@ -3,7 +3,7 @@
  */
 
 import type { UIMessage } from "ai";
-import type { TranscriptStore } from "@agent-kit/sessions";
+import type { TranscriptStore } from "@socialrobot-io/agent-kit-sessions";
 import { TENANT_ID } from "./agent";
 
 function textFromUiMessage(message: UIMessage): string {

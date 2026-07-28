@@ -63,6 +63,40 @@
       "dependsOn": [
         "^build"
       ]
+    },
+    "nx-release-publish": {
+      "options": {
+        "access": "public"
+      }
+    }
+  },
+  "release": {
+    "projects": [
+      "core",
+      "ai",
+      "sessions",
+      "sandbox",
+      "curator",
+      "cli"
+    ],
+    "projectsRelationship": "fixed",
+    "version": {
+      "conventionalCommits": false
+    },
+    "changelog": {
+      "workspaceChangelog": {
+        "file": "CHANGELOG.md",
+        "createRelease": "github"
+      },
+      "projectChangelogs": false
+    },
+    "releaseTag": {
+      "pattern": "v{version}"
+    },
+    "git": {
+      "commit": true,
+      "tag": true,
+      "push": true
     }
   },
   "generators": {

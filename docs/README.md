@@ -10,5 +10,6 @@
 | [Memory](guides/memory.md) | USER/MEMORY budgets, frozen snapshot rules |
 | [Skills & learning](guides/skills-and-learning.md) | Skill layout, curator, approve/reject |
 | [Sandbox](guides/sandbox.md) | `createTenantBashToolkit`, guardrails, audit |
+| [Publishing](guides/publishing.md) | npm release via OIDC; `@socialrobot-io/agent-kit-*` |
 
 Deferred: [Multi-machine](roadmap/multi-machine.md). Pitch: [root README](../README.md).

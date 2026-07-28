@@ -6,7 +6,7 @@ import {
   COMBINED_REVIEW_PROMPT,
   type CuratorModelRunner,
 } from "./curator.js";
-import { MemoryStore, SkillLibrary, PendingWriteStore, InMemoryFs } from "@agent-kit/core";
+import { MemoryStore, SkillLibrary, PendingWriteStore, InMemoryFs } from "@socialrobot-io/agent-kit-core";
 
 const conversation = [
   { role: "user" as const, content: "Stop being so verbose. Just give me the answer." },

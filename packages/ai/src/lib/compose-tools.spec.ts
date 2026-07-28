@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { composeAgentTools } from "./compose-tools.js";
-import type { SessionTool } from "@agent-kit/core";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 
 const memory: SessionTool = {
   name: "memory",

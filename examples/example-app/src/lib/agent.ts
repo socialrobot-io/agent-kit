@@ -10,19 +10,19 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ToolSet } from "ai";
 import type { AgentFS } from "agentfs-sdk";
-import { defineAgent, MemoryStore, type SessionTool } from "@agent-kit/core";
-import { openAgentSession, type AgentSessionHandle } from "@agent-kit/ai";
+import { defineAgent, MemoryStore, type SessionTool } from "@socialrobot-io/agent-kit-core";
+import { openAgentSession, type AgentSessionHandle } from "@socialrobot-io/agent-kit-ai";
 import {
   createTenantBashToolkit,
   openAgentFs,
   serializeAgentFs,
   type TenantBashToolkit,
-} from "@agent-kit/sandbox";
+} from "@socialrobot-io/agent-kit-sandbox";
 import {
   FileTranscriptStore,
   createSessionSearchTool,
   type TranscriptStore,
-} from "@agent-kit/sessions";
+} from "@socialrobot-io/agent-kit-sessions";
 import type { LanguageModel } from "ai";
 import { adaptAgentFs, type AgentFsAdapter } from "./fs-adapter";
 import { examplePackageRoot, seedAgentHome } from "./seed";

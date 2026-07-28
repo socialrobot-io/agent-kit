@@ -16,9 +16,9 @@ Needs `AI_GATEWAY_API_KEY` (or pass your own `LanguageModel`). `InMemoryFs` is
 fine for a local try; production volumes: [Hosting](hosting.md).
 
 ```ts
-import type { SessionTool } from "@agent-kit/core";
-import { defineAgent, InMemoryFs } from "@agent-kit/core";
-import { openAgentSession, runAgentTurn, resolveModel } from "@agent-kit/ai";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
+import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import { openAgentSession, runAgentTurn, resolveModel } from "@socialrobot-io/agent-kit-ai";
 
 const tenantId = "brand-123";
 const fs = new InMemoryFs();
@@ -76,8 +76,8 @@ For streaming / `useChat`, use `streamAgentTurn` the same way (pass `runtime`, `
 Reuse `tenantId`, `fs`, and `definition` from the example above.
 
 ```ts
-import { createSessionSearchTool, FileTranscriptStore } from "@agent-kit/sessions";
-import { createTenantBashToolkit } from "@agent-kit/sandbox";
+import { createSessionSearchTool, FileTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
+import { createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 
 const transcripts = new FileTranscriptStore({ fs });
 const bash = await createTenantBashToolkit({

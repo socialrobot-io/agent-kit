@@ -5,7 +5,7 @@
  */
 
 import type { ToolSet } from "ai";
-import type { SessionTool } from "@agent-kit/core";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 import { toAiTools } from "./tools.js";
 
 export interface ComposeAgentToolsOptions {

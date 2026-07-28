@@ -66,13 +66,13 @@ DEMO PASSED
 
 ### Run it against a real model
 
-`@agent-kit/ai` resolves `defineAgent({ model })` into a live model and runs the
+`@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` into a live model and runs the
 loop for you, via the [Vercel AI SDK](https://sdk.vercel.ai). One API key
 (`AI_GATEWAY_API_KEY`) reaches every provider through the AI Gateway.
 
 ```ts
-import { AgentSessionRuntime, defineAgent } from "@agent-kit/core";
-import { runAgentTurn } from "@agent-kit/ai";
+import { AgentSessionRuntime, defineAgent } from "@socialrobot-io/agent-kit-core";
+import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
 
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const runtime = new AgentSessionRuntime({
@@ -168,7 +168,7 @@ paying customer.
 | **Per-tenant sandbox** | AgentFS volumes, bash-tool backend, command guardrails, audit |
 | **Cross-session recall** | Full-text `session_search` scoped per tenant |
 | **File-based authoring** | `defineAgent` plus an `agent/` directory: SOUL, AGENTS, skills, memories |
-| **Live model loop** | `@agent-kit/ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
+| **Live model loop** | `@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
 
 See [`NOTICE`](NOTICE) for third-party attribution.
 
@@ -202,7 +202,7 @@ npx nx run-many -t build --all
 
 ## Models
 
-`@agent-kit/ai` is the bridge to a live model. It exports:
+`@socialrobot-io/agent-kit-ai` is the bridge to a live model. It exports:
 
 - `resolveModel(model)` — a `"provider/model"` string to AI Gateway
   `LanguageModel`, or pass a ready `LanguageModel` straight through.

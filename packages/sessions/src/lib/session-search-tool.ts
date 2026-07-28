@@ -1,11 +1,11 @@
 /**
  * Build the session_search tool for a transcript store.
- * Returns a structural SessionTool (compatible with @agent-kit/core).
+ * Returns a structural SessionTool (compatible with @socialrobot-io/agent-kit-core).
  */
 
 import { sessionSearch, type TranscriptStore } from "./transcript.js";
 
-/** Structural match for @agent-kit/core SessionTool — kept local so sessions stays a leaf. */
+/** Structural match for @socialrobot-io/agent-kit-core SessionTool — kept local so sessions stays a leaf. */
 export interface SessionSearchTool {
   name: string;
   description: string;

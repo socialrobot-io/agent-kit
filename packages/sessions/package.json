@@ -1,7 +1,6 @@
 {
-  "name": "@agent-kit/sessions",
+  "name": "@socialrobot-io/agent-kit-sessions",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -9,7 +8,7 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "@agent-kit/source": "./src/index.ts",
+      "@socialrobot-io/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -36,5 +35,23 @@
   },
   "dependencies": {
     "@swc/helpers": "~0.5.18"
-  }
+  },
+  "description": "Session transcripts, FTS search, and tenant session helpers",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socialrobot-io/agent-kit.git",
+    "directory": "packages/sessions"
+  },
+  "bugs": {
+    "url": "https://github.com/socialrobot-io/agent-kit/issues"
+  },
+  "homepage": "https://github.com/socialrobot-io/agent-kit/tree/main/packages/sessions#readme"
 }

@@ -20,7 +20,7 @@ import {
   applyMemoryArgs,
   type GateContext,
   type ApprovalSubsystem,
-} from "@agent-kit/core";
+} from "@socialrobot-io/agent-kit-core";
 
 export const MEMORY_REVIEW_PROMPT =
   "Review the conversation above and consider saving to memory if appropriate.\n\n" +

@@ -6,7 +6,7 @@
 
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { AgentFsLike } from "@agent-kit/core";
+import type { AgentFsLike } from "@socialrobot-io/agent-kit-core";
 
 async function resolvePackageRoot(): Promise<string> {
   const candidates = [

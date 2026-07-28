@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      specifier:
+        description: "Semver bump or exact version (patch, minor, major, or 0.2.0)"
+        required: true
+        default: patch
+        type: string
+      first_release:
+        description: "First publish (no prior git tag / npm packages)"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Preview only; do not commit, tag, push, or publish"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: version-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Setup Node (npm OIDC publish)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Test packages
+        run: bunx nx run-many -t test --projects=core,sessions,ai,sandbox,curator --parallel=3
+
+      - name: Build packages
+        run: bunx nx run-many -t build --projects=core,sessions,ai,sandbox,curator,cli --parallel=3
+
+      - name: Emit declaration files
+        # SWC emits JS only. Consumers need .d.ts in the published tarball.
+        run: |
+          for pkg in core ai sessions sandbox curator cli; do
+            bunx tsc -p "packages/${pkg}/tsconfig.lib.json" --emitDeclarationOnly
+          done
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Do not set NODE_AUTH_TOKEN; npm OIDC trusted publishing uses id-token.
+        run: |
+          FLAGS=(--yes)
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            FLAGS+=(--dry-run)
+          fi
+          if [ "${{ inputs.first_release }}" = "true" ]; then
+            FLAGS+=(--first-release)
+          fi
+          bunx nx release "${{ inputs.specifier }}" "${FLAGS[@]}"

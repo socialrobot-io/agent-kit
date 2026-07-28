@@ -1,7 +1,7 @@
 # Roadmap: multi-machine (deferred)
 
 **Status:** deferred. v0.1 = one process, one open AgentFS volume, serialized FS.
-Prefer self-hosted options. Do not require Turso Cloud in `@agent-kit/*`.
+Prefer self-hosted options. Do not require Turso Cloud in `@socialrobot-io/agent-kit-*`.
 
 - [ ] Same-host multi-process: [named sessions](https://docs.turso.tech/agentfs/guides/sessions) / shared `.db` coordination
 - [ ] Remote: [AgentFS NFS](https://docs.turso.tech/agentfs/guides/nfs) (`agentfs serve nfs`, `nolock`, firewall/VPN)

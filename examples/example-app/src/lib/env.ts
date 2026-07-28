@@ -5,7 +5,7 @@
 
 import type { LanguageModel } from "ai";
 import { deepSeek } from "@ai-sdk/deepseek";
-import { resolveModel } from "@agent-kit/ai";
+import { resolveModel } from "@socialrobot-io/agent-kit-ai";
 
 const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 const DEFAULT_GATEWAY_MODEL = "deepseek/deepseek-v4-flash";

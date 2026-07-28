@@ -10,31 +10,31 @@ Multi-machine is deferred: [roadmap](../roadmap/multi-machine.md).
 3. Open one AgentFS volume per tenant (SQLite path you control).
 4. Do not share an open volume handle across tenants.
 5. One `AgentFS.open` per volume per process; serialize FS ops
-   (`openAgentFs`, `serializeAgentFs` from `@agent-kit/sandbox`).
+   (`openAgentFs`, `serializeAgentFs` from `@socialrobot-io/agent-kit-sandbox`).
 6. Keep write approval on unless you explicitly opt out.
 7. Bind `sessionId` to the tenant before reading history
-   (`assertTenantSession` from `@agent-kit/sessions`).
+   (`assertTenantSession` from `@socialrobot-io/agent-kit-sessions`).
 
 ## Composition
 
-`adaptAgentFs` is host code (AgentFS SDK → `@agent-kit/core` `AgentFsLike`).
+`adaptAgentFs` is host code (AgentFS SDK → `@socialrobot-io/agent-kit-core` `AgentFsLike`).
 Copy from `examples/example-app/src/lib/fs-adapter.ts` or use the stub below.
 
 ```ts
 import type { FileSystem } from "agentfs-sdk";
-import type { AgentFsLike } from "@agent-kit/core";
-import { defineAgent } from "@agent-kit/core";
-import { openAgentSession } from "@agent-kit/ai";
+import type { AgentFsLike } from "@socialrobot-io/agent-kit-core";
+import { defineAgent } from "@socialrobot-io/agent-kit-core";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 import {
   openAgentFs,
   serializeAgentFs,
   createTenantBashToolkit,
-} from "@agent-kit/sandbox";
+} from "@socialrobot-io/agent-kit-sandbox";
 import {
   FileTranscriptStore,
   assertTenantSession,
   createSessionSearchTool,
-} from "@agent-kit/sessions";
+} from "@socialrobot-io/agent-kit-sessions";
 
 function adaptAgentFs(inner: FileSystem): AgentFsLike {
   return {

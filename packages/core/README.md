@@ -1,7 +1,7 @@
-# @agent-kit/core
+# @socialrobot-io/agent-kit-core
 
 Agent definition, session runtime, memory, skills, and built-in tool primitives.
-Leaf package. No `@agent-kit/*` dependencies.
+Leaf package. No `@socialrobot-io/agent-kit-*` dependencies.
 
 ## Build
 

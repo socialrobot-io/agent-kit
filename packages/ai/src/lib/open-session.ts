@@ -10,8 +10,8 @@ import {
   type AgentDefinition,
   type AgentFsLike,
   type SessionTool,
-} from "@agent-kit/core";
-import type { WriteOrigin } from "@agent-kit/core";
+} from "@socialrobot-io/agent-kit-core";
+import type { WriteOrigin } from "@socialrobot-io/agent-kit-core";
 import type { ToolSet } from "ai";
 import { composeAgentTools, type ComposeAgentToolsOptions } from "./compose-tools.js";
 

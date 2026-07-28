@@ -1,7 +1,7 @@
 /**
  * In-memory filesystem implementing the core Fs contracts. Used for tests,
  * local dev, and as the reference adapter; the production adapter is backed by
- * a per-tenant AgentFS volume (see @agent-kit/sandbox).
+ * a per-tenant AgentFS volume (see @socialrobot-io/agent-kit-sandbox).
  *
  * Paths are POSIX-style, "/" is the agent home. Directories are implicit.
  */

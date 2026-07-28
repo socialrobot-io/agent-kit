@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { LanguageModel } from "ai";
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
 import { resolveModel } from "./models.js";
 import { toAiTools } from "./tools.js";
 import { runAgentTurn, aiCuratorRunner } from "./agent-loop.js";
