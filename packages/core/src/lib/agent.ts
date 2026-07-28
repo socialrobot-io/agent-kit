@@ -32,6 +32,11 @@ export interface AgentDefinition {
     userCharLimit?: number;
     writeApproval?: { memory?: boolean; skills?: boolean };
     sandboxEnabled?: boolean;
+    /**
+     * Inject short behavioral guidance for tools present on the session.
+     * `false` disables all; omit/`true` enables defaults; object opts out per key.
+     */
+    toolGuidance?: boolean | Partial<Record<"memory" | "skills" | "session_search" | "sandbox", boolean>>;
   };
 }
 

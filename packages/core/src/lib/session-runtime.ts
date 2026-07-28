@@ -20,6 +20,7 @@ import {
   SKILL_VIEW_SCHEMA,
   SKILL_MANAGE_SCHEMA,
 } from "./schemas.js";
+import { buildToolGuidance, type ToolGuidanceConfig } from "./tool-guidance.js";
 
 export interface SessionToolCall {
   name: string;
@@ -41,6 +42,11 @@ export interface SessionRuntimeOptions {
   origin?: WriteOrigin;
   writeApprovalEnabled?: (subsystem: ApprovalSubsystem) => boolean;
   promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
+  /**
+   * Extra tool names on the session surface (e.g. session_search, bash) used
+   * only for pairing system-prompt guidance.
+   */
+  extraToolNames?: string[];
 }
 
 export class AgentSessionRuntime {
@@ -51,6 +57,8 @@ export class AgentSessionRuntime {
   private readonly origin: WriteOrigin;
   private readonly writeApprovalEnabled: (s: ApprovalSubsystem) => boolean;
   private readonly promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
+  private readonly extraToolNames: string[];
+  private readonly toolGuidance: ToolGuidanceConfig;
   private basePrompt = "";
   private ready = false;
 
@@ -67,6 +75,8 @@ export class AgentSessionRuntime {
     this.writeApprovalEnabled =
       opts.writeApprovalEnabled ?? ((s) => (s === "memory" ? !!cfg?.memory : !!cfg?.skills));
     this.promptInline = opts.promptInline;
+    this.extraToolNames = opts.extraToolNames ?? [];
+    this.toolGuidance = opts.definition?.config?.toolGuidance ?? true;
   }
 
   private gateCtx(): GateContext {
@@ -101,11 +111,13 @@ export class AgentSessionRuntime {
     this.ready = true;
   }
 
-  /** The frozen system prompt for this session (base + memory snapshot). */
+  /** The frozen system prompt for this session (base + memory snapshot + tool guidance). */
   systemPrompt(): string {
     if (!this.ready) throw new Error("call init() first");
     const mem = this.memory.formatAllForSystemPrompt();
-    return [this.basePrompt, mem].filter(Boolean).join("\n\n");
+    const toolNames = [...this.tools().map((t) => t.name), ...this.extraToolNames];
+    const guidance = buildToolGuidance(toolNames, this.toolGuidance);
+    return [this.basePrompt, mem, guidance].filter(Boolean).join("\n\n");
   }
 
   /** Built-in tool surface for the model loop. */

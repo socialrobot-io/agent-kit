@@ -130,24 +130,55 @@ export class InMemoryTranscriptStore implements TranscriptStore {
 
 export interface SessionSearchResult {
   success: boolean;
-  mode?: "discovery" | "scroll";
+  mode?: "discovery" | "scroll" | "browse";
   hits?: SearchHit[];
   messages?: SessionMessage[];
+  sessions?: Session[];
   error?: string;
 }
 
+export interface SessionSearchArgs {
+  query?: string;
+  session_id?: string;
+  offset?: number;
+  limit?: number;
+  /** When true, include the active chat in discovery / allow scrolling it. */
+  include_current?: boolean;
+}
+
+export interface SessionSearchOptions {
+  /** Active chat id. Excluded from browse/discovery and blocked for scroll by default. */
+  currentSessionId?: string;
+}
+
 /**
- * session_search tool handler. Discovery mode (query) finds matching messages
- * across the tenant's sessions; scroll mode (session_id + offset) reads a
- * window within one session.
+ * session_search tool handler.
+ *
+ * - No args → browse: list past sessions (newest first), excluding current.
+ * - query → discovery: FTS/substring hits across sessions, excluding current.
+ * - session_id → scroll: read a window within one session (current blocked unless
+ *   include_current).
  */
 export async function sessionSearch(
   store: TranscriptStore,
   tenantId: string,
-  args: { query?: string; session_id?: string; offset?: number; limit?: number },
+  args: SessionSearchArgs,
+  opts: SessionSearchOptions = {},
 ): Promise<SessionSearchResult> {
   const limit = args.limit ?? 20;
+  const currentId = opts.currentSessionId;
+  const includeCurrent = args.include_current === true;
+
   if (args.session_id) {
+    if (currentId && args.session_id === currentId && !includeCurrent) {
+      return {
+        success: false,
+        error:
+          "Cannot scroll the current chat — it is already in context. " +
+          "Use browse (no args) or discovery (query) for past sessions, " +
+          "or pass include_current=true to override.",
+      };
+    }
     const sessions = await store.listSessions(tenantId);
     if (!sessions.some((s) => s.id === args.session_id)) {
       return { success: false, error: `Session '${args.session_id}' not found for this tenant.` };
@@ -155,9 +186,19 @@ export async function sessionSearch(
     const messages = await store.scroll(args.session_id, args.offset ?? 0, limit);
     return { success: true, mode: "scroll", messages };
   }
+
   if (args.query) {
-    const hits = await store.search(tenantId, args.query, limit);
-    return { success: true, mode: "discovery", hits };
+    let hits = await store.search(tenantId, args.query, limit * 2);
+    if (currentId && !includeCurrent) {
+      hits = hits.filter((h) => h.sessionId !== currentId);
+    }
+    return { success: true, mode: "discovery", hits: hits.slice(0, limit) };
   }
-  return { success: false, error: "Provide 'query' (discovery) or 'session_id' (scroll)." };
+
+  // Browse: list past sessions, never the active chat (unless include_current).
+  let sessions = await store.listSessions(tenantId);
+  if (currentId && !includeCurrent) {
+    sessions = sessions.filter((s) => s.id !== currentId);
+  }
+  return { success: true, mode: "browse", sessions: sessions.slice(0, limit) };
 }

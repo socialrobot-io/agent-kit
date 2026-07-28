@@ -55,9 +55,9 @@ export interface GateContext {
 /**
  * Decide what to do with a pending write.
  *  gate off                          -> allow
- *  gate on, skills (any origin)      -> stage (too big to review inline)
  *  gate on, background (any)         -> stage
- *  gate on, memory + foreground+inline -> prompt inline; else stage
+ *  gate on, no inline channel        -> stage
+ *  gate on, inline channel present   -> use evaluateGateAsync
  */
 export function evaluateGate(
   subsystem: ApprovalSubsystem,
@@ -67,7 +67,7 @@ export function evaluateGate(
   if (!ctx.writeApprovalEnabled(subsystem)) return { kind: "allow" };
 
   const background = ctx.origin === "background_review";
-  if (subsystem === "skills" || background) {
+  if (background || !ctx.promptInline) {
     const where = subsystem === "skills" ? "/skills pending" : "/memory pending";
     return {
       kind: "stage",
@@ -75,22 +75,17 @@ export function evaluateGate(
     };
   }
 
-  if (ctx.promptInline) {
-    // Caller resolves the promise; a null means the prompt failed -> stage.
-    // We signal this by returning stage here and letting stageWrite persist,
-    // but the synchronous decision contract returns allow only on explicit
-    // approval. For a sync gate we require the async wrapper below.
-    return { kind: "stage", message: "Staged for approval (memory.write_approval is on). Not yet saved." };
-  }
-
-  return {
-    kind: "stage",
-    message: "Staged for approval (memory.write_approval is on). Not yet saved — review with /memory pending.",
-  };
+  // Sync path cannot await the inline prompt; stage until the async wrapper runs.
+  void inline;
+  return { kind: "stage", message: "Staged for approval (memory.write_approval is on). Not yet saved." };
 }
 
 /**
- * Async variant that can resolve an inline prompt for foreground memory writes.
+ * Async variant that can resolve an inline prompt for foreground writes.
+ *
+ * Interactive hosts (AI SDK toolApproval already approved in the UI) pass
+ * `promptInline: async () => true` so memory and skill writes apply instead of
+ * staging again. Background curator turns omit promptInline and keep staging.
  */
 export async function evaluateGateAsync(
   subsystem: ApprovalSubsystem,
@@ -99,15 +94,24 @@ export async function evaluateGateAsync(
 ): Promise<GateDecision> {
   if (!ctx.writeApprovalEnabled(subsystem)) return { kind: "allow" };
   const background = ctx.origin === "background_review";
-  if (subsystem === "skills" || background || !ctx.promptInline) {
+  if (background || !ctx.promptInline) {
     return evaluateGate(subsystem, { ...ctx, promptInline: undefined }, inline);
   }
   const granted = await ctx.promptInline(inline.summary ?? "", inline.detail ?? "");
   if (granted === true) return { kind: "allow" };
   if (granted === false) {
-    return { kind: "blocked", message: "Memory write denied by user. The change was not saved." };
+    return {
+      kind: "blocked",
+      message:
+        subsystem === "skills"
+          ? "Skill write denied by user. The change was not saved."
+          : "Memory write denied by user. The change was not saved.",
+    };
   }
-  return { kind: "stage", message: "Staged for approval (memory.write_approval is on). Not yet saved." };
+  return {
+    kind: "stage",
+    message: `Staged for approval (${subsystem}.write_approval is on). Not yet saved.`,
+  };
 }
 
 let counter = 0;

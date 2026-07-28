@@ -51,9 +51,13 @@ describe("InMemoryTranscriptStore + sessionSearch", () => {
     expect(res.messages![0].content).toBe("msg 2");
   });
 
-  it("errors without query or session_id", async () => {
+  it("browses sessions when called with no args", async () => {
+    await store.createSession(makeSession("s1", "tenantA"));
+    await store.createSession(makeSession("s2", "tenantA"));
     const res = await sessionSearch(store, "tenantA", {});
-    expect(res.success).toBe(false);
+    expect(res.success).toBe(true);
+    expect(res.mode).toBe("browse");
+    expect(res.sessions!.map((s) => s.id).sort()).toEqual(["s1", "s2"]);
   });
 
   it("assertTenantSession accepts owned sessions and rejects others", async () => {

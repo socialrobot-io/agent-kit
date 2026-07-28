@@ -10,8 +10,8 @@ import {
   type AgentDefinition,
   type AgentFsLike,
   type SessionTool,
+  type WriteOrigin,
 } from "@socialrobot-io/agent-kit-core";
-import type { WriteOrigin } from "@socialrobot-io/agent-kit-core";
 import type { ToolSet } from "ai";
 import { composeAgentTools, type ComposeAgentToolsOptions } from "./compose-tools.js";
 
@@ -30,6 +30,12 @@ export interface OpenAgentSessionOptions {
   sandboxTools?: ToolSet;
   addTools?: SessionTool[];
   disableTools?: string[];
+  /**
+   * Interactive approval channel. Pass `async () => true` after the AI SDK UI
+   * already approved, so memory/skill writes apply instead of staging again.
+   * Omit for background curator turns (staging stays on).
+   */
+  promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
 }
 
 export interface AgentSessionHandle {
@@ -56,11 +62,18 @@ export interface AgentSessionHandle {
 export async function openAgentSession(
   opts: OpenAgentSessionOptions,
 ): Promise<AgentSessionHandle> {
+  const extraToolNames = [
+    ...(opts.sessionSearchTool ? [opts.sessionSearchTool.name] : []),
+    ...(opts.sandboxTools ? Object.keys(opts.sandboxTools) : []),
+  ];
+
   const runtime = new AgentSessionRuntime({
     tenantId: opts.tenantId,
     fs: opts.fs,
     definition: opts.definition,
     origin: opts.origin ?? "foreground",
+    promptInline: opts.promptInline,
+    extraToolNames,
   });
   await runtime.init();
 

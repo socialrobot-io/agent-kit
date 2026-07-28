@@ -24,6 +24,9 @@ export const MEMORY_SCHEMA = {
     "IF FULL: an add is rejected with current_entries shown. Reissue as ONE batch that " +
     "removes or shortens enough stale entries and adds the new one together.\n\n" +
     "TARGETS: 'user' = who the user is. 'memory' = your notes (environment, conventions).\n\n" +
+    "APPROVAL: when write approval is on and there is no interactive Approve in the UI, " +
+    "mutating calls return staged:true and are pending approval — tell the user it is " +
+    "not saved yet. Never claim a staged write is already saved.\n\n" +
     "SKIP: trivial/obvious info, easily re-discovered facts, raw dumps, task progress, " +
     "temporary TODO state. Reusable procedures belong in a skill.",
   inputSchema: {
