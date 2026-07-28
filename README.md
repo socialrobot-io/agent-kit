@@ -9,13 +9,13 @@
 A TypeScript toolkit for shipping AI agents that are safe enough for multi-tenant SaaS.
 Curated memory, human-gated learning, and a real execution sandbox.
 
+[![npm](https://img.shields.io/npm/v/%40socialrobot-io%2Fagent-kit-core.svg)](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-7C5CFF.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)](https://www.typescriptlang.org/)
 [![Nx](https://img.shields.io/badge/Nx-monorepo-143055.svg)](https://nx.dev)
 [![Bun](https://img.shields.io/badge/Bun-runtime-F9F1E1.svg)](https://bun.sh)
-[![Tests](https://img.shields.io/badge/tests-73%20passing-22D3EE.svg)](#)
 
-[Why](#why) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Security](#security) · [Docs](docs/)
+[Why](#why) · [Install](#install) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Security](#security) · [Docs](docs/)
 
 </div>
 
@@ -42,15 +42,67 @@ the runtime a per-tenant filesystem, and the production stack comes with it.
 
 ---
 
-## Quick start
+## Install
+
+Packages are on npm under `@socialrobot-io/agent-kit-*`. Install what you need:
 
 ```bash
-git clone git@github.com:ntgussoni/agent-kit.git
+npm install @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai
+# optional:
+#   @socialrobot-io/agent-kit-sessions
+#   @socialrobot-io/agent-kit-sandbox
+#   @socialrobot-io/agent-kit-curator
+#   @socialrobot-io/agent-kit-cli
+```
+
+| Package | Use |
+| ------- | --- |
+| [`@socialrobot-io/agent-kit-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, session runtime, memory, skills, approval |
+| [`@socialrobot-io/agent-kit-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop via the Vercel AI SDK |
+| [`@socialrobot-io/agent-kit-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts and `session_search` |
+| [`@socialrobot-io/agent-kit-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS + guarded bash |
+| [`@socialrobot-io/agent-kit-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory and skills |
+| [`@socialrobot-io/agent-kit-cli`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-cli) | Offline production-loop demo helpers |
+
+## Quick start
+
+`@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` into a live
+model and runs the loop via the [Vercel AI SDK](https://sdk.vercel.ai). One API
+key (`AI_GATEWAY_API_KEY`) reaches every provider through the AI Gateway.
+
+```ts
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+
+const fs = new InMemoryFs();
+await fs.writeFile("agent/SOUL.md", "You are concise.");
+await fs.writeFile("agent/AGENTS.md", "Prefer short answers.");
+
+const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
+const runtime = new AgentSessionRuntime({
+  tenantId: "brand-123",
+  fs,
+  definition,
+});
+await runtime.init();
+
+const turn = await runAgentTurn(
+  [{ role: "user", content: "Stop being so verbose." }],
+  { runtime, definition },
+);
+console.log(turn.text);
+```
+
+**Models:** any AI SDK provider. Pass a `"provider/model"` string (AI Gateway)
+or a ready `LanguageModel`. Full guide: [Models](docs/guides/models.md).
+
+### Offline demo (clone the repo)
+
+```bash
+git clone git@github.com:socialrobot-io/agent-kit.git
 cd agent-kit
 bun install
-
-# Watch the full production loop (no API keys needed)
-bun packages/cli/src/lib/demo.ts
+bun packages/cli/src/lib/demo.ts   # no API keys
 ```
 
 ```text
@@ -63,37 +115,6 @@ bun packages/cli/src/lib/demo.ts
 
 DEMO PASSED
 ```
-
-### Run it against a real model
-
-`@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` into a live model and runs the
-loop for you, via the [Vercel AI SDK](https://sdk.vercel.ai). One API key
-(`AI_GATEWAY_API_KEY`) reaches every provider through the AI Gateway.
-
-```ts
-import { AgentSessionRuntime, defineAgent } from "@socialrobot-io/agent-kit-core";
-import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
-
-const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
-const runtime = new AgentSessionRuntime({
-  tenantId: "brand-123",            // one isolated agent home per tenant
-  fs,                               // that tenant's AgentFS volume
-  definition,
-});
-await runtime.init();
-
-const turn = await runAgentTurn(
-  [{ role: "user", content: "Stop being so verbose." }],
-  { runtime, definition },
-);
-// turn.text — the model's reply; it called `memory` to save the preference.
-```
-
-**Models:** any AI SDK provider: OpenAI, Anthropic, Google, Mistral, Groq,
-OpenRouter, Azure, Bedrock, or your own gateway. Pass a `"provider/model"`
-string (resolved through the AI Gateway) or a ready `LanguageModel` instance.
-The demo runs on an offline mock so it works with zero keys. `runAgentTurn` is
-the same code path pointed at a live model.
 
 ### Example app
 
@@ -178,7 +199,7 @@ See [`NOTICE`](NOTICE) for third-party attribution.
 
 | Guide | For |
 | ----- | --- |
-| [Getting started](docs/guides/getting-started.md) | Install, first agent, first session |
+| [Getting started](docs/guides/getting-started.md) | npm install, first agent, first session |
 | [Hosting](docs/guides/hosting.md) | Local volumes, tenants, auth boundaries |
 | [Tools](docs/guides/tools.md) | Default primitives and overrides |
 | [Models & the loop](docs/guides/models.md) | `defineAgent({ model })` to a live AI SDK model |
@@ -186,6 +207,7 @@ See [`NOTICE`](NOTICE) for third-party attribution.
 | [Memory](docs/guides/memory.md) | What the agent remembers, and why it stays cheap |
 | [Skills & learning](docs/guides/skills-and-learning.md) | How skills work and how the curator teaches |
 | [Sandbox](docs/guides/sandbox.md) | Safe execution, guardrails, audit |
+| [Publishing](docs/guides/publishing.md) | Release to npm (maintainers) |
 
 Deferred: [Multi-machine roadmap](docs/roadmap/multi-machine.md).
 

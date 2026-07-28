@@ -2,7 +2,7 @@
 
 | Guide | Answers |
 | ----- | ------- |
-| [Getting started](guides/getting-started.md) | Install, demo, author `agent/`, run a turn |
+| [Getting started](guides/getting-started.md) | npm install, demo, author `agent/`, run a turn |
 | [Hosting](guides/hosting.md) | Auth → `tenantId` → volume, local composition |
 | [Tools](guides/tools.md) | Defaults; `addTools` / `disableTools` / `tools` |
 | [Models & the loop](guides/models.md) | Resolve model, `runAgentTurn`, curator runner |

@@ -1,10 +1,23 @@
 # Getting started
 
+Install from npm:
+
 ```bash
-git clone git@github.com:ntgussoni/agent-kit.git
+npm install @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai
+```
+
+Optional packages: `@socialrobot-io/agent-kit-sessions`,
+`@socialrobot-io/agent-kit-sandbox`, `@socialrobot-io/agent-kit-curator`.
+
+## Offline demo
+
+Clone the repo if you want the full production-loop demo (no API keys):
+
+```bash
+git clone git@github.com:socialrobot-io/agent-kit.git
 cd agent-kit
 bun install
-bun packages/cli/src/lib/demo.ts   # offline; no API keys
+bun packages/cli/src/lib/demo.ts
 ```
 
 Demo covers: session → curator stages memory/skill → approve → recall → tenant B sees nothing.
