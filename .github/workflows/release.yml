@@ -78,12 +78,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Release
+      - name: Version, changelog, tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Do not set NODE_AUTH_TOKEN; npm OIDC trusted publishing uses id-token.
         run: |
-          FLAGS=(--yes)
+          FLAGS=(--yes --skip-publish)
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             FLAGS+=(--dry-run)
           fi
@@ -91,3 +90,15 @@ jobs:
             FLAGS+=(--first-release)
           fi
           bunx nx release "${{ inputs.specifier }}" "${FLAGS[@]}"
+
+      # Keep workspace:* in git (bun installs). Rewrite only for the npm tarball.
+      - name: Rewrite workspace deps for npm
+        if: ${{ inputs.dry_run != true }}
+        run: bun scripts/rewrite-workspace-deps-for-publish.mjs
+
+      - name: Publish to npm
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Do not set NODE_AUTH_TOKEN; npm OIDC trusted publishing uses id-token.
+        run: bunx nx release publish --yes

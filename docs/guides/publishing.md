@@ -17,7 +17,7 @@ Example import:
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 ```
 
 ## Packages
@@ -62,8 +62,8 @@ public.
      `first_release: true`.
    - `dry_run`: `true` to preview without commit, tag, push, or publish
 4. The workflow tests, builds, emits `.d.ts` files, versions, updates
-   `CHANGELOG.md`, creates a GitHub Release, and runs `npm publish` for each
-   package.
+   `CHANGELOG.md`, creates a GitHub Release, rewrites `workspace:*` deps to
+   concrete versions for the npm tarball only, then publishes each package.
 
 Local preview (no publish):
 
@@ -71,9 +71,25 @@ Local preview (no publish):
 bunx nx release patch --first-release --dry-run
 ```
 
+## Workspace deps and publish
+
+Git keeps `"workspace:*"` so Bun links local packages. npm rejects that
+protocol in published tarballs. The Release workflow therefore:
+
+1. Runs `nx release … --skip-publish` (version + changelog + tag stay on git
+   with `workspace:*`).
+2. Runs `bun scripts/rewrite-workspace-deps-for-publish.mjs` (working tree only).
+3. Runs `nx release publish`.
+
+Do not commit the rewritten `package.json` files. Do not set
+`release.version.preserveLocalDependencyProtocols: false` in `nx.json`; that
+would commit concrete versions and break local workspace installs.
+
 ## Notes
 
 - The workflow refuses to run on branches other than `main`.
 - Do not set `NODE_AUTH_TOKEN` in the release job. The npm CLI uses OIDC when
   `id-token: write` is present and Trusted Publishing is configured.
 - Require npm CLI `>= 11.5.1` (the workflow installs latest npm on Node 24).
+- Packages are public (`publishConfig.access: public`). After any one-off
+  granular token publish, revoke that token on npm.

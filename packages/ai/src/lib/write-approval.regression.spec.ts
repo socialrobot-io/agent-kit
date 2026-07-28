@@ -106,6 +106,31 @@ describe("interactive write approval regression", () => {
     await fs.writeFile("agent/AGENTS.md", "Be brief.");
   });
 
+  it("interactiveApproval pairs toolApproval with promptInline apply", async () => {
+    const session = await openAgentSession({
+      tenantId: "demo-user",
+      fs,
+      definition: defineAgent({
+        model: "mock/model",
+        config: { writeApproval: { memory: true, skills: true } },
+      }),
+      interactiveApproval: true,
+    });
+
+    expect(session.writeToolApproval).toBeTruthy();
+    expect(
+      await resolveApproval(session.writeToolApproval, "memory", {
+        action: "add",
+        target: "user",
+        content: "x",
+      }),
+    ).toBe("user-approval");
+
+    const mem = session.runtime.tools().find((t) => t.name === "memory")!;
+    await mem.execute({ action: "add", target: "user", content: "paired write" });
+    expect(session.runtime.memory.getEntries("user")).toContain("paired write");
+  });
+
   it("applies memory remove after promptInline grants (AI SDK approve path)", async () => {
     const session = await openAgentSession({
       tenantId: "demo-user",

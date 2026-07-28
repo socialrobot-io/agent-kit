@@ -1,13 +1,13 @@
 /**
  * AI SDK `toolApproval` config for agent-kit write tools.
  *
- * Interactive hosts should pass this to `streamText` / `streamAgentTurn` and
- * render Approve/Deny in the UI via `addToolApprovalResponse`. Pair with
- * `promptInline: async () => true` on the runtime so that once the user
- * approves in the UI, the write actually applies (instead of staging again).
+ * Prefer `openAgentSession({ interactiveApproval: true })`: that installs this
+ * config on `session.stream` / `session.run` and pairs it with
+ * `promptInline: async () => true` so a UI Approve applies the write instead
+ * of staging again.
  *
- * Background curator turns should omit toolApproval and keep staging via the
- * pending store.
+ * Background curator turns should omit interactive approval and keep staging
+ * via the pending store.
  */
 
 import type { ToolApprovalConfiguration, ToolSet } from "ai";

@@ -12,7 +12,7 @@ import {
   type SessionTool,
   type WriteOrigin,
 } from "@socialrobot-io/agent-kit-core";
-import type { LanguageModel, ModelMessage, ToolSet } from "ai";
+import type { LanguageModel, ModelMessage, ToolApprovalConfiguration, ToolSet } from "ai";
 import { composeAgentTools, type ComposeAgentToolsOptions } from "./compose-tools.js";
 import {
   runAgentTurn,
@@ -20,6 +20,10 @@ import {
   type AgentLoopResult,
 } from "./agent-loop.js";
 import { resolveModel, type ModelInput, type ResolveModelOptions } from "./models.js";
+import {
+  createWriteToolApproval,
+  type WriteToolApprovalOptions,
+} from "./write-tool-approval.js";
 
 type ComposeOverrides = Omit<ComposeAgentToolsOptions, "builtins" | "extraTools" | "extraAiTools"> & {
   addAiTools?: ToolSet;
@@ -32,6 +36,8 @@ export type SessionTurnOptions = ComposeOverrides &
     maxSteps?: number;
     maxRetries?: number;
     onFinish?: (event: { text: string }) => void | Promise<void>;
+    /** Override session-level toolApproval for this turn. */
+    toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
   };
 
 export interface OpenAgentSessionOptions extends ResolveModelOptions {
@@ -55,9 +61,15 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
   addTools?: SessionTool[];
   disableTools?: string[];
   /**
-   * Interactive approval channel. Pass `async () => true` after the AI SDK UI
-   * already approved, so memory/skill writes apply instead of staging again.
-   * Omit for background curator turns (staging stays on).
+   * Pair AI SDK UI Approve/Deny with kit write application.
+   * Sets `promptInline: async () => true` (unless you pass `promptInline`) and
+   * attaches `createWriteToolApproval` to `session.run` / `session.stream`.
+   * Pass `true` for both memory and skills, or a subset via options.
+   */
+  interactiveApproval?: boolean | WriteToolApprovalOptions;
+  /**
+   * Interactive approval channel. Prefer `interactiveApproval` unless you need
+   * a custom prompt. Omit for background curator turns (staging stays on).
    */
   promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
 }
@@ -71,6 +83,11 @@ export interface AgentSessionHandle {
   /** Built-in tools (+ session_search if wired). */
   builtinTools: SessionTool[];
   sandboxTools?: ToolSet;
+  /**
+   * AI SDK `toolApproval` when `interactiveApproval` was enabled.
+   * Also applied automatically by `run` / `stream`.
+   */
+  writeToolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
   /**
    * Resolve tools for a turn. Prefer `run` / `stream`, which call this for you.
    */
@@ -96,12 +113,24 @@ export async function openAgentSession(
     ...(opts.sandboxTools ? Object.keys(opts.sandboxTools) : []),
   ];
 
+  const interactive =
+    opts.interactiveApproval === true
+      ? {}
+      : typeof opts.interactiveApproval === "object"
+        ? opts.interactiveApproval
+        : undefined;
+  const writeToolApproval =
+    interactive !== undefined ? createWriteToolApproval(interactive) : undefined;
+  const promptInline =
+    opts.promptInline ??
+    (interactive !== undefined ? async () => true : undefined);
+
   const runtime = new AgentSessionRuntime({
     tenantId: opts.tenantId,
     fs: opts.fs,
     definition: opts.definition,
     origin: opts.origin ?? "foreground",
-    promptInline: opts.promptInline,
+    promptInline,
     extraToolNames,
   });
   await runtime.init();
@@ -142,6 +171,7 @@ export async function openAgentSession(
       maxSteps,
       maxRetries,
       onFinish,
+      toolApproval,
       gateway,
       apiKey,
       baseURL,
@@ -157,6 +187,7 @@ export async function openAgentSession(
       maxSteps,
       maxRetries,
       onFinish,
+      toolApproval: toolApproval ?? writeToolApproval,
     };
   };
 
@@ -169,6 +200,7 @@ export async function openAgentSession(
     },
     builtinTools,
     sandboxTools: opts.sandboxTools,
+    writeToolApproval,
     composeTools,
     run: (messages, turnOpts) => runAgentTurn(messages, toLoopOpts(turnOpts)),
     stream: (messages, turnOpts) => streamAgentTurn(messages, toLoopOpts(turnOpts)),

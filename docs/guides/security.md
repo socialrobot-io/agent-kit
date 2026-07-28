@@ -18,35 +18,59 @@ Login checks (JWT, cookies, sessions) are **your** job. See
 
 On by default in `defineAgent`.
 
-- Curator and skill writes go to `pending/memory` and `pending/skills`.
-- Approve replays them onto the live files.
-- Reject discards them.
+There are two related gates:
+
+| Gate | When |
+| ---- | ---- |
+| Staging (`pending/`) | Background curator, or chat turns without interactive approval |
+| Interactive (AI SDK UI) | Chat UI Approve/Deny before a write runs |
+
+For chat UIs, enable both sides with one flag:
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@socialrobot-io/agent-kit-core";
+const session = await openAgentSession({
+  tenantId,
+  fs: volume,
+  definition,
+  interactiveApproval: true,
+});
+// session.stream / session.run attach toolApproval.
+// After the user Approves in the UI, the write applies (not staged again).
+```
+
+Do not pass only `createWriteToolApproval` without `interactiveApproval` (or an
+equivalent `promptInline: async () => true`). UI Approve alone will still stage.
+
+Curator / ops approve of staged files:
+
+```ts
+import {
+  approvePendingWrites,
+  defineAgent,
+  InMemoryFs,
+} from "@socialrobot-io/agent-kit-core";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 import { applySkill } from "@socialrobot-io/agent-kit-curator";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are helpful.");
 await fs.writeFile("agent/AGENTS.md", "Be brief.");
 
-const runtime = new AgentSessionRuntime({
+const session = await openAgentSession({
   tenantId: "brand-123",
   fs,
   definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
 });
-await runtime.init();
 
-// After the curator has staged files into runtime.pending:
+// After the curator has staged files into session.runtime.pending:
 const applied = await approvePendingWrites(
   {
-    memory: runtime.memory,
-    skills: runtime.skills,
-    pending: runtime.pending,
+    memory: session.runtime.memory,
+    skills: session.runtime.skills,
+    pending: session.runtime.pending,
   },
   applySkill,
 );
-console.log(applied);
 ```
 
 Full curator + approve flow: [Skills & learning](skills-and-learning.md).

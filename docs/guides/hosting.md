@@ -78,6 +78,9 @@ const turn = await session.run([
 ]);
 ```
 
+For chat UIs that Approve/Deny memory and skill writes before they run, pass
+`interactiveApproval: true` into `openAgentSession`. See [Security](security.md).
+
 A full streaming chat with the same shape lives in
 [`examples/example-app`](../../examples/example-app).
 

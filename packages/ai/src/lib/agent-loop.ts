@@ -10,6 +10,7 @@ import {
   stepCountIs,
   type ModelMessage,
   type StreamTextResult,
+  type ToolApprovalConfiguration,
   type ToolSet,
 } from "ai";
 import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@socialrobot-io/agent-kit-core";
@@ -52,6 +53,12 @@ export interface AgentLoopOptions extends ResolveModelOptions {
    * When set, skips internal compose (addTools / disableTools ignored).
    */
   toolSet?: ToolSet;
+  /**
+   * AI SDK UI approval gate for write tools. Prefer
+   * `openAgentSession({ interactiveApproval: true })`, which sets this and
+   * pairs it with `promptInline`.
+   */
+  toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
   /** Called when a streamed turn finishes (persist transcripts, curator, …). */
   onFinish?: (event: { text: string }) => void | Promise<void>;
   /** Retry transient provider failures. Default 2 retries. */
@@ -106,6 +113,7 @@ function resolveLoopModel(opts: AgentLoopOptions) {
     maxSteps: opts.maxSteps ?? 8,
     system: opts.runtime.systemPrompt(),
     maxRetries: opts.maxRetries ?? 2,
+    toolApproval: opts.toolApproval,
   };
 }
 
@@ -116,7 +124,7 @@ export async function runAgentTurn(
   messages: ModelMessage[],
   opts: AgentLoopOptions,
 ): Promise<AgentLoopResult> {
-  const { model, tools, maxSteps, system, maxRetries } = resolveLoopModel(opts);
+  const { model, tools, maxSteps, system, maxRetries, toolApproval } = resolveLoopModel(opts);
 
   const result = await withRetries(
     () =>
@@ -126,6 +134,7 @@ export async function runAgentTurn(
         messages,
         tools,
         stopWhen: stepCountIs(maxSteps),
+        ...(toolApproval ? { toolApproval } : {}),
       }),
     maxRetries,
   );
@@ -156,13 +165,14 @@ export function streamAgentTurn(
   messages: ModelMessage[],
   opts: AgentLoopOptions,
 ): AgentStreamResult {
-  const { model, tools, maxSteps, system } = resolveLoopModel(opts);
+  const { model, tools, maxSteps, system, toolApproval } = resolveLoopModel(opts);
   return streamText({
     model,
     system,
     messages,
     tools,
     stopWhen: stepCountIs(maxSteps),
+    ...(toolApproval ? { toolApproval } : {}),
     onFinish: opts.onFinish
       ? async ({ text }) => {
           await opts.onFinish?.({ text });
