@@ -28,12 +28,11 @@ There are two related gates:
 For chat UIs, enable both sides with one flag:
 
 ```ts
-const session = await openAgentSession({
+const home = await createTenantHome({
   tenantId,
-  fs: volume,
-  definition,
   interactiveApproval: true,
 });
+const session = await home.openSession(sessionId);
 // session.stream / session.run attach toolApproval.
 // After the user Approves in the UI, the write applies (not staged again).
 ```
@@ -44,30 +43,15 @@ equivalent `promptInline: async () => true`). UI Approve alone will still stage.
 Curator / ops approve of staged files:
 
 ```ts
-import {
-  approvePendingWrites,
-  defineAgent,
-  InMemoryFs,
-} from "@socialrobot-io/agent-kit-core";
-import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
+import { approvePendingWrites } from "@socialrobot-io/agent-kit-core";
 import { applySkill } from "@socialrobot-io/agent-kit-curator";
 
-const fs = new InMemoryFs();
-await fs.writeFile("agent/SOUL.md", "You are helpful.");
-await fs.writeFile("agent/AGENTS.md", "Be brief.");
-
-const session = await openAgentSession({
-  tenantId: "brand-123",
-  fs,
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
-});
-
-// After the curator has staged files into session.runtime.pending:
+// After the curator has staged files into session.pending:
 const applied = await approvePendingWrites(
   {
-    memory: session.runtime.memory,
-    skills: session.runtime.skills,
-    pending: session.runtime.pending,
+    memory: session.memory,
+    skills: session.skills,
+    pending: session.pending,
   },
   applySkill,
 );

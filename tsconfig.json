@@ -23,6 +23,9 @@
     },
     {
       "path": "./examples/example-app"
+    },
+    {
+      "path": "./packages/node"
     }
   ]
 }

@@ -9,7 +9,8 @@ Pass either:
 
 - a `"provider/model"` string on `defineAgent` (resolved through the AI Gateway
   when you run a turn), or
-- a ready `LanguageModel` via `openAgentSession({ model })` (any AI SDK provider).
+- a ready `LanguageModel` via `createTenantHome({ model })` or
+  `openAgentSession({ model })` (any AI SDK provider).
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
@@ -88,9 +89,9 @@ const transcript: ModelMessage[] = [
 ];
 
 await runBackgroundReview(transcript, {
-  memory: session.runtime.memory,
-  skills: session.runtime.skills,
-  pending: session.runtime.pending,
+  memory: session.memory,
+  skills: session.skills,
+  pending: session.pending,
   writeApprovalEnabled: () => true,
   mode: "combined",
   model: aiCuratorRunner("anthropic/claude-haiku-4-5"),

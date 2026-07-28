@@ -1,23 +1,27 @@
 # Getting started
 
 This guide gets packages installed, shows the agent file layout, and runs one
-model turn in memory. For a real multi-tenant app (SQLite volume, sandbox,
-transcripts), use [Host an agent in your app](hosting.md) next.
+model turn. For production wiring (auth, volume, sandbox, transcripts), use
+[Host an agent in your app](hosting.md).
 
 ## 1. Install
 
+Happy path:
+
 ```bash
-npm i @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai \
-      @socialrobot-io/agent-kit-sessions @socialrobot-io/agent-kit-sandbox \
-      @socialrobot-io/agent-kit-curator
+npm i @socialrobot-io/agent-kit-node
 ```
+
+That pulls core, ai, sessions, and sandbox. Add
+`@socialrobot-io/agent-kit-curator` when you want background learning.
 
 | Package | Job |
 | ------- | --- |
-| `agent-kit-core` | Agent definition, session runtime, memory, skills, approval |
-| `agent-kit-ai` | Call a live model through the Vercel AI SDK |
-| `agent-kit-sessions` | Save chat transcripts and search past chats |
-| `agent-kit-sandbox` | Per-tenant disk volume and guarded shell |
+| `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session) |
+| `agent-kit-core` | Definition, memory, skills, approval |
+| `agent-kit-ai` | Live model loop (`session.run` / `session.stream`) |
+| `agent-kit-sessions` | Transcripts + `session_search` |
+| `agent-kit-sandbox` | Per-tenant volume and guarded shell |
 | `agent-kit-curator` | After a chat, propose memory and skill updates |
 
 ## 2. Author the agent as files
@@ -46,33 +50,26 @@ Cite a source for every non-obvious claim.
 Never invent numbers.
 ```
 
-## 3. Run one turn (in-memory, no SQLite)
+## 3. Run one turn (tenant home)
 
-This path needs an API key (`AI_GATEWAY_API_KEY`) or any AI SDK
-`LanguageModel` you pass yourself. It uses an in-memory filesystem so you can
-try without opening a tenant volume.
-
-Do not use this path for multi-tenant production. Use [Hosting](hosting.md).
+Needs an API key (`AI_GATEWAY_API_KEY`) or a `LanguageModel` you pass yourself.
+Creates `./data/tenants/${tenantId}.db` by default.
 
 ```ts
-import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
-const fs = new InMemoryFs();
-await fs.writeFile("agent/SOUL.md", "You are a concise research assistant.");
-await fs.writeFile("agent/AGENTS.md", "Prefer short, factual answers.");
-
-const session = await openAgentSession({
-  tenantId: "brand-123",
-  fs,
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
-});
+const home = await createTenantHome({ tenantId: "brand-123" });
+const session = await home.openSession("chat-1");
 
 const turn = await session.run([
   { role: "user", content: "Help me plan a product launch." },
 ]);
 console.log(turn.text);
 ```
+
+For a throwaway in-memory filesystem (no SQLite), use `openAgentSession` with
+`InMemoryFs` from `@socialrobot-io/agent-kit-core`. Do not use that path for
+multi-tenant production. See [Hosting](hosting.md).
 
 ## 4. What happens after a real session
 
@@ -99,5 +96,5 @@ bun packages/cli/src/lib/demo.ts
 
 ## Next
 
-Put the same stack in your app with a real tenant volume:
+Put the same stack in your app with auth and a stable tenant id:
 [Host an agent in your app](hosting.md).

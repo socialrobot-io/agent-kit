@@ -16,14 +16,14 @@ Auth uses npm Trusted Publishing (OIDC). There is no long-lived `NPM_TOKEN`.
 Example import:
 
 ```ts
-import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 ```
 
 ## Packages
 
 | Package | Project |
 | ------- | ------- |
+| `@socialrobot-io/agent-kit-node` | `node` |
 | `@socialrobot-io/agent-kit-core` | `core` |
 | `@socialrobot-io/agent-kit-ai` | `ai` |
 | `@socialrobot-io/agent-kit-sessions` | `sessions` |
@@ -31,7 +31,7 @@ import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 | `@socialrobot-io/agent-kit-curator` | `curator` |
 | `@socialrobot-io/agent-kit-cli` | `cli` |
 
-All six share one version. A bump updates every package.
+All seven share one version. A bump updates every package.
 
 ## One-time npm setup
 

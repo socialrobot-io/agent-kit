@@ -30,6 +30,8 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
 - Dependency direction (never introduce a cycle):
   - Leaves (no `@socialrobot-io/agent-kit-*` deps): `core`, `sessions`, `sandbox`.
   - `curator` and `ai` may depend on `core` only.
+  - `node` is the host composition package (`createTenantHome`); it may depend
+    on `core`, `ai`, `sessions`, and `sandbox`. Never add `node` as a dep of a leaf.
   - `cli` and `examples/*` are top-level consumers and may depend on anything.
 - `vendor/hermes` is a pinned, read-only upstream snapshot (see
   `vendor/hermes/UPSTREAM_COMMIT`). Never edit it; port deliberately into

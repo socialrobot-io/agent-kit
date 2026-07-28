@@ -1,15 +1,19 @@
 /**
  * Batteries-included session open: runtime + default tools + run/stream.
  *
- * Does not open the tenant volume (host does that via openTenantVolume).
- * Pass optional session_search and sandbox tools to include those defaults.
+ * Does not open the tenant volume (host does that via openTenantVolume or
+ * createTenantHome). Pass optional session_search and sandbox tools to include
+ * those defaults.
  */
 
 import {
   AgentSessionRuntime,
   type AgentDefinition,
   type AgentFsLike,
+  type MemoryStore,
+  type PendingWriteStore,
   type SessionTool,
+  type SkillLibrary,
   type WriteOrigin,
 } from "@socialrobot-io/agent-kit-core";
 import type { LanguageModel, ModelMessage, ToolApprovalConfiguration, ToolSet } from "ai";
@@ -74,12 +78,20 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
   promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
 }
 
-export interface AgentSessionHandle {
+/**
+ * Open agent bound to one chat. Prefer `createTenantHome().openSession` for
+ * the full host stack.
+ */
+export interface AgentSession {
   tenantId: string;
+  /** Advanced: core engine. Prefer `memory` / `skills` / `pending` / `run`. */
   runtime: AgentSessionRuntime;
   definition: AgentDefinition;
   /** Resolved model for this session (override per turn with run/stream options). */
   model: LanguageModel;
+  memory: MemoryStore;
+  skills: SkillLibrary;
+  pending: PendingWriteStore;
   /** Built-in tools (+ session_search if wired). */
   builtinTools: SessionTool[];
   sandboxTools?: ToolSet;
@@ -107,7 +119,7 @@ export interface AgentSessionHandle {
  */
 export async function openAgentSession(
   opts: OpenAgentSessionOptions,
-): Promise<AgentSessionHandle> {
+): Promise<AgentSession> {
   const extraToolNames = [
     ...(opts.sessionSearchTool ? [opts.sessionSearchTool.name] : []),
     ...(opts.sandboxTools ? Object.keys(opts.sandboxTools) : []),
@@ -197,6 +209,15 @@ export async function openAgentSession(
     definition: opts.definition,
     get model() {
       return sessionModel();
+    },
+    get memory() {
+      return runtime.memory;
+    },
+    get skills() {
+      return runtime.skills;
+    },
+    get pending() {
+      return runtime.pending;
     },
     builtinTools,
     sandboxTools: opts.sandboxTools,

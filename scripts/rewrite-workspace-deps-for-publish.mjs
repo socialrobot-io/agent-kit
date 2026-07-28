@@ -11,7 +11,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PACKAGES = ["core", "ai", "sessions", "sandbox", "curator", "cli"];
+const PACKAGES = ["core", "ai", "sessions", "sandbox", "curator", "cli", "node"];
 const DEP_FIELDS = [
   "dependencies",
   "devDependencies",

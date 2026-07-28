@@ -1,5 +1,5 @@
 {
-  "name": "@socialrobot-io/agent-kit-core",
+  "name": "@socialrobot-io/agent-kit-node",
   "version": "0.2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,8 +15,8 @@
     }
   },
   "nx": {
-    "name": "core",
-    "sourceRoot": "packages/core/src",
+    "name": "node",
+    "sourceRoot": "packages/node/src",
     "targets": {
       "build": {
         "executor": "@nx/js:swc",
@@ -24,9 +24,9 @@
           "{options.outputPath}"
         ],
         "options": {
-          "outputPath": "packages/core/dist",
-          "main": "packages/core/src/index.ts",
-          "tsConfig": "packages/core/tsconfig.lib.json",
+          "outputPath": "packages/node/dist",
+          "main": "packages/node/src/index.ts",
+          "tsConfig": "packages/node/tsconfig.lib.json",
           "skipTypeCheck": true,
           "stripLeadingPaths": true
         }
@@ -34,9 +34,14 @@
     }
   },
   "dependencies": {
-    "@swc/helpers": "~0.5.18"
+    "@swc/helpers": "~0.5.18",
+    "@socialrobot-io/agent-kit-core": "workspace:*",
+    "@socialrobot-io/agent-kit-ai": "workspace:*",
+    "@socialrobot-io/agent-kit-sessions": "workspace:*",
+    "@socialrobot-io/agent-kit-sandbox": "workspace:*",
+    "ai": "^7.0.41"
   },
-  "description": "Agent definition, session runtime, memory, skills, and built-in tool primitives",
+  "description": "Host composition: createTenantHome wires volume, transcripts, sandbox, and sessions",
   "license": "MIT",
   "files": [
     "dist",
@@ -48,10 +53,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/socialrobot-io/agent-kit.git",
-    "directory": "packages/core"
+    "directory": "packages/node"
   },
   "bugs": {
     "url": "https://github.com/socialrobot-io/agent-kit/issues"
   },
-  "homepage": "https://github.com/socialrobot-io/agent-kit/tree/main/packages/core#readme"
+  "homepage": "https://github.com/socialrobot-io/agent-kit/tree/main/packages/node#readme"
 }

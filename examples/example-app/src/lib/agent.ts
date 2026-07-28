@@ -1,30 +1,18 @@
 /**
- * Process-wide tenant volume + bash toolkit + durable chat transcripts.
+ * Process-wide tenant home + per-chat sessions.
  *
- * Host pattern (see docs/guides/hosting.md):
- *   auth → tenantId → openTenantVolume(path)
- * Multi-machine is deferred: docs/roadmap/multi-machine.md
+ * Host pattern: auth → tenantId → createTenantHome → openSession(sessionId)
  */
 
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import type { ToolSet } from "ai";
 import { defineAgent, MemoryStore, type SessionTool } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession, type AgentSessionHandle } from "@socialrobot-io/agent-kit-ai";
-import {
-  createTenantBashToolkit,
-  openTenantVolume,
-  type TenantBashToolkit,
-  type TenantVolume,
-} from "@socialrobot-io/agent-kit-sandbox";
-import {
-  FileTranscriptStore,
-  createSessionSearchTool,
-  type TranscriptStore,
-} from "@socialrobot-io/agent-kit-sessions";
-import type { LanguageModel } from "ai";
+import { type AgentSession } from "@socialrobot-io/agent-kit-ai";
+import { createTenantHome, type TenantHome } from "@socialrobot-io/agent-kit-node";
+import type { TranscriptStore } from "@socialrobot-io/agent-kit-sessions";
+import type { LanguageModel, ToolSet } from "ai";
+import type { TenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 import { examplePackageRoot, seedAgentHome } from "./seed";
 import { resolveLiveModel, type LiveModel } from "./env";
+import { join } from "node:path";
 
 export const TENANT_ID = "demo-user";
 
@@ -32,13 +20,10 @@ export const TENANT_ID = "demo-user";
 const allowUnapproved = process.env.ALLOW_UNAPPROVED_WRITES === "1";
 
 type SharedState = {
-  volume: TenantVolume;
+  home: TenantHome;
   live: LiveModel;
-  bash: TenantBashToolkit;
-  transcripts: TranscriptStore;
-  sessionSearchTool: SessionTool;
-  /** chat sessionId → composed session handle */
-  sessions: Map<string, AgentSessionHandle>;
+  /** chat sessionId → session */
+  sessions: Map<string, AgentSession>;
 };
 
 declare global {
@@ -60,7 +45,7 @@ const MAX_SESSIONS = 32;
 
 export type AgentHandle = {
   sessionId: string;
-  session: AgentSessionHandle;
+  session: AgentSession;
   model: LanguageModel;
   label: string;
   provider: LiveModel["provider"];
@@ -73,30 +58,28 @@ export type AgentHandle = {
 async function bootShared(): Promise<SharedState> {
   const live = resolveLiveModel();
   const root = await examplePackageRoot();
-  const volumeDir = join(root, ".agentfs");
-  const volumePath = join(volumeDir, "example.db");
-  await mkdir(volumeDir, { recursive: true });
+  const volumePath = join(root, ".agentfs", "example.db");
 
-  // Host would set tenantId from auth and open that tenant's volume path.
-  const volume = await openTenantVolume(volumePath);
-  await seedAgentHome(volume);
-
-  const bash = await createTenantBashToolkit({
+  const home = await createTenantHome({
     tenantId: TENANT_ID,
-    volume,
-    files: WORKSPACE_FILES,
-    destination: "/workspace",
+    volumePath,
+    model: live.model,
+    definition: defineAgent({
+      model: live.label,
+      config: {
+        writeApproval: allowUnapproved
+          ? { memory: false, skills: false }
+          : { memory: true, skills: true },
+        sandboxEnabled: true,
+      },
+    }),
+    workspaceFiles: WORKSPACE_FILES,
   });
-
-  const transcripts = new FileTranscriptStore({ fs: volume });
-  const sessionSearchTool = createSessionSearchTool(transcripts, TENANT_ID) as SessionTool;
+  await seedAgentHome(home.volume);
 
   return {
-    volume,
+    home,
     live,
-    bash,
-    transcripts,
-    sessionSearchTool,
     sessions: new Map(),
   };
 }
@@ -119,9 +102,9 @@ async function getShared(): Promise<SharedState> {
   return globalThis.__agentKitExampleBoot;
 }
 
-function touchSession(sessions: Map<string, AgentSessionHandle>, sessionId: string, handle: AgentSessionHandle) {
+function touchSession(sessions: Map<string, AgentSession>, sessionId: string, session: AgentSession) {
   sessions.delete(sessionId);
-  sessions.set(sessionId, handle);
+  sessions.set(sessionId, session);
   while (sessions.size > MAX_SESSIONS) {
     const oldest = sessions.keys().next().value;
     if (oldest === undefined) break;
@@ -130,7 +113,7 @@ function touchSession(sessions: Map<string, AgentSessionHandle>, sessionId: stri
 }
 
 /**
- * Return the agent bound to this chat session (frozen memory via openAgentSession).
+ * Return the agent bound to this chat session (frozen memory via openSession).
  */
 export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   if (!sessionId.trim()) {
@@ -140,36 +123,17 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   const shared = await getShared();
   let session = shared.sessions.get(sessionId);
   if (!session) {
-    await seedAgentHome(shared.volume);
-
-    const definition = defineAgent({
-      model: shared.live.label,
-      config: {
-        writeApproval: allowUnapproved
-          ? { memory: false, skills: false }
-          : { memory: true, skills: true },
-        sandboxEnabled: true,
-      },
-    });
-
-    session = await openAgentSession({
-      tenantId: TENANT_ID,
-      fs: shared.volume,
-      definition,
+    await seedAgentHome(shared.home.volume);
+    session = await shared.home.openSession(sessionId, {
       model: shared.live.model,
-      sessionSearchTool: shared.sessionSearchTool,
-      sandboxTools: shared.bash.tools as unknown as ToolSet,
-    });
-
-    await shared.transcripts.createSession({
-      id: sessionId,
-      tenantId: TENANT_ID,
-      source: "composer",
-      createdAt: Date.now() / 1000,
     });
   }
 
   touchSession(shared.sessions, sessionId, session);
+
+  if (!shared.home.bash || !shared.home.transcripts) {
+    throw new Error("example home requires sandbox and transcripts");
+  }
 
   return {
     sessionId,
@@ -177,16 +141,17 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
     model: session.model,
     label: shared.live.label,
     provider: shared.live.provider,
-    bashTools: shared.bash.tools as unknown as ToolSet,
-    bash: shared.bash,
-    transcripts: shared.transcripts,
+    bashTools: shared.home.bash.tools as unknown as ToolSet,
+    bash: shared.home.bash,
+    transcripts: shared.home.transcripts,
     builtinTools: session.builtinTools,
   };
 }
 
 export async function getTranscripts(): Promise<TranscriptStore> {
   const shared = await getShared();
-  return shared.transcripts;
+  if (!shared.home.transcripts) throw new Error("transcripts disabled");
+  return shared.home.transcripts;
 }
 
 /** Shared handle without opening a chat session (health / debug). */
@@ -202,10 +167,14 @@ export async function getSharedAgent(): Promise<{
   liveNotesMemory?: string[];
 }> {
   const shared = await getShared();
-  const sessions = await shared.transcripts.listSessions(TENANT_ID);
+  if (!shared.home.bash || !shared.home.transcripts) {
+    throw new Error("example home requires sandbox and transcripts");
+  }
+  const transcripts = shared.home.transcripts;
+  const sessions = await transcripts.listSessions(TENANT_ID);
   const savedSessions = [];
   for (const s of sessions) {
-    const msgs = await shared.transcripts.scroll(s.id, 0, 10_000);
+    const msgs = await transcripts.scroll(s.id, 0, 10_000);
     savedSessions.push({ id: s.id, createdAt: s.createdAt, messageCount: msgs.length });
   }
 
@@ -213,7 +182,7 @@ export async function getSharedAgent(): Promise<{
   let liveUserMemory: string[] | undefined;
   let liveNotesMemory: string[] | undefined;
   if (debug) {
-    const mem = new MemoryStore(shared.volume);
+    const mem = new MemoryStore(shared.home.volume);
     await mem.loadFromDisk();
     liveUserMemory = mem.getEntries("user");
     liveNotesMemory = mem.getEntries("memory");
@@ -223,8 +192,8 @@ export async function getSharedAgent(): Promise<{
     model: shared.live.model,
     label: shared.live.label,
     provider: shared.live.provider,
-    bash: shared.bash,
-    transcripts: shared.transcripts,
+    bash: shared.home.bash,
+    transcripts,
     openSessions: [...shared.sessions.keys()],
     savedSessions,
     liveUserMemory,

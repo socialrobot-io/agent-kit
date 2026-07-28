@@ -15,6 +15,7 @@ hosted service. Product-specific logic never lands here.
 
 - `@socialrobot-io/agent-kit-core`, `@socialrobot-io/agent-kit-sessions`, `@socialrobot-io/agent-kit-sandbox` are leaf
   packages. Dependencies only point inward; never add a sibling dep to a leaf.
+  Host composition lives in `@socialrobot-io/agent-kit-node` (`createTenantHome`).
 - Agent state (memory, skills, pending writes) lives in AgentFS volumes, never
   in Postgres or any external store. One volume per tenant, always.
 - Memory and skill writes go through the write-approval gate when it is on.

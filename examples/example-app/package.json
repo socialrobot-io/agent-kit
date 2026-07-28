@@ -19,6 +19,7 @@
     "@socialrobot-io/agent-kit-ai": "workspace:*",
     "@socialrobot-io/agent-kit-core": "workspace:*",
     "@socialrobot-io/agent-kit-curator": "workspace:*",
+    "@socialrobot-io/agent-kit-node": "workspace:*",
     "@socialrobot-io/agent-kit-sessions": "workspace:*",
     "@ai-sdk/deepseek": "^3.0.15",
     "@ai-sdk/react": "^4.0.43",

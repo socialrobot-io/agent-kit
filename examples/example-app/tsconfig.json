@@ -60,6 +60,9 @@
     },
     {
       "path": "../../packages/ai"
+    },
+    {
+      "path": "../../packages/node"
     }
   ]
 }

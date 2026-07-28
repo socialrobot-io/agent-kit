@@ -61,15 +61,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Test packages
-        run: bunx nx run-many -t test --projects=core,sessions,ai,sandbox,curator --parallel=3
+        run: bunx nx run-many -t test --projects=core,sessions,ai,sandbox,curator,node --parallel=3
 
       - name: Build packages
-        run: bunx nx run-many -t build --projects=core,sessions,ai,sandbox,curator,cli --parallel=3
+        run: bunx nx run-many -t build --projects=core,sessions,ai,sandbox,curator,cli,node --parallel=3
 
       - name: Emit declaration files
         # SWC emits JS only. Consumers need .d.ts in the published tarball.
         run: |
-          for pkg in core ai sessions sandbox curator cli; do
+          for pkg in core ai sessions sandbox curator cli node; do
             bunx tsc -p "packages/${pkg}/tsconfig.lib.json" --emitDeclarationOnly
           done
 

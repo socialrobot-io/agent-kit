@@ -3,8 +3,9 @@
 Tools are functions the model can call during a turn (look up memory, run
 bash, call your API, and so on).
 
-`openAgentSession` builds a default set. You add or remove tools in code.
-The runtime does **not** load tools from an `agent/tools/` directory.
+`createTenantHome` / `openAgentSession` build a default set. You add or remove
+tools in code. The runtime does **not** load tools from an `agent/tools/`
+directory.
 
 ## Default tools
 
@@ -12,8 +13,20 @@ The runtime does **not** load tools from an `agent/tools/` directory.
 | ---- | ------------- |
 | `memory` | Always |
 | `skills_list`, `skill_view`, `skill_manage` | Always |
-| `session_search` | You pass `sessionSearchTool` into `openAgentSession` |
-| `bash`, `readFile`, `writeFile` | You pass `sandboxTools` into `openAgentSession` |
+| `session_search` | `createTenantHome` (default) or you pass `sessionSearchTool` |
+| `bash`, `readFile`, `writeFile` | `createTenantHome` (default) or you pass `sandboxTools` |
+
+Happy path:
+
+```ts
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+
+const home = await createTenantHome({ tenantId });
+const session = await home.openSession(sessionId, {
+  addTools: [weather],
+  disableTools: ["skill_manage"],
+});
+```
 
 ## Add your own tool
 
@@ -75,9 +88,9 @@ override options.
 
 Each `SessionTool` needs `{ name, description, inputSchema, execute }`.
 
-## Add search and sandbox to the same session
+## Search and sandbox without `createTenantHome`
 
-Reuse `tenantId`, `fs`, and the definition from the example above.
+Prefer `createTenantHome` (see [Hosting](hosting.md)). If you wire by hand:
 
 ```ts
 import { createSessionSearchTool, FileTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
@@ -99,8 +112,8 @@ const sessionWithExtras = await openAgentSession({
 });
 ```
 
-Prefer `addTools` on `session.run` over the older `extraTools` / `extraAiTools`
-names on low-level `runAgentTurn`.
+Prefer `addTools` on `session.run` / `home.openSession` over the older
+`extraTools` / `extraAiTools` names on low-level `runAgentTurn`.
 
 ## Next
 

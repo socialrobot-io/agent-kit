@@ -44,164 +44,110 @@ the runtime a per-tenant filesystem, and the production stack comes with it.
 
 ## Install
 
-Production stack (multi-tenant volume, sandbox, transcripts, live model loop):
+Happy path (volume + transcripts + sandbox + live loop):
 
 ```bash
-npm i @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai \
-      @socialrobot-io/agent-kit-sessions @socialrobot-io/agent-kit-sandbox \
-      @socialrobot-io/agent-kit-curator
+npm i @socialrobot-io/agent-kit-node
+# also pulls core, ai, sessions, sandbox
 ```
+
+Optional: `@socialrobot-io/agent-kit-curator` for background learning.
 
 | Package | Job |
 | ------- | --- |
-| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Agent definition, runtime, memory, skills, approval |
-| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Call a live model (Vercel AI SDK) |
-| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Save chats and search past ones for that tenant |
-| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Tenant disk volume and guarded shell |
-| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | After a chat, propose memory and skill updates |
+| [`…-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (convention host wiring) |
+| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
+| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
+| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + `session_search` |
+| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Volume + guarded bash |
+| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory / skills |
 
 ## Quick start
 
-agent-kit does not host your app. You authenticate the user, map them to a
-`tenantId`, open that tenant’s SQLite volume, then call the kit.
+Your app authenticates the user and maps them to a stable `tenantId`. The kit
+opens that tenant’s home (volume, transcripts, sandbox) by convention.
 
 ```ts
-import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
-import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
-import { FileTranscriptStore, assertTenantSession, createSessionSearchTool } from "@socialrobot-io/agent-kit-sessions";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
-// Who owns this data? Map from your login system. Never take tenantId from the client body.
+// From your auth layer. Never take tenantId from the client body.
 const tenantId = "brand-123";
-// Which chat is this? One id per conversation in your UI / API.
 const sessionId = "chat-abc";
 
-// Open that tenant’s SQLite file. Memory, skills, workspace, and chat logs live here.
-const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
+// Convention: ./data/tenants/${tenantId}.db + transcripts + sandbox + default model.
+const home = await createTenantHome({ tenantId });
 
-// Persist chat history on the same volume.
-const transcripts = new FileTranscriptStore({ fs: volume });
-// Register this conversation for the tenant.
-await transcripts.createSession({ id: sessionId, tenantId, source: "chat", createdAt: Date.now() / 1000 });
-// Fail closed if sessionId belongs to another tenant.
-await assertTenantSession(transcripts, tenantId, sessionId);
+// One AgentSession per chat (frozen memory snapshot for this sessionId).
+const session = await home.openSession(sessionId);
 
-// Guarded shell + workspace files under /workspace (same volume).
-const bash = await createTenantBashToolkit({ tenantId, volume });
-// Let the model search past chats for this tenant (not the current one).
-const search = createSessionSearchTool(transcripts, tenantId, { currentSessionId: sessionId });
-
-// Wire runtime + default tools (memory, skills, search, bash).
-const session = await openAgentSession({
-  tenantId,
-  fs: volume, // same volume for memory / skills / transcripts
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }), // model id or LanguageModel
-  sessionSearchTool: search,
-  sandboxTools: bash.tools, // bash, readFile, writeFile
-});
-
-// One model turn to completion (use session.stream for useChat).
+// One model turn (use session.stream for useChat).
 const turn = await session.run([
   { role: "user", content: "Summarize /workspace; prefer short answers going forward." },
 ]);
 ```
 
-Learning is a later step: the curator stages memory/skill proposals under
-`pending/`; a human approves them; the **next** session snapshot picks them up.
-Full walkthrough: [Host an agent in your app](docs/guides/hosting.md).
-Approve flow: [Skills & learning](docs/guides/skills-and-learning.md).
-
-<details>
-<summary><strong>Next.js App Router</strong> (auth cookie / JWT → tenant volume → stream)</summary>
-
-Assumptions: you already have login (Auth.js, Clerk, custom JWT cookie, …).
-On each request you resolve a **stable** `tenantId` from that session. The
-client may send `sessionId` (chat id) and messages; it must **not** choose
-`tenantId`.
+Common overrides (everything else stays on defaults):
 
 ```ts
-// lib/auth.ts — your real auth; sketch only
+const home = await createTenantHome({
+  tenantId,
+  dataDir: "/var/lib/agents",           // or volumePath: "/data/acme.db"
+  model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
+  interactiveApproval: true,            // UI Approve applies writes
+  workspaceFiles: { "README.md": "# hi\n" },
+  sandbox: { allowedHosts: ["https://api.example.com"] }, // or sandbox: false
+});
+
+const session = await home.openSession(sessionId, {
+  addTools: [myTool],
+  disableTools: ["skill_manage"],
+});
+```
+
+`home.volume`, `home.transcripts`, and `home.bash` stay available when you need
+to compose differently. Low-level pieces (`openTenantVolume`,
+`openAgentSession`, …) remain exported from their packages.
+
+Learning is a later step: curator → `pending/` → human approve → next snapshot.
+[Hosting](docs/guides/hosting.md) · [Skills & learning](docs/guides/skills-and-learning.md).
+
+<details>
+<summary><strong>Next.js App Router</strong> (auth → home → stream)</summary>
+
+Assumptions: you already have login. Resolve a **stable** `tenantId` from the
+session. The client sends `sessionId` + messages only.
+
+```ts
+// lib/auth.ts
 import { cookies } from "next/headers";
 
 export async function requireTenantId(): Promise<string> {
-  // e.g. verify session cookie / JWT, load user, return user.orgId or user.id
   const token = (await cookies()).get("session")?.value;
   if (!token) throw new Error("unauthorized");
   const user = await verifySession(token); // your code
-  return user.tenantId; // never from req.json()
-}
-```
-
-```ts
-// lib/agent-home.ts — one volume + toolkit per tenant per process
-import { defineAgent } from "@socialrobot-io/agent-kit-core";
-import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
-import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
-import {
-  FileTranscriptStore,
-  assertTenantSession,
-  createSessionSearchTool,
-} from "@socialrobot-io/agent-kit-sessions";
-
-const homes = new Map<string, Awaited<ReturnType<typeof openHome>>>();
-
-async function openHome(tenantId: string) {
-  const volume = await openTenantVolume(`./data/tenants/${tenantId}.db`);
-  const transcripts = new FileTranscriptStore({ fs: volume });
-  const bash = await createTenantBashToolkit({ tenantId, volume });
-  return { volume, transcripts, bash };
-}
-
-export async function getTenantHome(tenantId: string) {
-  let home = homes.get(tenantId);
-  if (!home) {
-    home = await openHome(tenantId);
-    homes.set(tenantId, home);
-  }
-  return home;
-}
-
-export async function openChatSession(tenantId: string, sessionId: string) {
-  const { volume, transcripts, bash } = await getTenantHome(tenantId);
-  await transcripts.createSession({
-    id: sessionId,
-    tenantId,
-    source: "chat",
-    createdAt: Date.now() / 1000,
-  });
-  await assertTenantSession(transcripts, tenantId, sessionId);
-
-  return openAgentSession({
-    tenantId,
-    fs: volume,
-    definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
-    sessionSearchTool: createSessionSearchTool(transcripts, tenantId, {
-      currentSessionId: sessionId,
-    }),
-    sandboxTools: bash.tools,
-  });
+  return user.tenantId;
 }
 ```
 
 ```ts
 // app/api/chat/route.ts
 import { convertToModelMessages, createUIMessageStreamResponse, toUIMessageStream } from "ai";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 import { requireTenantId } from "@/lib/auth";
-import { getTenantHome, openChatSession } from "@/lib/agent-home";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const tenantId = await requireTenantId(); // 401/redirect inside if needed
+  const tenantId = await requireTenantId();
   const { messages, id: sessionId } = await req.json();
   if (!sessionId) return Response.json({ error: "missing session id" }, { status: 400 });
 
-  const session = await openChatSession(tenantId, sessionId);
-  const { transcripts } = await getTenantHome(tenantId);
+  const home = await createTenantHome({ tenantId }); // process-cached per volume path
+  const session = await home.openSession(sessionId);
   const result = session.stream(await convertToModelMessages(messages), {
     maxSteps: 12,
     onFinish: async ({ text }) => {
-      await transcripts.appendMessage({
+      await home.transcripts!.appendMessage({
         id: `asst_${Date.now()}`,
         sessionId,
         role: "assistant",
@@ -217,42 +163,26 @@ export async function POST(req: Request) {
 }
 ```
 
-Client: AI SDK UI `useChat({ id: sessionId })` so the same chat keeps one
-frozen memory snapshot. Working reference:
-[`examples/example-app`](examples/example-app).
+Client: `useChat({ id: sessionId })`. Full app: [`examples/example-app`](examples/example-app).
 
 </details>
 
 <details>
-<summary><strong>Hono / Express</strong> (middleware auth → tenant volume → JSON turn)</summary>
-
-Same rules: auth middleware sets `tenantId`. Body carries `sessionId` +
-`messages` only.
+<summary><strong>Hono / Express</strong> (middleware auth → home → JSON turn)</summary>
 
 ```ts
-// auth middleware (Hono) — sketch; same idea for Express
+// Hono
+import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
-export const requireAuth = createMiddleware(async (c, next) => {
-  const header = c.req.header("authorization"); // or cookie
+const requireAuth = createMiddleware(async (c, next) => {
+  const header = c.req.header("authorization");
   if (!header?.startsWith("Bearer ")) return c.json({ error: "unauthorized" }, 401);
   const user = await verifyAccessToken(header.slice(7)); // your code
-  c.set("tenantId", user.tenantId); // stable id from your user store
+  c.set("tenantId", user.tenantId);
   await next();
 });
-```
-
-```ts
-// agent-home.ts — shared with the Next.js sketch (openTenantVolume, cache by tenantId)
-// export getTenantHome / openChatSession as above
-```
-
-**Hono**
-
-```ts
-import { Hono } from "hono";
-import { requireAuth } from "./auth";
-import { openChatSession } from "./agent-home";
 
 const app = new Hono();
 app.use("/chat/*", requireAuth);
@@ -263,18 +193,17 @@ app.post("/chat", async (c) => {
   if (!sessionId || !messages?.length) {
     return c.json({ error: "sessionId and messages required" }, 400);
   }
-
-  const session = await openChatSession(tenantId, sessionId);
+  const home = await createTenantHome({ tenantId });
+  const session = await home.openSession(sessionId);
   const turn = await session.run(messages);
   return c.json({ text: turn.text, toolCalls: turn.toolCalls });
 });
 ```
 
-**Express**
-
 ```ts
+// Express
 import express from "express";
-import { openChatSession } from "./agent-home";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
 const app = express();
 app.use(express.json());
@@ -294,16 +223,15 @@ app.post("/chat", requireAuth, async (req, res) => {
   if (!sessionId || !messages?.length) {
     return res.status(400).json({ error: "sessionId and messages required" });
   }
-
-  const session = await openChatSession(req.tenantId, sessionId);
+  const home = await createTenantHome({ tenantId: req.tenantId });
+  const session = await home.openSession(sessionId);
   const turn = await session.run(messages);
   res.json({ text: turn.text, toolCalls: turn.toolCalls });
 });
 ```
 
-For streaming over HTTP, use `session.stream` and pipe the AI SDK UI message
-stream the same way as the Next.js route. Volume path and process cache rules
-are unchanged: [Hosting](docs/guides/hosting.md).
+Stream with `session.stream` the same way as the Next.js route.
+[Hosting](docs/guides/hosting.md).
 
 </details>
 

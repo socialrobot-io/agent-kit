@@ -1,3 +1,14 @@
+## 0.2.0 (2026-07-29)
+
+### 🚀 Features
+
+- **node:** new `@socialrobot-io/agent-kit-node` with `createTenantHome` (volume, transcripts, sandbox, session by convention)
+- **ai:** rename `AgentSessionHandle` → `AgentSession`; expose `memory` / `skills` / `pending` on the session
+
+### 🩹 Fixes
+
+- Docs and example-app use the TenantHome happy path
+
 ## 0.1.1 (2026-07-28)
 
 ### 🚀 Features

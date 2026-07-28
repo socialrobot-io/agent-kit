@@ -34,8 +34,8 @@ const bash = await createTenantBashToolkit({
 // bash.tools is an AI SDK ToolSet: bash, readFile, writeFile
 ```
 
-Pass `bash.tools` into `openAgentSession` as `sandboxTools`. See
-[Hosting](hosting.md).
+`createTenantHome` wires `bash.tools` for you. If you compose by hand, pass
+them into `openAgentSession` as `sandboxTools`. See [Hosting](hosting.md).
 
 ### Ephemeral workspace (no volume)
 
