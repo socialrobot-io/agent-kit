@@ -31,7 +31,7 @@
     },
     "examples/example-app": {
       "name": "@agent-kit/example",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/ai": "workspace:*",
         "@agent-kit/core": "workspace:*",
@@ -51,17 +51,17 @@
     },
     "packages/ai": {
       "name": "@agent-kit/ai",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/core": "workspace:*",
-        "@ai-sdk/gateway": "^4.0.30",
+        "@ai-sdk/gateway": "^4.0.31",
         "@swc/helpers": "~0.5.18",
         "ai": "^7.0.40",
       },
     },
     "packages/cli": {
       "name": "@agent-kit/cli",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/ai": "workspace:*",
         "@agent-kit/core": "workspace:*",
@@ -73,14 +73,14 @@
     },
     "packages/core": {
       "name": "@agent-kit/core",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@agent-kit/curator",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@agent-kit/core": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -88,7 +88,7 @@
     },
     "packages/sandbox": {
       "name": "@agent-kit/sandbox",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -98,7 +98,7 @@
     },
     "packages/sessions": {
       "name": "@agent-kit/sessions",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
@@ -121,7 +121,7 @@
 
     "@ai-sdk/deepseek": ["@ai-sdk/deepseek@3.0.15", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ajZySPn1s/CXYrxdCWiwrX0x1dl7KbhKmxgdavxw5Cc853NczRhgi1BcQX6aZqA4w6jEF/E2zGniSqtFFAeXWA=="],
 
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-nhgR5U6N0wRg+32Mnd8YrOknWQhWfn3ZAKhEOEf6u3dWzhNxTAAPIB7nnz5gRf8Us8K45yIsTrk0OtH897z7Mw=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.31", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-gEBBUP7nyfQY+K+xFllYJ374RbJoRUa5RN2NyLPu12OfMv5U09kNzZTvBDHnqx78P/7qEELyIg9C5k+RPiBkjg=="],
 
     "@ai-sdk/mcp": ["@ai-sdk/mcp@2.0.18", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "pkce-challenge": "^5.0.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-0NEiqoS3PzkITQFldRuuPyO+CckgUPb9wWkp2hQlcaGxKu9ebFJDyjxGYEySE7TQN7mYc8PUuaNEODvky51NaA=="],
 
@@ -2206,6 +2206,8 @@
     "@xhmikosr/downloader/content-disposition": ["content-disposition@2.0.1", "", {}, "sha512-e+H0ZXHSWYrENhQzw1LPuP4oF5MzVKmDU6d3hxlvaPEYLLg62MxtQNPRx4SYSuYJSBUgnQIG4HIN2tEtNv7Dog=="],
 
     "agentfs-sdk/buffer": ["buffer@6.0.3", "", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.2.1" } }, "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA=="],
+
+    "ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-nhgR5U6N0wRg+32Mnd8YrOknWQhWfn3ZAKhEOEf6u3dWzhNxTAAPIB7nnz5gRf8Us8K45yIsTrk0OtH897z7Mw=="],
 
     "ast-v8-to-istanbul/js-tokens": ["js-tokens@10.0.0", "", {}, "sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q=="],
 
