@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/hero.png" alt="agent-kit — self-improving AI agents" width="100%"/>
+<img src="docs/assets/hero.png" alt="agent-kit: self-improving AI agents" width="100%"/>
 
 <br/>
 
@@ -52,18 +52,18 @@ npm i @socialrobot-io/agent-kit-core @socialrobot-io/agent-kit-ai \
       @socialrobot-io/agent-kit-curator
 ```
 
-| Package | Use |
+| Package | Job |
 | ------- | --- |
-| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | `defineAgent`, runtime, memory, skills, approval |
-| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Live model loop (Vercel AI SDK) |
-| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + tenant-scoped `session_search` |
-| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Per-tenant AgentFS + guarded bash |
-| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory / skills |
+| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Agent definition, runtime, memory, skills, approval |
+| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | Call a live model (Vercel AI SDK) |
+| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Save chats and search past ones for that tenant |
+| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Tenant disk volume and guarded shell |
+| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | After a chat, propose memory and skill updates |
 
 ## Quick start
 
-Your app owns auth and maps it to a stable `tenantId`. Open one AgentFS volume
-per tenant, then compose the session. Write approval stays on by default.
+agent-kit does not host your app. You authenticate the user, map them to a
+`tenantId`, open that tenant’s SQLite volume, then call the kit.
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
@@ -71,13 +71,14 @@ import { openAgentSession, resolveModel, runAgentTurn } from "@socialrobot-io/ag
 import { openAgentFs, serializeAgentFs, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 import { FileTranscriptStore, assertTenantSession, createSessionSearchTool } from "@socialrobot-io/agent-kit-sessions";
 
-// tenantId from your auth layer, never from the client
+// From your auth layer. Do not trust a client-supplied tenantId.
 const tenantId = "brand-123";
 const sessionId = "chat-abc";
 
 const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);
 serializeAgentFs(afs.fs);
-const fs = adaptAgentFs(afs.fs); // host adapter → AgentFsLike (see Hosting)
+// adaptAgentFs: ~20-line bridge from agentfs-sdk → agent-kit (paste from Hosting guide)
+const fs = adaptAgentFs(afs.fs);
 
 const transcripts = new FileTranscriptStore({ fs });
 await transcripts.createSession({ id: sessionId, tenantId, source: "chat", createdAt: Date.now() / 1000 });
@@ -100,12 +101,17 @@ const turn = await runAgentTurn(
 );
 ```
 
-`adaptAgentFs` is host code. Copy from [Hosting](docs/guides/hosting.md) or
-[`examples/example-app`](examples/example-app). After the turn, run the curator
-and approve staged writes before the next snapshot.
-[Hosting](docs/guides/hosting.md) ·
-[Skills & learning](docs/guides/skills-and-learning.md) ·
-[Models](docs/guides/models.md).
+What this does:
+
+1. Opens one AgentFS volume for the tenant (memory, skills, workspace, chat logs).
+2. Wraps that volume with `adaptAgentFs` so the kit can read and write it.
+3. Binds `sessionId` to the tenant, then adds guarded bash + cross-session search.
+4. Runs one model turn with the default tool surface.
+
+Learning is a later step: the curator stages memory/skill proposals under
+`pending/`; a human approves them; the **next** session snapshot picks them up.
+Full walkthrough: [Host an agent in your app](docs/guides/hosting.md).
+Approve flow: [Skills & learning](docs/guides/skills-and-learning.md).
 
 ### Example app
 
@@ -133,81 +139,55 @@ bun packages/cli/src/lib/demo.ts
 ## How it works
 
 <div align="center">
-<img src="docs/assets/architecture.svg" alt="Production agent stack — secure, sandboxed, self-improving" width="100%"/>
+<img src="docs/assets/architecture.svg" alt="Production agent stack: secure, sandboxed, self-improving" width="100%"/>
 </div>
 
 <br/>
 
-**1. Author** an agent as a directory: `SOUL.md` for identity, `AGENTS.md` for
-house rules, `skills/` for procedures, `memories/` for curated facts.
-
-**2. Run** a session. The system prompt is built once: SOUL + AGENTS.md + a
-**frozen** memory snapshot. Your provider's prefix cache stays hot. The model
-gets a small, proven tool surface.
-
-**3. Guard** every write and every command. Content is threat-scanned before it
-can enter the prompt. Shell commands hit guardrails before they execute. Every
-action lands in an append-only audit log with snapshot ids.
-
-**4. Curate** after the turn. A background reviewer with a restricted toolset
-proposes durable memory and reusable skills.
-
-**5. Approve.** Nothing autonomous becomes permanent. Writes stage to
-`pending/` and replay only on human approval.
-
-**6. Recall.** The next session's snapshot includes what was approved. Prior
-sessions are searchable via full-text recall, scoped to that tenant only.
+1. **Author** the agent as markdown files: who it is (`SOUL.md`), house rules
+   (`AGENTS.md`), optional skills and memories.
+2. **Open a session** for one tenant. The system prompt is built once from
+   those files plus a memory snapshot that does not change mid-chat.
+3. **Guard** writes and shell commands. Bad content is scanned before it can
+   enter a future prompt. Dangerous commands are blocked before they run.
+4. **Curate** after the chat. A background pass may propose lasting memory or
+   skills.
+5. **Approve.** Proposals sit under `pending/` until a human accepts them.
+6. **Recall.** The next chat sees approved memory. Past chats for that tenant
+   are searchable; other tenants are not.
 
 ---
 
 ## Security
 
-Four walls, not one:
-
 | Layer | Stops |
 | ----- | ----- |
-| **Threat scanning** | Prompt injection, promptware/C2, credential exfil patterns, invisible unicode. Scanned before content reaches the system prompt. Poisoned on-disk entries render as `[BLOCKED]` in the snapshot. |
-| **Write approval** | Silent self-modification. Background and skill writes always stage for review. |
-| **Sandbox guardrails** | `rm -rf /`, fork bombs, `curl $SECRET`, `cat .env`, non-allowlisted hosts. Secrets are redacted from the command line. |
-| **Tenant isolation** | Per-tenant AgentFS volume and audit trail. Snapshots for rollback. Cross-tenant FTS returns nothing. |
+| **Threat scanning** | Injection and exfil patterns in memory/skills before they reach the prompt. Bad on-disk entries show as `[BLOCKED]`. |
+| **Write approval** | Silent self-edits. Background and skill writes wait for a human. |
+| **Sandbox** | Destructive shell, secret dumps, hosts you did not allow. |
+| **Tenant isolation** | One volume and audit trail per tenant. Search never crosses tenants. |
 
-This is the difference between an agent you demo and an agent you put behind a
-paying customer.
-
----
-
-## What you get
-
-| Capability | Description |
-| ---------- | ----------- |
-| **Curated memory** | Bounded `MEMORY.md` / `USER.md` with char budgets, consolidation guidance, and frozen system-prompt snapshots |
-| **Progressive skills** | `agentskills.io`-style procedures: list → view → drill into references/templates/scripts |
-| **Background curator** | Distills sessions into memory and skills with review prompts |
-| **Human approval gate** | Stage → review → replay. No silent writes from autonomous processes |
-| **Per-tenant sandbox** | AgentFS volumes, bash-tool backend, command guardrails, audit |
-| **Cross-session recall** | Full-text `session_search` scoped per tenant |
-| **File-based authoring** | `defineAgent` plus an `agent/` directory: SOUL, AGENTS, skills, memories |
-| **Live model loop** | `@socialrobot-io/agent-kit-ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
-
-See [`NOTICE`](NOTICE) for third-party attribution.
+Details: [Security guide](docs/guides/security.md).
 
 ---
 
 ## Docs
 
-| Guide | For |
-| ----- | --- |
-| [Getting started](docs/guides/getting-started.md) | npm install, first agent, first session |
-| [Hosting](docs/guides/hosting.md) | Local volumes, tenants, auth boundaries |
-| [Tools](docs/guides/tools.md) | Default primitives and overrides |
-| [Models & the loop](docs/guides/models.md) | `defineAgent({ model })` to a live AI SDK model |
-| [Security & isolation](docs/guides/security.md) | Threat scan, approval, sandbox, tenants |
-| [Memory](docs/guides/memory.md) | What the agent remembers, and why it stays cheap |
-| [Skills & learning](docs/guides/skills-and-learning.md) | How skills work and how the curator teaches |
-| [Sandbox](docs/guides/sandbox.md) | Safe execution, guardrails, audit |
-| [Publishing](docs/guides/publishing.md) | Release to npm (maintainers) |
+Read in order if you are integrating:
 
-Deferred: [Multi-machine roadmap](docs/roadmap/multi-machine.md).
+| Guide | Answers |
+| ----- | ------- |
+| [Getting started](docs/guides/getting-started.md) | Install, `agent/` files, first turn |
+| [Hosting](docs/guides/hosting.md) | Auth, volume, session, approve in your app |
+| [Tools](docs/guides/tools.md) | Defaults and how to add your own |
+| [Models](docs/guides/models.md) | Pick a model, run or stream a turn |
+| [Memory](docs/guides/memory.md) | What is remembered across chats |
+| [Skills & learning](docs/guides/skills-and-learning.md) | Skills, curator, human approve |
+| [Sandbox](docs/guides/sandbox.md) | Guarded shell and workspace |
+| [Security](docs/guides/security.md) | Scans, approval, isolation |
+| [Publishing](docs/guides/publishing.md) | npm release (maintainers) |
+
+Not ready yet: [Multi-machine](docs/roadmap/multi-machine.md).
 
 ---
 
@@ -215,26 +195,10 @@ Deferred: [Multi-machine roadmap](docs/roadmap/multi-machine.md).
 
 ```bash
 bun install
-bun packages/cli/src/lib/demo.ts     # production-loop demo
-npx nx run-many -t test --all        # 80 tests
+bun packages/cli/src/lib/demo.ts     # offline production-loop demo
+npx nx run-many -t test --all
 npx nx run-many -t build --all
 ```
-
-## Models
-
-`@socialrobot-io/agent-kit-ai` is the bridge to a live model. It exports:
-
-- `resolveModel(model)` — a `"provider/model"` string to AI Gateway
-  `LanguageModel`, or pass a ready `LanguageModel` straight through.
-- `toAiTools(tools)` — adapt the runtime's tools into an AI SDK `ToolSet`.
-- `runAgentTurn(messages, { runtime, model | definition })` — run one turn to
-  completion (`generateText` + `stopWhen`), collecting tool calls.
-- `aiCuratorRunner(model)` — a `CuratorModelRunner` on a live model, so the
-  background curator reviews real transcripts with a real model.
-
-Works with AI SDK **v7** (`ai` and `@ai-sdk/gateway`). The offline mock in the
-demo and tests uses the same `LanguageModel` interface, so the live path is
-identical.
 
 ## License
 
@@ -243,5 +207,5 @@ MIT. See [`NOTICE`](NOTICE) for third-party attribution.
 <div align="center">
 <img src="docs/assets/logo.png" alt="agent-kit" width="72"/>
 <br/>
-<b>agent-kit</b> — agents you can ship.
+<b>agent-kit</b>: agents you can ship.
 </div>

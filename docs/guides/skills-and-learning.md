@@ -1,48 +1,58 @@
 # Skills & learning
 
+Two kinds of lasting knowledge:
+
 | | Memory | Skills |
 | - | ------ | ------ |
-| Kind | Declarative (who / what) | Procedural (how) |
-| Shape | Entries in USER.md / MEMORY.md | `SKILL.md` + optional refs/templates/scripts |
-| Loaded | Always (frozen snapshot) | On demand: list → view → drill |
+| Kind | Facts about the user and environment | Procedures (how to do a job) |
+| Shape | Lines in `USER.md` / `MEMORY.md` | A folder with `SKILL.md` plus optional files |
+| Loaded into the prompt | Always, via the frozen memory snapshot | Only when the model lists and opens them |
 
-## Layout
+Read [Memory](memory.md) first if you have not.
+
+## Skill layout
 
 ```text
 skills/
   concise-answers/
     SKILL.md
-    references/
-    templates/
-    scripts/
+    references/     optional
+    templates/      optional
+    scripts/        optional
 ```
 
 `SKILL.md` follows [agentskills.io](https://agentskills.io): YAML frontmatter
-(`name`, `description`, …) + procedure body.
+(`name`, `description`, and related fields) plus the procedure body.
 
-Tools: `skills_list` → `skill_view` → load a linked file only when needed.
+How the model loads a skill:
 
-## Curator
+1. `skills_list`: see what exists
+2. `skill_view`: open one `SKILL.md`
+3. Open a linked file only when needed
 
-After a session, `runBackgroundReview` uses memory + skill write tools only.
+## Curator (propose updates after a chat)
+
+The curator is a separate background pass. It reads a transcript and may
+propose memory or skill writes. It does not run your full chat toolset.
+
+```text
+chat ends
+  → runBackgroundReview (curator)
+  → files under pending/memory and pending/skills
+  → human approves or rejects
+  → next session snapshot uses approved content only
+```
 
 | Capture | Skip |
 | ------- | ---- |
-| Durable user facts → memory | Env-dependent failures |
-| Reusable procedures / corrections → skills | "This tool is broken" |
-| Prefer patching an umbrella skill | One-off task narratives |
+| Durable user facts → memory | Failures that only happen in one environment |
+| Reusable procedures → skills | “This tool is broken” one-offs |
+| Prefer updating an existing umbrella skill | Long narratives of a single task |
 
-## Approve
+## Approve (make proposals real)
 
-When write-approval is on, curator writes stage; they are not applied.
-
-```text
-session ends
-  → curator proposes
-  → pending/{memory,skills}/
-  → human approve (replay) or reject (discard)
-  → next session snapshot uses approved only
-```
+When write approval is on (the default), curator output is staged. It is not
+applied until a human approves.
 
 ```ts
 import type { ModelMessage } from "ai";
@@ -80,6 +90,7 @@ await runBackgroundReview(transcript, {
   model: aiCuratorRunner("anthropic/claude-haiku-4-5"),
 });
 
+// Only after a human accepts the staged files:
 const applied = await approvePendingWrites(
   {
     memory: runtime.memory,
@@ -90,3 +101,10 @@ const applied = await approvePendingWrites(
 );
 console.log(applied);
 ```
+
+Reject means discard the staged files. Do not call `approvePendingWrites`.
+
+## Next
+
+- Threat scan and isolation: [Security](security.md)
+- Host wiring for pending review in your UI: [Hosting](hosting.md)

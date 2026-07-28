@@ -1,7 +1,9 @@
 # Publishing
 
-Publish `@socialrobot-io/agent-kit-*` packages to the public npm registry with a
-shared version. Releases run from GitHub Actions on `main` via manual dispatch.
+For maintainers. Consumers install from npm; they do not need this guide.
+
+Publish all `@socialrobot-io/agent-kit-*` packages together with one shared
+version. Releases run from GitHub Actions on `main` (manual “Run workflow”).
 Auth uses npm Trusted Publishing (OIDC). There is no long-lived `NPM_TOKEN`.
 
 ## Naming

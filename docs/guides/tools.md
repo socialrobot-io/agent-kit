@@ -1,19 +1,24 @@
 # Tools
 
-Defaults from `openAgentSession` / the agent loop. Register custom tools in
-code. The runtime does not scan `agent/tools/`.
+Tools are functions the model can call during a turn (look up memory, run
+bash, call your API, and so on).
 
-| Tool | When |
-| ---- | ---- |
+`openAgentSession` builds a default set. You add or remove tools in code.
+The runtime does **not** load tools from an `agent/tools/` folder.
+
+## Default tools
+
+| Tool | Included when |
+| ---- | ------------- |
 | `memory` | Always |
 | `skills_list`, `skill_view`, `skill_manage` | Always |
-| `session_search` | You pass `sessionSearchTool` |
-| `bash`, `readFile`, `writeFile` | You pass `sandboxTools` |
+| `session_search` | You pass `sessionSearchTool` into `openAgentSession` |
+| `bash`, `readFile`, `writeFile` | You pass `sandboxTools` into `openAgentSession` |
 
-## Add a tool
+## Add your own tool
 
-Needs `AI_GATEWAY_API_KEY` (or pass your own `LanguageModel`). `InMemoryFs` is
-fine for a local try; production volumes: [Hosting](hosting.md).
+You need an API key (`AI_GATEWAY_API_KEY`) or a `LanguageModel` you pass in.
+This example uses in-memory files. For a tenant volume, see [Hosting](hosting.md).
 
 ```ts
 import type { SessionTool } from "@socialrobot-io/agent-kit-core";
@@ -59,19 +64,21 @@ const turn = await runAgentTurn(
 console.log(turn.text);
 ```
 
-For streaming / `useChat`, use `streamAgentTurn` the same way (pass `runtime`, `model`,
-`toolSet`).
+For streaming chat UIs (`useChat`), call `streamAgentTurn` with the same
+`runtime`, `model`, and `toolSet`.
+
+## How `composeTools` options work
 
 | Option | Effect |
 | ------ | ------ |
-| _(omit)_ | Composed defaults |
-| `addTools` | Add on top of defaults. Same `name` replaces the default |
-| `disableTools` | Remove by name (defaults and prior adds) |
-| `tools` | Full replace. Ignores defaults, `addTools`, and `disableTools` |
+| (omit all) | Use the default tools for this session |
+| `addTools` | Add tools. If a name matches a default, your tool replaces it |
+| `disableTools` | Remove tools by name |
+| `tools` | Use only this list. Ignore defaults, `addTools`, and `disableTools` |
 
-`SessionTool` shape: `{ name, description, inputSchema, execute }`.
+Each `SessionTool` needs `{ name, description, inputSchema, execute }`.
 
-## Optional: search + sandbox on the same session
+## Add search and sandbox to the same session
 
 Reuse `tenantId`, `fs`, and `definition` from the example above.
 
@@ -95,4 +102,9 @@ const sessionWithExtras = await openAgentSession({
 });
 ```
 
-Prefer `addTools` over legacy `extraTools` / `extraAiTools`.
+Prefer `addTools` over the older `extraTools` and `extraAiTools` names.
+
+## Next
+
+- Pick a model or stream replies: [Models](models.md)
+- Production volume wiring: [Hosting](hosting.md)

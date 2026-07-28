@@ -1,20 +1,26 @@
 # Security & isolation
 
-| Threat | Control |
-| ------ | ------- |
-| Prompt injection / promptware / exfil in memory or skills | Threat scan on write; re-scan into snapshot as `[BLOCKED: …]` |
-| Destructive shell / secret dump / bad egress | [Sandbox](sandbox.md) guardrails + redaction |
-| Silent self-modification | Write approval → `pending/` until human approve |
-| Cross-tenant leak | One AgentFS volume per tenant; host binds auth → volume |
+This guide lists what agent-kit tries to stop, and what your app must still do.
 
-Auth and JWT/cookie checks are **your** job. See [Hosting](hosting.md).
+Login checks (JWT, cookies, sessions) are **your** job. See
+[Hosting](hosting.md).
+
+## Threats and controls
+
+| Risk | What the kit does |
+| ---- | ----------------- |
+| Bad text in memory or skills (prompt injection, promptware, exfil patterns) | Scan on write. Poisoned entries show as `[BLOCKED: …]` in the snapshot |
+| Dangerous shell, secret dump, unexpected network | [Sandbox](sandbox.md) blocks the command before it runs; secrets can be redacted |
+| Agent quietly rewriting itself | Write approval stages changes under `pending/` until a human approves |
+| One customer reading another’s data | One AgentFS volume per tenant; your app binds login → `tenantId` → volume |
 
 ## Write approval
 
-When on (default in `defineAgent`):
+On by default in `defineAgent`.
 
-- Curator and skill writes stage under `pending/{memory,skills}/`
-- Approve replays; reject discards
+- Curator and skill writes go to `pending/memory` and `pending/skills`.
+- Approve replays them onto the live files.
+- Reject discards them.
 
 ```ts
 import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@socialrobot-io/agent-kit-core";
@@ -31,7 +37,7 @@ const runtime = new AgentSessionRuntime({
 });
 await runtime.init();
 
-// After the curator has staged writes into runtime.pending:
+// After the curator has staged files into runtime.pending:
 const applied = await approvePendingWrites(
   {
     memory: runtime.memory,
@@ -43,14 +49,21 @@ const applied = await approvePendingWrites(
 console.log(applied);
 ```
 
-## Isolation (one volume per tenant)
+Full curator + approve flow: [Skills & learning](skills-and-learning.md).
 
-| Isolated | Location |
-| -------- | -------- |
-| Files, pending | AgentFS volume |
-| USER.md / MEMORY.md | `memories/` |
-| Skills | `skills/` |
-| Transcripts / FTS | Tenant-scoped store |
-| Audit / snapshots | Per-volume |
+## What stays isolated per tenant
 
-Bash command examples and audit fields: [Sandbox](sandbox.md).
+| Data | Where |
+| ---- | ----- |
+| Files and pending writes | That tenant’s AgentFS volume |
+| `USER.md` / `MEMORY.md` | `memories/` on that volume |
+| Skills | `skills/` on that volume |
+| Chat transcripts and search | Tenant-scoped transcript store |
+| Audit and snapshots | Per volume |
+
+Shell examples and audit fields: [Sandbox](sandbox.md).
+
+## Next
+
+- Host checklist: [Hosting](hosting.md)
+- Sandbox guardrails: [Sandbox](sandbox.md)

@@ -1,39 +1,50 @@
 # Memory
 
-| Store | Holds | Default budget |
-| ----- | ----- | -------------- |
-| **USER** | Role, preferences, style, expectations | 1,375 characters |
-| **MEMORY** | Environment facts, conventions, tool quirks, lessons | 2,200 characters |
+Memory is short, durable text the agent should remember across chats for one
+tenant. It lives in two files on that tenant’s volume:
 
-Files: `memories/USER.md`, `memories/MEMORY.md` on the tenant volume. Survive
-across sessions. Tenant-scoped.
+| File | Holds | Default size limit |
+| ---- | ----- | ------------------ |
+| `memories/USER.md` | Who the user is: role, preferences, style, expectations | 1,375 characters |
+| `memories/MEMORY.md` | Environment facts, conventions, tool quirks, lessons | 2,200 characters |
 
-## Frozen snapshot
+Limits are character counts, not tokens. If a store is full, the write is
+rejected. Consolidate first, then add in one batch.
 
-Injected into the system prompt **once** at session start. Keeps the
-provider prefix cache hot across turns.
+## Frozen snapshot (why mid-chat writes feel “delayed”)
 
-| When | Effect |
-| ---- | ------ |
-| Mid-session `memory` write | Hits disk now; **does not** change the running prompt |
-| Next session | New snapshot includes approved disk state |
-| Every HTTP turn | **Do not** rebuild the snapshot (kills prefix cache) |
-| `memory` `action=list` | Reads live disk; does not mutate the prompt |
+When a session starts, the kit copies memory into the system prompt **once**.
+That copy is the frozen snapshot for this chat.
 
-| Surface | Session boundary |
-| ------- | ---------------- |
-| CLI / long-lived process | Process / conversation lifetime |
-| Example app | One `useChat` id; **New chat** = new session |
+| Event | What happens |
+| ----- | ------------ |
+| Session starts | Snapshot is built from disk and put in the system prompt |
+| Model calls `memory` and writes | File on disk updates now |
+| Same open session continues | System prompt still uses the old snapshot |
+| New session starts | New snapshot includes what is on disk (after approval rules) |
+| `memory` with `action=list` | Reads live disk. Does not change the prompt |
 
-Budgets are characters, not tokens. Full store → write rejected; consolidate
-then add in one batch.
+Why freeze it: many model providers cache the start of the system prompt.
+If you rebuild the snapshot on every HTTP request, that cache breaks and cost
+goes up.
 
-## Save vs skip
+| Where you run | What counts as one session |
+| ------------- | -------------------------- |
+| Long-lived process or CLI | One process or one conversation |
+| Example chat app | One `useChat` id. “New chat” starts a new session |
+
+## What to save vs skip
 
 | Save | Skip |
 | ---- | ---- |
-| Stable prefs ("terse answers", "TypeScript") | One-off task narratives |
-| Repeated corrections | Transient TODOs |
-| Durable env facts / conventions | Raw dumps; procedures → [skills](skills-and-learning.md) |
+| Stable prefs (“prefer short answers”, “TypeScript”) | One-off task stories |
+| Corrections the user repeats | Temporary TODOs |
+| Durable environment facts | Raw dumps. Step-by-step procedures belong in [skills](skills-and-learning.md) |
 
-Writes are threat-scanned. See [Security](security.md).
+Every write is threat-scanned before it can enter a future prompt. See
+[Security](security.md).
+
+## Next
+
+- Skills and the approve loop: [Skills & learning](skills-and-learning.md)
+- Wire a tenant volume: [Hosting](hosting.md)
