@@ -406,6 +406,26 @@
   opacity: 0.9;
 }
 
+.approvalCard {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 88%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.approvalBadge {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.approvalCopy {
+  margin: 0 0 0.55rem;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .approvalRow {
   display: flex;
   gap: 0.5rem;

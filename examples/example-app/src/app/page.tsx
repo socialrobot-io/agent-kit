@@ -9,6 +9,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { WriteApprovalCard } from "./write-approval-card";
 import styles from "./page.module.css";
 
 type Status = {
@@ -87,21 +88,12 @@ function ToolPart({
 
   if (state === "approval-requested" && approval?.id && !approval.isAutomatic && onApprove) {
     return (
-      <div className={styles.tool}>
-        <div className={styles.toolHead}>
-          <span>{name}</span>
-          <span>needs approval</span>
-        </div>
-        <div className={styles.toolBody}>{JSON.stringify(input ?? {}, null, 2)}</div>
-        <div className={styles.approvalRow}>
-          <button type="button" className={styles.approve} onClick={() => onApprove(approval.id!, true)}>
-            Approve
-          </button>
-          <button type="button" className={styles.deny} onClick={() => onApprove(approval.id!, false)}>
-            Deny
-          </button>
-        </div>
-      </div>
+      <WriteApprovalCard
+        toolName={name}
+        input={input}
+        onApprove={() => onApprove(approval.id!, true)}
+        onDeny={() => onApprove(approval.id!, false)}
+      />
     );
   }
 

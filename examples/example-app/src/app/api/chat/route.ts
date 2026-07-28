@@ -1,9 +1,4 @@
-import {
-  convertToModelMessages,
-  createUIMessageStreamResponse,
-  toUIMessageStream,
-  type UIMessage,
-} from "ai";
+import { convertToModelMessages, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
 import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
@@ -58,6 +53,8 @@ export async function POST(req: Request) {
     const modelMessages = await convertToModelMessages(messages);
     const result = agent.session.stream(modelMessages, {
       maxSteps: 12,
+      // Keep session-level toolApproval (interactiveApproval) unless overridden.
+      toolApproval: agent.session.writeToolApproval,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;
         await agent.transcripts.appendMessage({
@@ -70,15 +67,17 @@ export async function POST(req: Request) {
       },
     });
 
-    return createUIMessageStreamResponse({
+    // Prefer StreamTextResult.toUIMessageStreamResponse so approval-requested
+    // tool parts reach the chat UI (Approve / Deny).
+    return result.toUIMessageStreamResponse({
       headers: {
         "x-agent-kit-model": agent.label,
         "x-agent-kit-provider": agent.provider,
         "x-agent-kit-session": sessionId,
         "x-agent-kit-sandbox": "bash-tool",
         "x-agent-kit-transcripts": "agentfs",
+        "x-agent-kit-interactive-approval": agent.session.writeToolApproval ? "1" : "0",
       },
-      stream: toUIMessageStream({ stream: result.stream }),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -120,6 +119,7 @@ export async function GET(req: Request) {
       model: agent.label,
       provider: agent.provider,
       sandbox: true,
+      interactiveApproval: process.env.ALLOW_UNAPPROVED_WRITES !== "1",
       tools: [
         "memory",
         "skills_list",

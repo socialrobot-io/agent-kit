@@ -123,11 +123,18 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   }
 
   const shared = await getShared();
+  const interactiveApproval = !allowUnapproved;
   let session = shared.sessions.get(sessionId);
+  // Drop stale sessions from before interactiveApproval was wired (Next HMR / hot boot).
+  if (session && interactiveApproval && !session.writeToolApproval) {
+    shared.sessions.delete(sessionId);
+    session = undefined;
+  }
   if (!session) {
     await seedAgentHome(shared.home.volume);
     session = await shared.home.openSession(sessionId, {
       model: shared.live.model,
+      interactiveApproval,
     });
   }
 
