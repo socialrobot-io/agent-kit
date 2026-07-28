@@ -53,21 +53,28 @@ Never invent numbers.
 
 ```ts
 import { AgentSessionRuntime, defineAgent } from "@agent-kit/core";
+import { runAgentTurn } from "@agent-kit/ai";
 
+const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const runtime = new AgentSessionRuntime({
   tenantId: "brand-123",
   fs, // this tenant's AgentFS volume
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
+  definition,
 });
 
 await runtime.init();
 
-const system = runtime.systemPrompt();
-const tools = runtime.tools();
-// hand both to your model loop
+const turn = await runAgentTurn(
+  [{ role: "user", content: "Help me plan a product launch." }],
+  { runtime, definition },
+);
+console.log(turn.text);
 ```
 
-Each `tenantId` gets its own agent home. That is the multi-tenancy wall.
+`runAgentTurn` hands the runtime's frozen system prompt + Hermes tools to a live
+model via the AI SDK. Set `AI_GATEWAY_API_KEY` to reach any provider through the
+AI Gateway, or pass your own `LanguageModel`. Each `tenantId` gets its own agent
+home — that is the multi-tenancy wall. See [Models & the loop](models.md).
 
 ## What happens after the session
 
@@ -78,6 +85,7 @@ Each `tenantId` gets its own agent home. That is the multi-tenancy wall.
 
 ## Next
 
+- [Models & the loop](models.md) — connect a live AI SDK model
 - [Security & isolation](security.md) — why this is safe enough for SaaS
 - [Memory](memory.md) — what the agent remembers
 - [Skills & learning](skills-and-learning.md) — how it gets better

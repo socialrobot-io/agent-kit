@@ -19,6 +19,10 @@
 import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
 import { runBackgroundReview, applySkill, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@agent-kit/curator";
 import { InMemoryTranscriptStore } from "@agent-kit/sessions";
+import { aiCuratorRunner } from "@agent-kit/ai";
+
+/** Set AI_GATEWAY_API_KEY (and optionally DEMO_MODEL) to run the curator live. */
+const LIVE_MODEL = process.env.AI_GATEWAY_API_KEY ? (process.env.DEMO_MODEL ?? "anthropic/claude-haiku-4-5") : null;
 
 interface DemoTenant {
   tenantId: string;
@@ -41,7 +45,13 @@ async function makeTenant(tenantId: string, writeApproval: boolean): Promise<Dem
   return { tenantId, fs, runtime };
 }
 
-/** Scripted curator "model": acts like a real review pass would. */
+/** Pick the curator model: live via the AI Gateway when a key is set, else the offline stub. */
+function curatorModel(): CuratorModelRunner {
+  if (LIVE_MODEL) return aiCuratorRunner(LIVE_MODEL);
+  return scriptedCurator();
+}
+
+/** Scripted curator "model": acts like a real review pass would (offline default). */
 function scriptedCurator(): CuratorModelRunner {
   return async ({ systemPrompt }) => {
     if (!systemPrompt.includes("**Skills**")) throw new Error("expected combined review prompt");
@@ -91,14 +101,14 @@ export async function runDemo(log: (s: string) => void = console.log): Promise<b
   }
   check("session 1 snapshot has no memory yet", !A.runtime.systemPrompt().includes("terse"));
 
-  log("=== Curator review (background) ===");
+  log(`=== Curator review (background${LIVE_MODEL ? `, live: ${LIVE_MODEL}` : ", offline mock"}) ===`);
   const outcome = await runBackgroundReview(convo, {
     memory: A.runtime.memory,
     skills: A.runtime.skills,
     pending: A.runtime.pending,
     writeApprovalEnabled: () => true,
     mode: "combined",
-    model: scriptedCurator(),
+    model: curatorModel(),
   });
   check("curator staged a memory write", outcome.staged.some((s) => s.subsystem === "memory"));
   check("curator staged a skill write", outcome.staged.some((s) => s.subsystem === "skills"));

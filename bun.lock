@@ -21,10 +21,21 @@
         "vitest": "^4.1.10",
       },
     },
+    "packages/ai": {
+      "name": "@agent-kit/ai",
+      "version": "0.0.1",
+      "dependencies": {
+        "@agent-kit/core": "workspace:*",
+        "@ai-sdk/gateway": "^4.0.30",
+        "@swc/helpers": "~0.5.18",
+        "ai": "^7.0.40",
+      },
+    },
     "packages/cli": {
       "name": "@agent-kit/cli",
       "version": "0.0.1",
       "dependencies": {
+        "@agent-kit/ai": "workspace:*",
         "@agent-kit/core": "workspace:*",
         "@agent-kit/curator": "workspace:*",
         "@agent-kit/sandbox": "workspace:*",
@@ -66,6 +77,8 @@
     },
   },
   "packages": {
+    "@agent-kit/ai": ["@agent-kit/ai@workspace:packages/ai"],
+
     "@agent-kit/cli": ["@agent-kit/cli@workspace:packages/cli"],
 
     "@agent-kit/core": ["@agent-kit/core@workspace:packages/core"],
@@ -391,6 +404,8 @@
     "@nx/vitest": ["@nx/vitest@23.1.0", "", { "dependencies": { "@nx/devkit": "23.1.0", "@nx/js": "23.1.0", "@phenomnomnominal/tsquery": "~6.2.0", "semver": "^7.6.3", "tslib": "^2.3.0" }, "peerDependencies": { "@nx/eslint": "23.1.0", "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vitest": "^3.0.0 || ^4.0.0" }, "optionalPeers": ["@nx/eslint", "vite", "vitest"] }, "sha512-uv9lpbpOaEvrDjFToDKxeCsN+0thq4giIHUdOgcH+oHuqfxZ2speYGKCQz+6ICQg0nxcsCyuN34Ww6jJX3EVzQ=="],
 
     "@nx/workspace": ["@nx/workspace@23.1.0", "", { "dependencies": { "@nx/devkit": "23.1.0", "@zkochan/js-yaml": "0.0.7", "chalk": "^4.1.0", "enquirer": "~2.3.6", "nx": "23.1.0", "picomatch": "4.0.4", "semver": "^7.6.3", "tslib": "^2.3.0", "yargs-parser": "21.1.1" } }, "sha512-cobC05wJX7c2bWJ6s3g0IOuu6YLCEPrmpkZdX4xPEtt3GX96BsDnBpqSaqdrKhmhaa16oIERisU3AozmxmV6DA=="],
+
+    "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.139.0", "", {}, "sha512-r9gHphtCs+1M7J0pw6Sn/hh/Wpa/iQrOOkrNAlVLF/gHq+/CJmHIWKKUUhdWjcD6CIa8idarspCsASiXCXvFUw=="],
 

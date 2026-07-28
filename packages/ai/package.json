@@ -1,5 +1,5 @@
 {
-  "name": "@agent-kit/cli",
+  "name": "@agent-kit/ai",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -16,8 +16,8 @@
     }
   },
   "nx": {
-    "name": "cli",
-    "sourceRoot": "packages/cli/src",
+    "name": "ai",
+    "sourceRoot": "packages/ai/src",
     "targets": {
       "build": {
         "executor": "@nx/js:swc",
@@ -25,9 +25,9 @@
           "{options.outputPath}"
         ],
         "options": {
-          "outputPath": "packages/cli/dist",
-          "main": "packages/cli/src/index.ts",
-          "tsConfig": "packages/cli/tsconfig.lib.json",
+          "outputPath": "packages/ai/dist",
+          "main": "packages/ai/src/index.ts",
+          "tsConfig": "packages/ai/tsconfig.lib.json",
           "skipTypeCheck": true,
           "stripLeadingPaths": true
         }
@@ -36,10 +36,8 @@
   },
   "dependencies": {
     "@swc/helpers": "~0.5.18",
+    "ai": "^7.0.40",
     "@agent-kit/core": "workspace:*",
-    "@agent-kit/sandbox": "workspace:*",
-    "@agent-kit/sessions": "workspace:*",
-    "@agent-kit/curator": "workspace:*",
-    "@agent-kit/ai": "workspace:*"
+    "@ai-sdk/gateway": "^4.0.30"
   }
 }

@@ -54,31 +54,46 @@ bun packages/cli/src/lib/demo.ts
 ```
 
 ```text
-=== Session 1 (tenant A) ===         memory empty
-=== Curator review (background) ===  stages memory + skill (nothing applied)
-=== Approve staged writes ===        human reviews, then applies
-=== Session 2 (tenant A) ===         recalls memory + new skill
-=== Tenant B ===                     sees nothing of A
+=== Session 1 (tenant A) ===        ✓ snapshot has no memory yet
+=== Curator review (background) ===  ✓ staged memory + skill, nothing applied
+=== Approve staged writes ===        ✓ human reviews, then applies
+=== Session 2 (tenant A) — recall ===✓ snapshot recalls memory, sees new skill
+=== Cross-session FTS recall ===     ✓ session_search finds session 1
+=== Tenant B — isolation ===         ✓ own empty memory / skills / FTS
 
 DEMO PASSED
 ```
 
-Wire it into your own loop:
+### Run it against a real model
+
+`@agent-kit/ai` resolves `defineAgent({ model })` into a live model and runs the
+loop for you, via the [Vercel AI SDK](https://sdk.vercel.ai). One API key
+(`AI_GATEWAY_API_KEY`) reaches every provider through the AI Gateway.
 
 ```ts
 import { AgentSessionRuntime, defineAgent } from "@agent-kit/core";
+import { runAgentTurn } from "@agent-kit/ai";
 
+const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 const runtime = new AgentSessionRuntime({
-  tenantId: "brand-123",   // one isolated agent home per tenant
-  fs,                      // that tenant's AgentFS volume
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
+  tenantId: "brand-123",            // one isolated agent home per tenant
+  fs,                               // that tenant's AgentFS volume
+  definition,
 });
-
 await runtime.init();
-const system = runtime.systemPrompt(); // SOUL + AGENTS.md + frozen memory
-const tools = runtime.tools();         // memory, skills, approval-gated writes
-// hand system + tools to your model loop (Vercel AI SDK, etc.)
+
+const turn = await runAgentTurn(
+  [{ role: "user", content: "Stop being so verbose." }],
+  { runtime, definition },
+);
+// turn.text — the model's reply; it called `memory` to save the preference.
 ```
+
+**Models:** any AI SDK provider — OpenAI, Anthropic, Google, Mistral, Groq,
+OpenRouter, Azure, Bedrock, or your own gateway. Pass a `"provider/model"`
+string (resolved through the AI Gateway) or a ready `LanguageModel` instance.
+The demo runs on an offline mock so it works with zero keys; `runAgentTurn` is
+the same code path pointed at a live model.
 
 ---
 
@@ -140,6 +155,7 @@ paying customer.
 | **Per-tenant sandbox** | AgentFS volumes + bash-tool backend + command guardrails + audit |
 | **Cross-session recall** | Full-text `session_search` scoped per tenant |
 | **Eve-like authoring** | `defineAgent` + an `agent/` directory — SOUL, AGENTS, skills, memories |
+| **Live model loop** | `@agent-kit/ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
 
 Primitives are ported from [Nous Research Hermes](https://github.com/NousResearch/hermes-agent)
 (MIT) and composed for multi-tenant production use. See [`NOTICE`](NOTICE).
@@ -151,6 +167,7 @@ Primitives are ported from [Nous Research Hermes](https://github.com/NousResearc
 | Guide | For |
 | ----- | --- |
 | [Getting started](docs/guides/getting-started.md) | Install, first agent, first session |
+| [Models & the loop](docs/guides/models.md) | `defineAgent({ model })` → a live AI SDK model |
 | [Security & isolation](docs/guides/security.md) | Threat scan, approval, sandbox, tenants |
 | [Memory](docs/guides/memory.md) | What the agent remembers, and why it's cheap |
 | [Skills & learning](docs/guides/skills-and-learning.md) | How skills work and how the curator teaches |
@@ -163,9 +180,25 @@ Primitives are ported from [Nous Research Hermes](https://github.com/NousResearc
 ```bash
 bun install
 bun packages/cli/src/lib/demo.ts     # production-loop demo
-npx nx run-many -t test --all        # 73 tests
+npx nx run-many -t test --all        # 80 tests
 npx nx run-many -t build --all
 ```
+
+## Models
+
+`@agent-kit/ai` is the bridge to a live model. It exports:
+
+- `resolveModel(model)` — a `"provider/model"` string → AI Gateway
+  `LanguageModel`, or pass a ready `LanguageModel` straight through.
+- `toAiTools(tools)` — adapt the runtime's Hermes tools into an AI SDK `ToolSet`.
+- `runAgentTurn(messages, { runtime, model | definition })` — run one turn to
+  completion (`generateText` + `stopWhen`), collecting tool calls.
+- `aiCuratorRunner(model)` — a `CuratorModelRunner` on a live model, so the
+  background curator reviews real transcripts with a real model.
+
+Works with AI SDK **v7** (`ai` + `@ai-sdk/gateway`). The offline mock in the
+demo and tests uses the same `LanguageModel` interface, so the live path is
+identical.
 
 ## License
 
