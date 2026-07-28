@@ -82,7 +82,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FLAGS=(--yes --skip-publish)
+          # --yes and --skip-publish are mutually exclusive in Nx.
+          FLAGS=(--skip-publish)
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             FLAGS+=(--dry-run)
           fi
