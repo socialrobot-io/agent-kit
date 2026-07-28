@@ -1,3 +1,9 @@
+## 0.2.1 (2026-07-29)
+
+### 🩹 Fixes
+
+- **node:** publish `@socialrobot-io/agent-kit-node@0.2.1` (0.2.0 was unpublished after a bad tarball with `workspace:*` deps; that version cannot be reused on npm)
+
 ## 0.2.0 (2026-07-29)
 
 ### 🚀 Features
