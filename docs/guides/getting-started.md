@@ -38,8 +38,8 @@ Needs `AI_GATEWAY_API_KEY` (or your own `LanguageModel`). Uses `InMemoryFs` so
 you can try without opening a SQLite volume. Production: [Hosting](hosting.md).
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
-import { runAgentTurn } from "@agent-kit/ai";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import { runAgentTurn } from "@socialrobot-io/agent-kit-ai";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are a concise research assistant.");

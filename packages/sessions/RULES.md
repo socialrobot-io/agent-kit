@@ -1,4 +1,4 @@
-# RULES.md (@agent-kit/sessions)
+# RULES.md (@socialrobot-io/agent-kit-sessions)
 
 Session transcripts and search: the `TranscriptStore` interface, file +
 in-memory implementations, `sessionSearch`, and `createSessionSearchTool`.
@@ -12,7 +12,7 @@ in-memory implementations, `sessionSearch`, and `createSessionSearchTool`.
 2. **The interface is the product.** `TranscriptStore` exists so hosts can plug
    in Postgres later. Keep it minimal and storage-agnostic.
 3. **Prefer one store per tenant volume** (`FileTranscriptStore` on that FS).
-4. **Leaf package.** No `@agent-kit/*` dependencies.
+4. **Leaf package.** No `@socialrobot-io/agent-kit-*` dependencies.
 
 ## When you change X, also update Y
 
@@ -23,5 +23,5 @@ in-memory implementations, `sessionSearch`, and `createSessionSearchTool`.
 
 ## Gotchas
 
-- Timestamps are epoch seconds (Hermes convention), not milliseconds.
+- Timestamps are epoch seconds (not milliseconds).
 - Built-in search is substring scan (fine for short-lived sessions).

@@ -11,7 +11,7 @@ describe("evaluateGate", () => {
     expect(d.kind).toBe("allow");
   });
 
-  it("stages skills always when gate is on", () => {
+  it("stages skills when gate is on and there is no inline channel", () => {
     const d = evaluateGate("skills", { writeApprovalEnabled: on, origin: "foreground" });
     expect(d.kind).toBe("stage");
   });

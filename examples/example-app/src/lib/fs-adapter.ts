@@ -1,10 +1,10 @@
 /**
- * Adapts agentfs-sdk's FileSystem to @agent-kit/core's AgentFsLike.
- * Call serializeAgentFs(afs.fs) from @agent-kit/sandbox before adapting.
+ * Adapts agentfs-sdk's FileSystem to @socialrobot-io/agent-kit-core's AgentFsLike.
+ * Call serializeAgentFs(afs.fs) from @socialrobot-io/agent-kit-sandbox before adapting.
  */
 
 import type { FileSystem } from "agentfs-sdk";
-import type { AgentFsLike } from "@agent-kit/core";
+import type { AgentFsLike } from "@socialrobot-io/agent-kit-core";
 
 export type AgentFsAdapter = AgentFsLike & {
   deleteFile(path: string): Promise<void>;

@@ -92,7 +92,7 @@ function MessageBubble({
 export default function Index() {
   const [input, setInput] = useState("");
   const [modelStatus, setModelStatus] = useState<Status | null>(null);
-  // Hermes: one frozen memory snapshot per chat session. "New chat" mints a
+  // One frozen memory snapshot per chat session. "New chat" mints a
   // new id so the next turn reloads MEMORY/USER from disk into the prompt.
   // Empty until mount so we restore localStorage before any history fetch.
   const [sessionId, setSessionId] = useState("");
@@ -103,7 +103,7 @@ export default function Index() {
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        // useChat's `id` is the Hermes session boundary — freeze memory once per id.
+        // useChat's `id` is the session boundary — freeze memory once per id.
         prepareSendMessagesRequest: ({ id, messages }) => ({
           body: { id, messages },
         }),

@@ -1,5 +1,5 @@
 {
-  "name": "@agent-kit/example",
+  "name": "@socialrobot-io/agent-kit-example",
   "version": "0.1.0",
   "private": true,
   "nx": {
@@ -16,10 +16,10 @@
     }
   },
   "dependencies": {
-    "@agent-kit/ai": "workspace:*",
-    "@agent-kit/core": "workspace:*",
-    "@agent-kit/curator": "workspace:*",
-    "@agent-kit/sessions": "workspace:*",
+    "@socialrobot-io/agent-kit-ai": "workspace:*",
+    "@socialrobot-io/agent-kit-core": "workspace:*",
+    "@socialrobot-io/agent-kit-curator": "workspace:*",
+    "@socialrobot-io/agent-kit-sessions": "workspace:*",
     "@ai-sdk/deepseek": "^3.0.15",
     "@ai-sdk/react": "^4.0.43",
     "agentfs-sdk": "^0.6.4",
@@ -27,7 +27,7 @@
     "next": "16.2.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@agent-kit/sandbox": "workspace:*",
+    "@socialrobot-io/agent-kit-sandbox": "workspace:*",
     "bash-tool": "^1.3.18",
     "just-bash": "^3.2.0"
   }

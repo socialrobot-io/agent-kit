@@ -1,4 +1,4 @@
-# RULES.md (@agent-kit/sandbox)
+# RULES.md (@socialrobot-io/agent-kit-sandbox)
 
 The safe execution layer: a bash-tool `Sandbox` backed by a per-tenant AgentFS
 volume, command guardrails, and an append-only audit store.
@@ -20,7 +20,7 @@ volume, command guardrails, and an append-only audit store.
    (cwd handling, env, output capture) follows `bash-tool`'s expectations so
    the AI SDK bash tool works unmodified. Verify against the `bash-tool`
    type defs before changing signatures.
-5. **Leaf package.** No `@agent-kit/*` dependencies. Guardrails and audit are
+5. **Leaf package.** No `@socialrobot-io/agent-kit-*` dependencies. Guardrails and audit are
    standalone so any host (with or without core) can adopt them.
 
 ## When you change X, also update Y

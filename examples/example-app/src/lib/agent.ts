@@ -10,19 +10,19 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ToolSet } from "ai";
 import type { AgentFS } from "agentfs-sdk";
-import { defineAgent, MemoryStore, type SessionTool } from "@agent-kit/core";
-import { openAgentSession, type AgentSessionHandle } from "@agent-kit/ai";
+import { defineAgent, MemoryStore, type SessionTool } from "@socialrobot-io/agent-kit-core";
+import { openAgentSession, type AgentSessionHandle } from "@socialrobot-io/agent-kit-ai";
 import {
   createTenantBashToolkit,
   openAgentFs,
   serializeAgentFs,
   type TenantBashToolkit,
-} from "@agent-kit/sandbox";
+} from "@socialrobot-io/agent-kit-sandbox";
 import {
   FileTranscriptStore,
   createSessionSearchTool,
   type TranscriptStore,
-} from "@agent-kit/sessions";
+} from "@socialrobot-io/agent-kit-sessions";
 import type { LanguageModel } from "ai";
 import { adaptAgentFs, type AgentFsAdapter } from "./fs-adapter";
 import { examplePackageRoot, seedAgentHome } from "./seed";
@@ -136,11 +136,11 @@ function touchSession(sessions: Map<string, AgentSessionHandle>, sessionId: stri
 }
 
 /**
- * Return the agent bound to this chat session (Hermes freeze via openAgentSession).
+ * Return the agent bound to this chat session (frozen memory via openAgentSession).
  */
 export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   if (!sessionId.trim()) {
-    throw new Error("sessionId is required (Hermes freezes memory per chat session).");
+    throw new Error("sessionId is required (memory freezes once per chat session).");
   }
 
   const shared = await getShared();

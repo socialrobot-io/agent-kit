@@ -53,7 +53,7 @@ export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   executionLimitProfile?: BashOptions["executionLimitProfile"];
 }
 
-export interface TenantBashToolkit extends BashToolkit {
+export interface TenantBashToolkit extends Omit<BashToolkit, "bash"> {
   audit: SandboxAuditStore;
   tenantSandbox: TenantAgentFSSandbox;
   /** The underlying just-bash `Bash` instance. */
@@ -113,6 +113,38 @@ export function resolveDefenseInDepth(
 }
 
 /**
+ * agentfs-sdk's AgentFsWrapper lags just-bash's IFileSystem (missing
+ * `realpath` / `utimes`). Patch those methods until the SDK catches up.
+ */
+function toIFileSystem(inner: AgentFsWrapper): IFileSystem {
+  const fs = inner as unknown as IFileSystem;
+  return {
+    getAllPaths: () => fs.getAllPaths(),
+    resolvePath: (base, path) => fs.resolvePath(base, path),
+    readFile: (path, opts) => fs.readFile(path, opts),
+    readFileBuffer: (path) => fs.readFileBuffer(path),
+    writeFile: (path, content, opts) => fs.writeFile(path, content, opts),
+    appendFile: (path, content, opts) => fs.appendFile(path, content, opts),
+    exists: (path) => fs.exists(path),
+    stat: (path) => fs.stat(path),
+    lstat: (path) => fs.lstat(path),
+    mkdir: (path, opts) => fs.mkdir(path, opts),
+    readdir: (path) => fs.readdir(path),
+    rm: (path, opts) => fs.rm(path, opts),
+    cp: (src, dest, opts) => fs.cp(src, dest, opts),
+    mv: (src, dest) => fs.mv(src, dest),
+    chmod: (path, mode) => fs.chmod(path, mode),
+    symlink: (target, linkPath) => fs.symlink(target, linkPath),
+    link: (existing, neu) => fs.link(existing, neu),
+    readlink: (path) => fs.readlink(path),
+    realpath: async (path) => (typeof fs.realpath === "function" ? fs.realpath(path) : path),
+    utimes: async (path, atime, mtime) => {
+      if (typeof fs.utimes === "function") await fs.utimes(path, atime, mtime);
+    },
+  };
+}
+
+/**
  * MountableFs strips the mount prefix before calling the child FS. Re-prefix
  * so AgentFS stores `/workspace/...` (visible next to memories/agent/skills).
  */
@@ -122,14 +154,19 @@ export function prefixFileSystem(inner: IFileSystem, prefix: string): IFileSyste
     if (!path || path === "/") return root || "/";
     return `${root}${path.startsWith("/") ? path : `/${path}`}`;
   };
+  const unmap = (path: string): string => {
+    if (!root) return path;
+    if (path === root || path === `${root}/`) return "/";
+    if (path.startsWith(`${root}/`)) return path.slice(root.length);
+    return path;
+  };
   return {
-    getMountPoint: () => inner.getMountPoint?.() ?? "/",
-    getAllPaths: () => inner.getAllPaths?.() ?? [],
+    getAllPaths: () => (inner.getAllPaths?.() ?? []).map(unmap),
     resolvePath: (base, path) => inner.resolvePath(base, path),
-    readFile: (path, opts) => inner.readFile(map(path), opts as never),
+    readFile: (path, opts) => inner.readFile(map(path), opts),
     readFileBuffer: (path) => inner.readFileBuffer(map(path)),
-    writeFile: (path, content, opts) => inner.writeFile(map(path), content, opts as never),
-    appendFile: (path, content, opts) => inner.appendFile(map(path), content, opts as never),
+    writeFile: (path, content, opts) => inner.writeFile(map(path), content, opts),
+    appendFile: (path, content, opts) => inner.appendFile(map(path), content, opts),
     exists: (path) => inner.exists(map(path)),
     stat: (path) => inner.stat(map(path)),
     lstat: (path) => inner.lstat(map(path)),
@@ -142,6 +179,8 @@ export function prefixFileSystem(inner: IFileSystem, prefix: string): IFileSyste
     symlink: (target, linkPath) => inner.symlink(target, map(linkPath)),
     link: (existing, neu) => inner.link(map(existing), map(neu)),
     readlink: (path) => inner.readlink(map(path)),
+    realpath: async (path) => unmap(await inner.realpath(map(path))),
+    utimes: (path, atime, mtime) => inner.utimes(map(path), atime, mtime),
   };
 }
 
@@ -201,7 +240,7 @@ function defaultLayoutFs(): IFileSystem {
 }
 
 function buildPersistedWorkspaceFs(agentFs: AgentFsHandle, destination: string): IFileSystem {
-  const agentRoot = new AgentFsWrapper({ fs: agentFs, mountPoint: "/" });
+  const agentRoot = toIFileSystem(new AgentFsWrapper({ fs: agentFs, mountPoint: "/" }));
   const workspaceStore = prefixFileSystem(agentRoot, destination);
   return new MountableFs({
     base: defaultLayoutFs(),

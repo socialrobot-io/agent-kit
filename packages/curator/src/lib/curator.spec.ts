@@ -6,7 +6,7 @@ import {
   COMBINED_REVIEW_PROMPT,
   type CuratorModelRunner,
 } from "./curator.js";
-import { MemoryStore, SkillLibrary, PendingWriteStore, InMemoryFs } from "@agent-kit/core";
+import { MemoryStore, SkillLibrary, PendingWriteStore, InMemoryFs } from "@socialrobot-io/agent-kit-core";
 
 const conversation = [
   { role: "user" as const, content: "Stop being so verbose. Just give me the answer." },
@@ -18,7 +18,7 @@ function makeModel(calls: { name: string; args: Record<string, unknown> }[]): Cu
 }
 
 describe("curator prompts", () => {
-  it("exposes Hermes-compatible review prompts", () => {
+  it("exposes review prompts", () => {
     expect(MEMORY_REVIEW_PROMPT).toContain("saving to memory");
     expect(SKILL_REVIEW_PROMPT).toContain("skill library");
     expect(COMBINED_REVIEW_PROMPT).toContain("**Memory**");

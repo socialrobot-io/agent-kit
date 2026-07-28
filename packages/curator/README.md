@@ -1,4 +1,4 @@
-# @agent-kit/curator
+# @socialrobot-io/agent-kit-curator
 
 Background review of session transcripts. Proposes memory and skill writes for
 human approval.

@@ -1,7 +1,6 @@
 {
-  "name": "@agent-kit/cli",
+  "name": "@socialrobot-io/agent-kit-cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -9,7 +8,7 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "@agent-kit/source": "./src/index.ts",
+      "@socialrobot-io/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -36,10 +35,28 @@
   },
   "dependencies": {
     "@swc/helpers": "~0.5.18",
-    "@agent-kit/core": "workspace:*",
-    "@agent-kit/sandbox": "workspace:*",
-    "@agent-kit/sessions": "workspace:*",
-    "@agent-kit/curator": "workspace:*",
-    "@agent-kit/ai": "workspace:*"
-  }
+    "@socialrobot-io/agent-kit-core": "workspace:*",
+    "@socialrobot-io/agent-kit-sandbox": "workspace:*",
+    "@socialrobot-io/agent-kit-sessions": "workspace:*",
+    "@socialrobot-io/agent-kit-curator": "workspace:*",
+    "@socialrobot-io/agent-kit-ai": "workspace:*"
+  },
+  "description": "Offline demo and CLI helpers for agent-kit",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socialrobot-io/agent-kit.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/socialrobot-io/agent-kit/issues"
+  },
+  "homepage": "https://github.com/socialrobot-io/agent-kit/tree/main/packages/cli#readme"
 }

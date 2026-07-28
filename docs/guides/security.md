@@ -17,8 +17,8 @@ When on (default in `defineAgent`):
 - Approve replays; reject discards
 
 ```ts
-import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@agent-kit/core";
-import { applySkill } from "@agent-kit/curator";
+import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@socialrobot-io/agent-kit-core";
+import { applySkill } from "@socialrobot-io/agent-kit-curator";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are helpful.");

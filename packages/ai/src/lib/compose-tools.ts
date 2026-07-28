@@ -5,11 +5,11 @@
  */
 
 import type { ToolSet } from "ai";
-import type { SessionTool } from "@agent-kit/core";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 import { toAiTools } from "./tools.js";
 
 export interface ComposeAgentToolsOptions {
-  /** Built-in SessionTools (runtime Hermes tools + optional session_search). */
+  /** Built-in SessionTools (runtime tools + optional session_search). */
   builtins: SessionTool[];
   /** Append or replace by name. */
   addTools?: SessionTool[];

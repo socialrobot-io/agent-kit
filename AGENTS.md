@@ -1,9 +1,9 @@
 # AGENTS.md
 
 agent-kit is a generic, reusable toolkit for building self-improving agents:
-Hermes-derived memory/skills/curator primitives, an Eve-like `agent/` authoring
-surface, per-tenant AgentFS homes, and a guarded bash layer. It is a library,
-not a hosted service. Product-specific logic never lands here.
+memory, skills, and curator primitives; an `agent/` authoring surface;
+per-tenant AgentFS homes; and a guarded bash layer. It is a library, not a
+hosted service. Product-specific logic never lands here.
 
 ## Read first
 
@@ -13,7 +13,7 @@ not a hosted service. Product-specific logic never lands here.
 
 ## Non-negotiables (summary)
 
-- `@agent-kit/core`, `@agent-kit/sessions`, `@agent-kit/sandbox` are leaf
+- `@socialrobot-io/agent-kit-core`, `@socialrobot-io/agent-kit-sessions`, `@socialrobot-io/agent-kit-sandbox` are leaf
   packages. Dependencies only point inward; never add a sibling dep to a leaf.
 - Agent state (memory, skills, pending writes) lives in AgentFS volumes, never
   in Postgres or any external store. One volume per tenant, always.
@@ -33,6 +33,8 @@ not a hosted service. Product-specific logic never lands here.
 | Sync project references | `npx nx sync`                                   |
 | Scaffold a package      | `npx nx g @nx/js:library` (always use the CLI)  |
 | Run the offline demo    | `bun packages/cli/src/lib/demo.ts`              |
+| Preview a release       | `bunx nx release patch --dry-run`               |
+| Publish to npm          | Actions → Release (`docs/guides/publishing.md`) |
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->

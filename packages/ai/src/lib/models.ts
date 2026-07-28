@@ -12,7 +12,7 @@
 
 import type { LanguageModel } from "ai";
 import { createGateway, type GatewayProvider } from "@ai-sdk/gateway";
-import type { AgentDefinition } from "@agent-kit/core";
+import type { AgentDefinition } from "@socialrobot-io/agent-kit-core";
 
 export type ModelInput = string | LanguageModel;
 

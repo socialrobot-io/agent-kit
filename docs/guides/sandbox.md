@@ -7,7 +7,7 @@ Per-tenant [AgentFS](https://www.agentfs.ai/) volume +
 ## Create the toolkit
 
 ```ts
-import { openAgentFs, createTenantBashToolkit } from "@agent-kit/sandbox";
+import { openAgentFs, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 
 const tenantId = "brand-123";
 const afs = await openAgentFs(`/data/tenants/${tenantId}.db`);

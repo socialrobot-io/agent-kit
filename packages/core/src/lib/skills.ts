@@ -1,8 +1,8 @@
 /**
  * Skills: on-demand procedural knowledge documents (agentskills.io standard).
  *
- * TypeScript port of Nous Research Hermes Agent `tools/skills_tool.py` and
- * `tools/skill_manager_tool.py` (MIT).
+ * Port of `vendor/hermes/tools/skills_tool.py` and
+ * `vendor/hermes/tools/skill_manager_tool.py` (MIT).
  *
  * Skills live under `<home>/skills/` as directories, each with a SKILL.md
  * (YAML frontmatter + body) and optional supporting files under references/,

@@ -5,8 +5,8 @@ import {
   type UIMessage,
 } from "ai";
 import { NextResponse } from "next/server";
-import { streamAgentTurn } from "@agent-kit/ai";
-import { assertTenantSession } from "@agent-kit/sessions";
+import { streamAgentTurn } from "@socialrobot-io/agent-kit-ai";
+import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
 import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
 import { persistUiMessages, transcriptToUiMessages } from "@/lib/transcripts";
 import { hasApiKey } from "@/lib/env";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 type ChatBody = {
   messages?: UIMessage[];
-  /** Hermes chat session id — memory snapshot freezes once per id. */
+  /** Chat session id — memory snapshot freezes once per id. */
   id?: string;
   sessionId?: string;
 };

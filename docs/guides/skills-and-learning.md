@@ -51,9 +51,9 @@ import {
   defineAgent,
   InMemoryFs,
   approvePendingWrites,
-} from "@agent-kit/core";
-import { applySkill, runBackgroundReview } from "@agent-kit/curator";
-import { aiCuratorRunner } from "@agent-kit/ai";
+} from "@socialrobot-io/agent-kit-core";
+import { applySkill, runBackgroundReview } from "@socialrobot-io/agent-kit-curator";
+import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
 
 const fs = new InMemoryFs();
 await fs.writeFile("agent/SOUL.md", "You are helpful.");

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { LanguageModel } from "ai";
-import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@agent-kit/core";
+import { AgentSessionRuntime, defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
 import { resolveModel } from "./models.js";
 import { toAiTools } from "./tools.js";
 import { runAgentTurn, aiCuratorRunner } from "./agent-loop.js";
@@ -77,7 +77,7 @@ describe("toAiTools", () => {
 });
 
 describe("runAgentTurn", () => {
-  it("runs a live model through the Hermes tools to a final answer", async () => {
+  it("runs a live model through the tools to a final answer", async () => {
     const { runtime } = await makeRuntime();
     const model = mockModel([
       toolCallStep("memory", { action: "add", target: "user", content: "User wants terse answers" }),

@@ -1,7 +1,7 @@
-# @agent-kit/sessions
+# @socialrobot-io/agent-kit-sessions
 
 Tenant-scoped transcript stores and full-text `session_search`.
-Leaf package. No `@agent-kit/*` dependencies.
+Leaf package. No `@socialrobot-io/agent-kit-*` dependencies.
 
 ## Build
 

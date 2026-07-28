@@ -1,10 +1,9 @@
 /**
  * Shared threat-pattern library for context-window security scanning.
  *
- * TypeScript port of Nous Research Hermes Agent `tools/threat_patterns.py`
- * (MIT). Single source of truth for prompt-injection / promptware /
- * exfiltration patterns used by the memory writer, the context assembler,
- * and the tool-result delimiter system.
+ * Port of `vendor/hermes/tools/threat_patterns.py` (MIT). Single source of
+ * truth for prompt-injection / promptware / exfiltration patterns used by the
+ * memory writer, the context assembler, and the tool-result delimiter system.
  *
  * Patterns are organized by ATTACK CLASS. Each is a `[regex, patternId, scope]`
  * tuple where scope controls which scanners use it:

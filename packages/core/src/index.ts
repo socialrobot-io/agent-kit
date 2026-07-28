@@ -8,3 +8,4 @@ export * from "./lib/in-memory-fs.js";
 export * from "./lib/agent.js";
 export * from "./lib/session-runtime.js";
 export * from "./lib/events.js";
+export * from "./lib/tool-guidance.js";

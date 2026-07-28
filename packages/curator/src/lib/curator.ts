@@ -1,8 +1,8 @@
 /**
  * Background self-improvement review (the "curator").
  *
- * TypeScript port of Nous Research Hermes Agent `agent/background_review.py`
- * prompts and runner contract (MIT).
+ * TypeScript port of upstream `agent/background_review.py` prompts and runner
+ * contract (see `vendor/hermes`, MIT).
  *
  * After a turn, a forked review agent inspects the conversation and decides
  * what to persist: durable user facts go to memory, reusable procedures go to
@@ -20,7 +20,7 @@ import {
   applyMemoryArgs,
   type GateContext,
   type ApprovalSubsystem,
-} from "@agent-kit/core";
+} from "@socialrobot-io/agent-kit-core";
 
 export const MEMORY_REVIEW_PROMPT =
   "Review the conversation above and consider saving to memory if appropriate.\n\n" +
@@ -75,8 +75,7 @@ export interface ReviewMessage {
  * Minimal LLM runner the curator needs: given a system prompt, the
  * conversation, and a restricted tool surface, return the assistant's final
  * text plus any tool calls it wants to make. The host wires this to a cheap
- * auxiliary model (Hermes runs the review on the main model's warm cache or a
- * cheaper model).
+ * auxiliary model (or reuses the main model's warm cache).
  */
 export type CuratorModelRunner = (input: {
   systemPrompt: string;

@@ -4,7 +4,7 @@
  * Intercepts every `bash` command before execution (wired to bash-tool's
  * `onBeforeBashCall`). Blocks destructive patterns, credential exfiltration,
  * and non-allowlisted network egress; redacts secrets from the command line.
- * Complements @agent-kit/core threat scanning, which guards content that
+ * Complements @socialrobot-io/agent-kit-core threat scanning, which guards content that
  * enters the system prompt — this guards actions inside the sandbox.
  */
 

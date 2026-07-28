@@ -4,7 +4,7 @@
  */
 
 import { jsonSchema, type ToolSet, type JSONSchema7 } from "ai";
-import type { SessionTool } from "@agent-kit/core";
+import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 
 /** A JSON Schema object for a tool with untyped (passthrough) args. */
 const ANY_OBJECT: JSONSchema7 = { type: "object", additionalProperties: true };

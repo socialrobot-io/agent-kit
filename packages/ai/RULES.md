@@ -1,7 +1,7 @@
-# RULES.md (@agent-kit/ai)
+# RULES.md (@socialrobot-io/agent-kit-ai)
 
 The model layer: resolves `defineAgent({ model })` to a live Vercel AI SDK
-`LanguageModel`, adapts Hermes tools to the SDK, and runs the agent loop.
+`LanguageModel`, adapts session tools to the SDK, and runs the agent loop.
 
 ## Non-negotiables
 
@@ -39,4 +39,4 @@ The model layer: resolves `defineAgent({ model })` to a live Vercel AI SDK
 - `resolveModel` with a string requires `AI_GATEWAY_API_KEY` at call time;
   offline tests must inject mock `LanguageModel` instances instead.
 - Keep this package free of core re-exports; consumers import types from
-  `@agent-kit/core` directly.
+  `@socialrobot-io/agent-kit-core` directly.
