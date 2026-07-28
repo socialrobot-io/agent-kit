@@ -7,11 +7,19 @@
   "dependencies": {},
   "devDependencies": {
     "@nx/js": "23.1.0",
+    "@nx/vite": "^23.1.0",
+    "@nx/vitest": "23.1.0",
+    "@swc/cli": "~0.8.1",
+    "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "~4.1.0",
     "nx": "23.1.0",
     "prettier": "~3.6.2",
     "tslib": "^2.3.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.10"
   },
   "workspaces": [
     "packages/*"

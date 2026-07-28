@@ -2,5 +2,21 @@
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
   "files": [],
-  "references": []
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/sandbox"
+    },
+    {
+      "path": "./packages/sessions"
+    },
+    {
+      "path": "./packages/curator"
+    },
+    {
+      "path": "./packages/cli"
+    }
+  ]
 }

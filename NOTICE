@@ -1,0 +1,24 @@
+# NOTICE
+
+`agent-kit` ports selected primitives from
+[Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent),
+which is MIT licensed (Copyright (c) 2025 Nous Research).
+
+The TypeScript implementations in the following packages are derived from the
+Hermes Python sources vendored under `vendor/hermes/` (pinned to the commit in
+`vendor/hermes/UPSTREAM_COMMIT`):
+
+- `packages/core/src/memory`        <- `vendor/hermes/tools/memory_tool.py`
+- `packages/core/src/threats`       <- `vendor/hermes/tools/threat_patterns.py`
+- `packages/core/src/skills`        <- `vendor/hermes/tools/skills_tool.py`, `skill_manager_tool.py`
+- `packages/core/src/approval`      <- `vendor/hermes/tools/write_approval.py`
+- `packages/curator/src`            <- `vendor/hermes/agent/background_review.py`, `curator.py`
+- `packages/sessions/src`           <- `vendor/hermes/tools/session_search_tool.py`, `hermes_state.py`
+
+The original Python sources, the upstream MIT `LICENSE`, and the pinned commit
+hash are retained under `vendor/hermes/` for attribution and future re-sync.
+Tool names and JSON schemas (`memory`, `skills_list`, `skill_view`,
+`skill_manage`, `session_search`) are kept identical to upstream so prompts and
+docs stay compatible.
+
+The full Hermes MIT license text is at `vendor/hermes/LICENSE`.

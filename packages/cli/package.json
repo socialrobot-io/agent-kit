@@ -1,0 +1,44 @@
+{
+  "name": "@agent-kit/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@agent-kit/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "name": "cli",
+    "sourceRoot": "packages/cli/src",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:swc",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "packages/cli/dist",
+          "main": "packages/cli/src/index.ts",
+          "tsConfig": "packages/cli/tsconfig.lib.json",
+          "skipTypeCheck": true,
+          "stripLeadingPaths": true
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@swc/helpers": "~0.5.18",
+    "@agent-kit/core": "workspace:*",
+    "@agent-kit/sandbox": "workspace:*",
+    "@agent-kit/sessions": "workspace:*",
+    "@agent-kit/curator": "workspace:*"
+  }
+}
