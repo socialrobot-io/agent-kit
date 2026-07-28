@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="620" viewBox="0 0 1040 620" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#7C5CFF"/>
+    </marker>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1040" height="620" rx="18" fill="#0A0A0F"/>
+
+  <!-- Title -->
+  <text x="40" y="42" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Production agent stack</text>
+  <text x="40" y="64" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">Secure by default. Isolated per tenant. Self-improving under human approval.</text>
+
+  <!-- TENANT BOUNDARY -->
+  <rect x="28" y="90" width="984" height="500" rx="16" fill="#101018" stroke="#2A2A38" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="48" y="118" fill="#22D3EE" font-family="ui-monospace, Menlo, monospace" font-size="11" font-weight="700" letter-spacing="1">TENANT BOUNDARY  -  one AgentFS volume, one memory, one skill library, one audit trail</text>
+
+  <!-- LAYER 1: Authoring -->
+  <rect x="56" y="140" width="220" height="110" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="166" y="170" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Author</text>
+  <text x="166" y="194" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">SOUL.md + AGENTS.md</text>
+  <text x="166" y="214" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">skills / memories / tools</text>
+  <text x="166" y="234" text-anchor="middle" fill="#7C5CFF" font-family="ui-monospace, Menlo, monospace" font-size="11">defineAgent()</text>
+
+  <!-- LAYER 2: Runtime -->
+  <rect x="320" y="140" width="260" height="110" rx="12" fill="#12121A" stroke="url(#g)" stroke-width="1.6" filter="url(#glow)"/>
+  <text x="450" y="170" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Session runtime</text>
+  <text x="450" y="194" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">frozen memory snapshot</text>
+  <text x="450" y="214" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">Hermes tool surface</text>
+  <text x="450" y="234" text-anchor="middle" fill="#7C5CFF" font-family="ui-monospace, Menlo, monospace" font-size="11">model-agnostic loop</text>
+
+  <!-- LAYER 3: Learning -->
+  <rect x="624" y="140" width="220" height="110" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="734" y="170" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Curator</text>
+  <text x="734" y="194" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">background review</text>
+  <text x="734" y="214" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">distills memory + skills</text>
+  <text x="734" y="234" text-anchor="middle" fill="#7C5CFF" font-family="ui-monospace, Menlo, monospace" font-size="11">restricted toolset</text>
+
+  <!-- SECURITY LAYER LABEL -->
+  <text x="56" y="300" fill="#22D3EE" font-family="ui-monospace, Menlo, monospace" font-size="11" font-weight="700" letter-spacing="1">DEFENSE IN DEPTH</text>
+
+  <!-- Threat scan -->
+  <rect x="56" y="320" width="210" height="100" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="161" y="350" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Threat scan</text>
+  <text x="161" y="374" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">injection / promptware</text>
+  <text x="161" y="394" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">exfil patterns blocked</text>
+
+  <!-- Approval gate -->
+  <rect x="292" y="320" width="210" height="100" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="397" y="350" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Write approval</text>
+  <text x="397" y="374" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">stage -&gt; review -&gt; replay</text>
+  <text x="397" y="394" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">no silent self-edits</text>
+
+  <!-- Sandbox guardrails -->
+  <rect x="528" y="320" width="210" height="100" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="633" y="350" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Sandbox guardrails</text>
+  <text x="633" y="374" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">destructive / egress blocked</text>
+  <text x="633" y="394" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">secrets redacted</text>
+
+  <!-- Audit -->
+  <rect x="764" y="320" width="210" height="100" rx="12" fill="#12121A" stroke="#2A2A38" stroke-width="1.5"/>
+  <text x="869" y="350" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Audit + snapshots</text>
+  <text x="869" y="374" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">every command logged</text>
+  <text x="869" y="394" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">rollback-ready</text>
+
+  <!-- Bottom: Isolation wall -->
+  <rect x="56" y="460" width="918" height="100" rx="12" fill="#12121A" stroke="url(#g)" stroke-width="1.6"/>
+  <text x="515" y="498" text-anchor="middle" fill="#EDEDF2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="700">Per-tenant AgentFS volume</text>
+  <text x="515" y="524" text-anchor="middle" fill="#9A9AB0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">Isolated filesystem  |  Isolated memory  |  Isolated skills  |  Isolated transcripts</text>
+  <text x="515" y="544" text-anchor="middle" fill="#7C5CFF" font-family="ui-monospace, Menlo, monospace" font-size="11">a bug in tenant A cannot touch tenant B</text>
+
+  <!-- Flow arrows (ASCII-safe) -->
+  <path d="M276 195 L318 195" stroke="#7C5CFF" stroke-width="1.6" marker-end="url(#a)" opacity="0.85"/>
+  <path d="M580 195 L622 195" stroke="#7C5CFF" stroke-width="1.6" marker-end="url(#a)" opacity="0.85"/>
+  <path d="M734 250 L734 290 L397 290 L397 318" stroke="#22D3EE" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#a)" opacity="0.8"/>
+  <path d="M450 250 L450 290 L161 290 L161 318" stroke="#22D3EE" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#a)" opacity="0.8"/>
+  <path d="M633 420 L633 458" stroke="#7C5CFF" stroke-width="1.6" marker-end="url(#a)" opacity="0.85"/>
+</svg>
