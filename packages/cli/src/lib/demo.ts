@@ -32,7 +32,7 @@ interface DemoTenant {
 
 async function makeTenant(tenantId: string, writeApproval: boolean): Promise<DemoTenant> {
   const fs = new InMemoryFs();
-  // Eve-like agent/ authoring surface.
+  // agent/ authoring surface.
   await fs.writeFile("agent/SOUL.md", "You are a concise research assistant.");
   await fs.writeFile("agent/AGENTS.md", "Prefer short, factual answers.");
   const runtime = new AgentSessionRuntime({

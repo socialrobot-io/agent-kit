@@ -1,5 +1,5 @@
 /**
- * Agent definition + agent/ directory discovery (Eve-like authoring surface).
+ * Agent definition + agent/ directory discovery.
  *
  * A project authors an agent as a directory:
  *   agent/
@@ -7,14 +7,14 @@
  *     SOUL.md           -> identity (always-on system prompt slot #1)
  *     AGENTS.md         -> persistent context / instructions
  *     skills/           -> on-demand procedures (agentskills.io)
- *     memories/         -> MEMORY.md / USER.md (Hermes curated memory)
+ *     memories/         -> MEMORY.md / USER.md (curated memory)
  *
  * Custom tools are registered in code (`addTools` / composition helper), not
  * loaded from an `agent/tools/` directory.
  *
  * The runtime loads SOUL.md + AGENTS.md + a frozen MEMORY/USER snapshot into
- * the system prompt, and registers Hermes tools (memory, skills) plus
- * session_search / sandbox when the host wires them via composition.
+ * the system prompt, and registers memory/skills tools plus session_search /
+ * sandbox when the host wires them via composition.
  */
 
 import type { MemoryFs } from "./memory.js";
@@ -35,7 +35,7 @@ export interface AgentDefinition {
   };
 }
 
-/** Eve-style `defineAgent`: returns the definition for the runtime to load. */
+/** Returns the definition for the runtime to load. */
 export function defineAgent(def: AgentDefinition): AgentDefinition {
   if (!def.model) throw new Error("defineAgent requires a model");
   // Secure-by-default: write approval on unless the host explicitly sets flags.

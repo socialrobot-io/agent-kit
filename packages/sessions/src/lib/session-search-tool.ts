@@ -1,5 +1,5 @@
 /**
- * Build the Hermes-compatible session_search tool for a transcript store.
+ * Build the session_search tool for a transcript store.
  * Returns a structural SessionTool (compatible with @agent-kit/core).
  */
 

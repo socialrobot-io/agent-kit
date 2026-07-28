@@ -1,7 +1,7 @@
 # RULES.md (@agent-kit/ai)
 
 The model layer: resolves `defineAgent({ model })` to a live Vercel AI SDK
-`LanguageModel`, adapts Hermes tools to the SDK, and runs the agent loop.
+`LanguageModel`, adapts session tools to the SDK, and runs the agent loop.
 
 ## Non-negotiables
 

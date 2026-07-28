@@ -1,8 +1,7 @@
 /**
  * A real agent loop over the AI SDK: resolves `defineAgent({ model })`, hands
- * the runtime's frozen system prompt + Hermes tools to `generateText` /
- * `streamText`, and lets the model call tools until it stops (bounded by
- * `stopWhen`).
+ * the runtime's frozen system prompt + tools to `generateText` / `streamText`,
+ * and lets the model call tools until it stops (bounded by `stopWhen`).
  */
 
 import {

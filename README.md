@@ -119,9 +119,8 @@ Defaults to `@ai-sdk/deepseek` and `deepseek-v4-flash`. Gateway is the fallback.
 
 <br/>
 
-**1. Author** an agent as a directory (Eve-style): `SOUL.md` for identity,
-`AGENTS.md` for house rules, `skills/` for procedures, `memories/` for curated
-facts.
+**1. Author** an agent as a directory: `SOUL.md` for identity, `AGENTS.md` for
+house rules, `skills/` for procedures, `memories/` for curated facts.
 
 **2. Run** a session. The system prompt is built once: SOUL + AGENTS.md + a
 **frozen** memory snapshot. Your provider's prefix cache stays hot. The model
@@ -164,15 +163,14 @@ paying customer.
 | ---------- | ----------- |
 | **Curated memory** | Bounded `MEMORY.md` / `USER.md` with char budgets, consolidation guidance, and frozen system-prompt snapshots |
 | **Progressive skills** | `agentskills.io`-style procedures: list → view → drill into references/templates/scripts |
-| **Background curator** | Distills sessions into memory and skills with Hermes-proven review prompts |
+| **Background curator** | Distills sessions into memory and skills with review prompts |
 | **Human approval gate** | Stage → review → replay. No silent writes from autonomous processes |
 | **Per-tenant sandbox** | AgentFS volumes, bash-tool backend, command guardrails, audit |
 | **Cross-session recall** | Full-text `session_search` scoped per tenant |
-| **Eve-like authoring** | `defineAgent` plus an `agent/` directory: SOUL, AGENTS, skills, memories |
+| **File-based authoring** | `defineAgent` plus an `agent/` directory: SOUL, AGENTS, skills, memories |
 | **Live model loop** | `@agent-kit/ai` resolves `defineAgent({ model })` and runs tools to completion via the Vercel AI SDK |
 
-Primitives are ported from [Nous Research Hermes](https://github.com/NousResearch/hermes-agent)
-(MIT) and composed for multi-tenant production use. See [`NOTICE`](NOTICE).
+See [`NOTICE`](NOTICE) for third-party attribution.
 
 ---
 
@@ -208,7 +206,7 @@ npx nx run-many -t build --all
 
 - `resolveModel(model)` — a `"provider/model"` string to AI Gateway
   `LanguageModel`, or pass a ready `LanguageModel` straight through.
-- `toAiTools(tools)` — adapt the runtime's Hermes tools into an AI SDK `ToolSet`.
+- `toAiTools(tools)` — adapt the runtime's tools into an AI SDK `ToolSet`.
 - `runAgentTurn(messages, { runtime, model | definition })` — run one turn to
   completion (`generateText` + `stopWhen`), collecting tool calls.
 - `aiCuratorRunner(model)` — a `CuratorModelRunner` on a live model, so the
@@ -220,8 +218,7 @@ identical.
 
 ## License
 
-MIT. Hermes Agent primitives are MIT © Nous Research.
-See [`NOTICE`](NOTICE) and [`vendor/hermes/LICENSE`](vendor/hermes/LICENSE).
+MIT. See [`NOTICE`](NOTICE) for third-party attribution.
 
 <div align="center">
 <img src="docs/assets/logo.png" alt="agent-kit" width="72"/>

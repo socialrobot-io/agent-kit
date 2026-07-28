@@ -136,11 +136,11 @@ function touchSession(sessions: Map<string, AgentSessionHandle>, sessionId: stri
 }
 
 /**
- * Return the agent bound to this chat session (Hermes freeze via openAgentSession).
+ * Return the agent bound to this chat session (frozen memory via openAgentSession).
  */
 export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
   if (!sessionId.trim()) {
-    throw new Error("sessionId is required (Hermes freezes memory per chat session).");
+    throw new Error("sessionId is required (memory freezes once per chat session).");
   }
 
   const shared = await getShared();

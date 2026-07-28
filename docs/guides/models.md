@@ -51,7 +51,7 @@ console.log(turn.toolCalls);
 console.log(turn.toolResults);
 ```
 
-Hermes tools hit the tenant stores (write-approval gate included).
+Built-in tools hit the tenant stores (write-approval gate included).
 
 Custom tools: prefer [Tools](tools.md) (`composeTools`). Or pass them on the
 same `runtime` / `definition` from above:

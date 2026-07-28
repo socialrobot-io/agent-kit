@@ -10,8 +10,8 @@ across sessions. Tenant-scoped.
 
 ## Frozen snapshot
 
-Injected into the system prompt **once** at session start
-([Hermes pattern](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)).
+Injected into the system prompt **once** at session start. Keeps the
+provider prefix cache hot across turns.
 
 | When | Effect |
 | ---- | ------ |
@@ -22,7 +22,7 @@ Injected into the system prompt **once** at session start
 
 | Surface | Session boundary |
 | ------- | ---------------- |
-| Hermes CLI / TUI | Process / conversation lifetime |
+| CLI / long-lived process | Process / conversation lifetime |
 | Example app | One `useChat` id; **New chat** = new session |
 
 Budgets are characters, not tokens. Full store → write rejected; consolidate

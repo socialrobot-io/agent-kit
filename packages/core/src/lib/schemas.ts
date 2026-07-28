@@ -1,7 +1,7 @@
 /**
- * OpenAI / Vercel AI SDK tool schemas for the Hermes-compatible tool surface.
- * Names and shapes are kept identical to upstream so prompts and docs stay
- * compatible. Handlers live in `tools.ts`; these are just the JSON schemas.
+ * OpenAI / Vercel AI SDK tool schemas for the built-in tool surface.
+ * Names and shapes are kept stable so prompts and docs stay compatible.
+ * Handlers live in `tools.ts`; these are just the JSON schemas.
  */
 
 export const MEMORY_SCHEMA = {

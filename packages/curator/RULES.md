@@ -1,8 +1,7 @@
 # RULES.md (@agent-kit/curator)
 
-The background reviewer: Hermes-compatible review prompts and
-`runBackgroundReview`, which turns session transcripts into proposed memory and
-skill writes.
+The background reviewer: review prompts and `runBackgroundReview`, which turns
+session transcripts into proposed memory and skill writes.
 
 ## Non-negotiables
 

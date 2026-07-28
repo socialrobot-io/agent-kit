@@ -1,9 +1,9 @@
 # AGENTS.md
 
 agent-kit is a generic, reusable toolkit for building self-improving agents:
-Hermes-derived memory/skills/curator primitives, an Eve-like `agent/` authoring
-surface, per-tenant AgentFS homes, and a guarded bash layer. It is a library,
-not a hosted service. Product-specific logic never lands here.
+memory, skills, and curator primitives; an `agent/` authoring surface;
+per-tenant AgentFS homes; and a guarded bash layer. It is a library, not a
+hosted service. Product-specific logic never lands here.
 
 ## Read first
 

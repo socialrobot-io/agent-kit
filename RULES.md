@@ -46,7 +46,7 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
 - Tests must pass offline: no network, no API keys, no real AgentFS volumes in
   unit tests (use `InMemoryFs` and mock models).
 - Comments explain non-obvious intent, constraints, and ports (e.g. "mirrors
-  hermes memory_tool.py"). Never narrate what the code plainly does.
+  vendor/hermes memory_tool.py"). Never narrate what the code plainly does.
 - Prose in code, docs, and commit messages: no em dashes, no emojis.
 - New packages are scaffolded with the Nx CLI (`npx nx g @nx/js:library`), then
   wire workspace deps by editing `package.json` (`"workspace:*"`) and running

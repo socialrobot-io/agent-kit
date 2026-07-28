@@ -1,12 +1,12 @@
 /**
  * Session transcripts + full-text search (cross-session recall).
  *
- * Port of the contracts in Nous Research Hermes Agent `hermes_state.py` and
- * `tools/session_search_tool.py` (MIT), behind a pluggable store interface.
+ * Port of contracts in `vendor/hermes/hermes_state.py` and
+ * `vendor/hermes/tools/session_search_tool.py` (MIT), behind a pluggable store.
  *
- * Hermes uses a local SQLite DB with FTS5. agent-kit's file/in-memory adapters
- * use substring scan (fine for short-lived sessions). Hosts can plug Postgres
- * later. The tool surface (`session_search`) stays the same.
+ * Upstream uses a local SQLite DB with FTS5. agent-kit's file/in-memory
+ * adapters use substring scan (fine for short-lived sessions). Hosts can plug
+ * Postgres later. The tool surface (`session_search`) stays the same.
  */
 
 export type SessionSource = "generic" | "mcp" | "composer" | string;
@@ -137,9 +137,9 @@ export interface SessionSearchResult {
 }
 
 /**
- * session_search tool handler (Hermes-compatible). Discovery mode (query)
- * finds matching messages across the tenant's sessions; scroll mode
- * (session_id + offset) reads a window within one session.
+ * session_search tool handler. Discovery mode (query) finds matching messages
+ * across the tenant's sessions; scroll mode (session_id + offset) reads a
+ * window within one session.
  */
 export async function sessionSearch(
   store: TranscriptStore,

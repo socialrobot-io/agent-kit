@@ -1,7 +1,7 @@
 /**
  * Write-approval gate + pending store for memory and skill writes.
  *
- * TypeScript port of Nous Research Hermes Agent `tools/write_approval.py` (MIT).
+ * Port of `vendor/hermes/tools/write_approval.py` (MIT).
  *
  * The agent writes to two persistent stores that survive across sessions:
  *  - memory — MEMORY.md / USER.md, small declarative entries
@@ -112,7 +112,7 @@ export async function evaluateGateAsync(
 
 let counter = 0;
 function genId(): string {
-  // 8-hex-char id similar to Hermes uuid4().hex[:8], collision-safe enough
+  // 8-hex-char id similar to uuid4().hex[:8], collision-safe enough
   // when combined with the per-subsystem directory and timestamp.
   const rand = Math.floor(Math.random() * 0xffffffff)
     .toString(16)

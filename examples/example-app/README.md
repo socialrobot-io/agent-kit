@@ -31,5 +31,5 @@ bash tool calls appear as they run.
 
 - `agent/` — SOUL.md, AGENTS.md, seed skill
 - `src/lib/agent.ts` — runtime and `createTenantBashToolkit`
-- `src/app/api/chat/route.ts` — `streamAgentTurn` with Hermes and bash tools
+- `src/app/api/chat/route.ts` — `streamAgentTurn` with built-in and bash tools
 - `src/app/page.tsx` — `@ai-sdk/react` `useChat` UI

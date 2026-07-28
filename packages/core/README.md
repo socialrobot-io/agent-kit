@@ -1,6 +1,6 @@
 # @agent-kit/core
 
-Agent definition, session runtime, memory, skills, and Hermes tool primitives.
+Agent definition, session runtime, memory, skills, and built-in tool primitives.
 Leaf package. No `@agent-kit/*` dependencies.
 
 ## Build

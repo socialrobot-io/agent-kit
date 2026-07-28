@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 type ChatBody = {
   messages?: UIMessage[];
-  /** Hermes chat session id — memory snapshot freezes once per id. */
+  /** Chat session id — memory snapshot freezes once per id. */
   id?: string;
   sessionId?: string;
 };

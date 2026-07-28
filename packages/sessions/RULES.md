@@ -23,5 +23,5 @@ in-memory implementations, `sessionSearch`, and `createSessionSearchTool`.
 
 ## Gotchas
 
-- Timestamps are epoch seconds (Hermes convention), not milliseconds.
+- Timestamps are epoch seconds (not milliseconds).
 - Built-in search is substring scan (fine for short-lived sessions).

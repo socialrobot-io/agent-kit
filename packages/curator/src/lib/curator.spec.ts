@@ -18,7 +18,7 @@ function makeModel(calls: { name: string; args: Record<string, unknown> }[]): Cu
 }
 
 describe("curator prompts", () => {
-  it("exposes Hermes-compatible review prompts", () => {
+  it("exposes review prompts", () => {
     expect(MEMORY_REVIEW_PROMPT).toContain("saving to memory");
     expect(SKILL_REVIEW_PROMPT).toContain("skill library");
     expect(COMBINED_REVIEW_PROMPT).toContain("**Memory**");

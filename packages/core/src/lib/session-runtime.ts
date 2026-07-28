@@ -1,7 +1,7 @@
 /**
  * Session runtime: assembles the system prompt (SOUL + AGENTS.md + frozen
- * MEMORY/USER snapshot) and the Hermes tool surface, ready to hand to a Vercel
- * AI SDK `streamText`/`generate` call or any other model loop.
+ * MEMORY/USER snapshot) and the built-in tool surface, ready to hand to a
+ * Vercel AI SDK `streamText`/`generate` call or any other model loop.
  *
  * This is the composition root for a single tenant session. It owns a
  * MemoryStore, a SkillLibrary, and a PendingWriteStore bound to the tenant's
@@ -108,7 +108,7 @@ export class AgentSessionRuntime {
     return [this.basePrompt, mem].filter(Boolean).join("\n\n");
   }
 
-  /** Hermes tool surface for the model loop. */
+  /** Built-in tool surface for the model loop. */
   tools(): SessionTool[] {
     return [this.memoryTool(), this.skillsListTool(), this.skillViewTool(), this.skillManageTool()];
   }

@@ -44,7 +44,7 @@ describe("AgentSessionRuntime", () => {
     expect(prompt).toContain(AGENTS);
   });
 
-  it("exposes the Hermes tool surface", () => {
+  it("exposes the built-in tool surface", () => {
     expect(runtime.tools().map((t) => t.name)).toEqual(["memory", "skills_list", "skill_view", "skill_manage"]);
   });
 

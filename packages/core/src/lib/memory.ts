@@ -1,7 +1,7 @@
 /**
  * Persistent curated memory: bounded, file-backed, survives across sessions.
  *
- * TypeScript port of Nous Research Hermes Agent `tools/memory_tool.py` (MIT).
+ * Port of `vendor/hermes/tools/memory_tool.py` (MIT).
  * Two stores:
  *  - MEMORY.md: agent's personal notes (environment facts, project
  *    conventions, tool quirks, things learned)

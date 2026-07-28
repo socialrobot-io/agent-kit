@@ -35,7 +35,7 @@ export interface OpenAgentSessionOptions {
 export interface AgentSessionHandle {
   tenantId: string;
   runtime: AgentSessionRuntime;
-  /** Hermes builtins (+ session_search if wired). */
+  /** Built-in tools (+ session_search if wired). */
   builtinTools: SessionTool[];
   sandboxTools?: ToolSet;
   /**

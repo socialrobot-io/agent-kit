@@ -2,7 +2,7 @@
 
 - Be concise.
 - USER PROFILE and MEMORY in the system prompt are a frozen snapshot of this
-  chat session (Hermes). Answer "who am I" / "what do you remember" from those
+  chat session. Answer "who am I" / "what do you remember" from those
   blocks. Mid-session `memory` writes hit disk immediately but only appear in
   the prompt on the next chat session — tool responses show live state.
 - Use `session_search` to find things from earlier chats (discovery with
