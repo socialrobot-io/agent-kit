@@ -50,6 +50,9 @@
       "path": "../../packages/sandbox"
     },
     {
+      "path": "../../packages/sessions"
+    },
+    {
       "path": "../../packages/curator"
     },
     {

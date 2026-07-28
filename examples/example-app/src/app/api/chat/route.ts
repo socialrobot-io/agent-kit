@@ -6,7 +6,8 @@ import {
 } from "ai";
 import { NextResponse } from "next/server";
 import { streamAgentTurn } from "@agent-kit/ai";
-import { getSessionAgent, getSharedAgent } from "@/lib/agent";
+import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
+import { persistUiMessages, transcriptToUiMessages } from "@/lib/transcripts";
 import { hasApiKey } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -50,14 +51,28 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Snapshot loads only on first request for this sessionId (Hermes session start).
     const agent = await getSessionAgent(sessionId);
+
+    // Persist inbound user turn(s) before streaming so a crash mid-reply still keeps the ask.
+    await persistUiMessages(agent.transcripts, sessionId, messages.filter((m) => m.role === "user"));
+
     const modelMessages = await convertToModelMessages(messages);
     const result = streamAgentTurn(modelMessages, {
       runtime: agent.runtime,
       model: agent.model,
       extraAiTools: agent.bashTools,
+      extraTools: agent.extraTools,
       maxSteps: 12,
+      onFinish: async ({ text }) => {
+        const assistantId = `asst_${sessionId}_${Date.now()}`;
+        await agent.transcripts.appendMessage({
+          id: assistantId,
+          sessionId,
+          role: "assistant",
+          content: text || "(no text)",
+          createdAt: Date.now() / 1000,
+        });
+      },
     });
 
     return createUIMessageStreamResponse({
@@ -66,6 +81,7 @@ export async function POST(req: Request) {
         "x-agent-kit-provider": agent.provider,
         "x-agent-kit-session": sessionId,
         "x-agent-kit-sandbox": "bash-tool",
+        "x-agent-kit-transcripts": "agentfs",
       },
       stream: toUIMessageStream({ stream: result.stream }),
     });
@@ -76,29 +92,58 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!hasApiKey()) {
     return NextResponse.json({
       ok: false,
       error: "Missing DEEPSEEK_API_KEY or AI_GATEWAY_API_KEY",
     });
   }
+
+  const url = new URL(req.url);
+  const sessionId = url.searchParams.get("sessionId")?.trim();
+
   try {
+    if (sessionId) {
+      const transcripts = await getTranscripts();
+      const sessions = await transcripts.listSessions(TENANT_ID);
+      if (!sessions.some((s) => s.id === sessionId)) {
+        return NextResponse.json({ ok: true, sessionId, messages: [] });
+      }
+      const stored = await transcripts.scroll(sessionId, 0, 10_000);
+      return NextResponse.json({
+        ok: true,
+        sessionId,
+        messages: transcriptToUiMessages(stored),
+      });
+    }
+
     const agent = await getSharedAgent();
     return NextResponse.json({
       ok: true,
       model: agent.label,
       provider: agent.provider,
       sandbox: true,
-      tools: ["memory", "skills_list", "skill_view", "skill_manage", "bash", "readFile", "writeFile"],
-      // Live disk state (not a frozen session snapshot). New chat sessions
-      // load this into the system prompt once at session start.
+      tools: [
+        "memory",
+        "skills_list",
+        "skill_view",
+        "skill_manage",
+        "session_search",
+        "bash",
+        "readFile",
+        "writeFile",
+      ],
+      // Virtual paths inside the SQLite volume (not plain SQL tables).
+      volumeHint:
+        "Chat transcripts live at sessions/*.jsonl inside AgentFS; inspect via GET ?sessionId= or session_search — opening example.db with a second process while the server runs will often fail with 'database is locked'.",
       memoryOnDisk: {
         user: agent.liveUserMemory,
         notes: agent.liveNotesMemory,
       },
       workspacePersistedInAgentFs: agent.bash.persisted,
       openSessions: agent.openSessions,
+      savedSessions: agent.savedSessions,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

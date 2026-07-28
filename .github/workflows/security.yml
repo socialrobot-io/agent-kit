@@ -1,0 +1,73 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly dependency / secret sweep
+    - cron: "17 6 * * 1"
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Use the OSS binary directly (gitleaks-action requires a paid license on private repos).
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.24.3
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Secret scan
+        run: gitleaks detect --source . --verbose --redact --no-banner
+
+  dependencies:
+    name: bun-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Hard gate: no critical advisories.
+      - name: Audit (critical)
+        run: bun audit --audit-level=critical
+
+      # Soft signal: surface high/moderate without blocking on known Next/sharp noise.
+      - name: Audit (report high+)
+        continue-on-error: true
+        run: |
+          bun audit --audit-level=high | tee audit-high.txt
+          {
+            echo "## bun audit (high+)"
+            echo '```'
+            cat audit-high.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

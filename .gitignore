@@ -44,6 +44,12 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# AgentFS local volumes (SQLite + WAL — exclusive-locked while the app runs)
+.agentfs/
+**/.agentfs/
+*.db-wal
+*.db-shm
+
 .nx/cache
 .nx/workspace-data
 .nx/migrate-runs

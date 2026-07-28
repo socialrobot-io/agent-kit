@@ -35,6 +35,8 @@ export interface AgentLoopOptions extends ResolveModelOptions {
   extraAiTools?: ToolSet;
   /** Max model steps (tool-call rounds). Default 8. */
   maxSteps?: number;
+  /** Called when a streamed turn finishes (persist transcripts, curator, …). */
+  onFinish?: (event: { text: string }) => void | Promise<void>;
 }
 
 export interface AgentLoopResult {
@@ -110,6 +112,11 @@ export function streamAgentTurn(
     messages,
     tools,
     stopWhen: stepCountIs(maxSteps),
+    onFinish: opts.onFinish
+      ? async ({ text }) => {
+          await opts.onFinish?.({ text });
+        }
+      : undefined,
   }) as AgentStreamResult;
 }
 

@@ -10,13 +10,16 @@ type Status = {
   model?: string;
   provider?: string;
   error?: string;
+  savedSessions?: { id: string; createdAt: number; messageCount: number }[];
 };
+
+const STORAGE_KEY = "agent-kit.sessionId";
 
 const SUGGESTIONS = [
   "I'm Nico. Keep answers in short bullets. My project is post-scheduler (Bun + Nx).",
   "What do you remember about me?",
+  "Search past chats for Batman",
   "List the sandbox workspace and summarize README.md",
-  "Write a short note to notes/agent-kit.txt saying the bash sandbox works",
 ];
 
 function newSessionId(): string {
@@ -91,7 +94,9 @@ export default function Index() {
   const [modelStatus, setModelStatus] = useState<Status | null>(null);
   // Hermes: one frozen memory snapshot per chat session. "New chat" mints a
   // new id so the next turn reloads MEMORY/USER from disk into the prompt.
-  const [sessionId, setSessionId] = useState(newSessionId);
+  // Empty until mount so we restore localStorage before any history fetch.
+  const [sessionId, setSessionId] = useState("");
+  const [sessionReady, setSessionReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const transport = useMemo(
@@ -107,12 +112,41 @@ export default function Index() {
   );
 
   const { messages, sendMessage, status, stop, error, clearError, setMessages } = useChat({
-    id: sessionId,
+    id: sessionId || "pending",
     transport,
     throttle: 40,
   });
 
   const busy = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    const id = window.localStorage.getItem(STORAGE_KEY) ?? newSessionId();
+    window.localStorage.setItem(STORAGE_KEY, id);
+    setSessionId(id);
+    setSessionReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady || !sessionId) return;
+    window.localStorage.setItem(STORAGE_KEY, sessionId);
+  }, [sessionReady, sessionId]);
+
+  useEffect(() => {
+    if (!sessionReady || !sessionId) return;
+    let cancelled = false;
+    void fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId)}`)
+      .then(async (r) => (await r.json()) as { ok?: boolean; messages?: UIMessage[] })
+      .then((data) => {
+        if (cancelled || !data.messages?.length) return;
+        setMessages(data.messages);
+      })
+      .catch(() => {
+        // History restore is best-effort.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionReady, sessionId, setMessages]);
 
   useEffect(() => {
     void fetch("/api/chat")
@@ -132,7 +166,7 @@ export default function Index() {
 
   async function onSend(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed || busy || !sessionReady) return;
     clearError();
     setInput("");
     await sendMessage({ text: trimmed });
@@ -141,8 +175,10 @@ export default function Index() {
   function onNewChat() {
     if (busy) return;
     clearError();
+    const next = newSessionId();
     setMessages([]);
-    setSessionId(newSessionId());
+    setSessionId(next);
+    window.localStorage.setItem(STORAGE_KEY, next);
   }
 
   return (
@@ -153,10 +189,10 @@ export default function Index() {
           <span className={styles.badge}>live</span>
         </div>
         <p>
-          Streaming chat over a persistent AgentFS home. Memory freezes into the
-          system prompt once per chat session (Hermes prefix-cache). Bash
-          workspace files also live in the same SQLite volume via
-          agentfs-sdk/just-bash.
+          Streaming chat with durable transcripts in AgentFS (
+          <code>sessions/</code>
+          ). Memory freezes per chat session (Hermes prefix-cache). Workspace
+          files persist under <code>/workspace</code>.
         </p>
         <div className={styles.meta}>
           <span
@@ -170,7 +206,10 @@ export default function Index() {
               ? "streaming"
               : "thinking"
             : modelStatus?.ok
-              ? `${modelStatus.provider} / ${modelStatus.model}`
+              ? `${modelStatus.provider} / ${modelStatus.model}` +
+                (modelStatus.savedSessions
+                  ? ` · ${modelStatus.savedSessions.length} saved chat${modelStatus.savedSessions.length === 1 ? "" : "s"}`
+                  : "")
               : modelStatus?.error || "checking model…"}
           <button type="button" className={styles.ghostLink} onClick={onNewChat} disabled={busy}>
             New chat
@@ -184,7 +223,7 @@ export default function Index() {
             <h2>Try the flywheel</h2>
             <p>
               Share something durable, then open New chat and ask what it
-              remembers — that is when the frozen snapshot refreshes.
+              remembers — or search past chats with session_search.
             </p>
             <div className={styles.suggestions}>
               {SUGGESTIONS.map((s) => (
@@ -193,7 +232,7 @@ export default function Index() {
                   type="button"
                   className={styles.suggestion}
                   onClick={() => void onSend(s)}
-                  disabled={busy}
+                  disabled={busy || !sessionReady}
                 >
                   {s}
                 </button>
@@ -233,7 +272,7 @@ export default function Index() {
               void onSend(input);
             }
           }}
-          disabled={status === "submitted"}
+          disabled={status === "submitted" || !sessionReady}
         />
         <div className={styles.row}>
           <span className={styles.hint}>Enter to send · Shift+Enter for newline</span>
@@ -243,7 +282,7 @@ export default function Index() {
                 Stop
               </button>
             ) : null}
-            <button type="submit" disabled={busy || !input.trim()}>
+            <button type="submit" disabled={busy || !input.trim() || !sessionReady}>
               {busy ? (status === "streaming" ? "Streaming…" : "Thinking…") : "Send"}
             </button>
           </div>
@@ -253,3 +292,4 @@ export default function Index() {
     </main>
   );
 }
+

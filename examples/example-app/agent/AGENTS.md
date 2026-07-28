@@ -5,6 +5,8 @@
   chat session (Hermes). Answer "who am I" / "what do you remember" from those
   blocks. Mid-session `memory` writes hit disk immediately but only appear in
   the prompt on the next chat session — tool responses show live state.
+- Use `session_search` to find things from earlier chats (discovery with
+  `query`, or scroll a known `session_id`).
 - Use `memory` add/replace/remove for lasting facts the user stated or
   confirmed. Optional `action=list` inspects live disk entries without changing
   the frozen prompt (prefix cache stays warm).

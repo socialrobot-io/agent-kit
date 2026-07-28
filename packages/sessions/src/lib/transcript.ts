@@ -47,6 +47,8 @@ export interface TranscriptStore {
   search(tenantId: string, query: string, limit?: number): Promise<SearchHit[]>;
   /** Read a window of messages from a session, oldest-first from offset. */
   scroll(sessionId: string, offset?: number, limit?: number): Promise<SessionMessage[]>;
+  /** List sessions for a tenant, newest first. */
+  listSessions(tenantId: string): Promise<Session[]>;
 }
 
 /** In-memory transcript store with naive substring FTS (dev / tests). */
@@ -61,6 +63,7 @@ export class InMemoryTranscriptStore implements TranscriptStore {
 
   async appendMessage(message: SessionMessage): Promise<void> {
     const list = this.messages.get(message.sessionId) ?? [];
+    if (list.some((m) => m.id === message.id)) return;
     list.push(message);
     this.messages.set(message.sessionId, list);
   }
@@ -96,8 +99,18 @@ export class InMemoryTranscriptStore implements TranscriptStore {
   }
 
   async scroll(sessionId: string, offset = 0, limit = 20): Promise<SessionMessage[]> {
+    const session = this.sessions.get(sessionId);
+    // Tenant check happens in sessionSearch for discovery; scroll by id is
+    // gated by knowing the id. Callers should still filter by tenant.
+    void session;
     const msgs = this.messages.get(sessionId) ?? [];
     return msgs.slice(offset, offset + limit);
+  }
+
+  async listSessions(tenantId: string): Promise<Session[]> {
+    return [...this.sessions.values()]
+      .filter((s) => s.tenantId === tenantId)
+      .sort((a, b) => b.createdAt - a.createdAt);
   }
 }
 
@@ -121,6 +134,10 @@ export async function sessionSearch(
 ): Promise<SessionSearchResult> {
   const limit = args.limit ?? 20;
   if (args.session_id) {
+    const sessions = await store.listSessions(tenantId);
+    if (!sessions.some((s) => s.id === args.session_id)) {
+      return { success: false, error: `Session '${args.session_id}' not found for this tenant.` };
+    }
     const messages = await store.scroll(args.session_id, args.offset ?? 0, limit);
     return { success: true, mode: "scroll", messages };
   }
