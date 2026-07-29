@@ -13,10 +13,15 @@
  * NOT change the system prompt, preserving the prefix cache for the session.
  * The snapshot refreshes on the next session start.
  *
+ * Parallel chats that share one filesystem (one tenant volume) serialize
+ * add/replace/remove/applyBatch via an exclusive queue keyed by that fs, so
+ * reload→mutate→persist cannot lose updates across MemoryStore instances.
+ *
  * Entry delimiter: § (section sign). Entries can be multiline.
  * Character limits (not tokens) because char counts are model-independent.
  */
 
+import { exclusiveFor } from "./exclusive.js";
 import { firstThreatMessage } from "./threats.js";
 
 export const ENTRY_DELIMITER = "\n§\n";
@@ -240,6 +245,15 @@ export class MemoryStore {
     return { ...result, usage: `${current}/${limit}` };
   }
 
+  /**
+   * Serialize reload→mutate→persist across every MemoryStore that shares this
+   * filesystem. Per-call FS queues alone cannot make that RMW atomic when
+   * parallel chats each hold their own store on one tenant volume.
+   */
+  private mutateExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    return exclusiveFor(this.fs as object)(fn);
+  }
+
   async add(target: MemoryTarget, content: string): Promise<MemoryResult> {
     content = content.trim();
     if (!content) return { success: false, error: "Content cannot be empty." };
@@ -247,6 +261,10 @@ export class MemoryStore {
     const scanError = firstThreatMessage(content, "strict");
     if (scanError) return { success: false, error: scanError };
 
+    return this.mutateExclusive(() => this.addLocked(target, content));
+  }
+
+  private async addLocked(target: MemoryTarget, content: string): Promise<MemoryResult> {
     await this.reloadTarget(target);
     const entries = [...this.entriesFor(target)];
     const limit = this.charLimit(target);
@@ -288,6 +306,14 @@ export class MemoryStore {
     const scanError = firstThreatMessage(newContent, "strict");
     if (scanError) return { success: false, error: scanError };
 
+    return this.mutateExclusive(() => this.replaceLocked(target, oldText, newContent));
+  }
+
+  private async replaceLocked(
+    target: MemoryTarget,
+    oldText: string,
+    newContent: string,
+  ): Promise<MemoryResult> {
     await this.reloadTarget(target);
     const entries = [...this.entriesFor(target)];
     const matches = entries.map((e, i) => [i, e] as const).filter(([, e]) => e.includes(oldText));
@@ -341,6 +367,10 @@ export class MemoryStore {
     oldText = oldText.trim();
     if (!oldText) return { success: false, error: "old_text cannot be empty." };
 
+    return this.mutateExclusive(() => this.removeLocked(target, oldText));
+  }
+
+  private async removeLocked(target: MemoryTarget, oldText: string): Promise<MemoryResult> {
     await this.reloadTarget(target);
     const entries = [...this.entriesFor(target)];
     const matches = entries.map((e, i) => [i, e] as const).filter(([, e]) => e.includes(oldText));
@@ -378,6 +408,13 @@ export class MemoryStore {
     if (!Array.isArray(operations) || operations.length === 0) {
       return { success: false, error: "operations must be a non-empty array." };
     }
+    return this.mutateExclusive(() => this.applyBatchLocked(target, operations));
+  }
+
+  private async applyBatchLocked(
+    target: MemoryTarget,
+    operations: MemoryOperation[],
+  ): Promise<MemoryResult> {
     await this.reloadTarget(target);
     const working = [...this.entriesFor(target)];
     const limit = this.charLimit(target);

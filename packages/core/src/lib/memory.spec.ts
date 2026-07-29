@@ -153,4 +153,32 @@ describe("MemoryStore", () => {
     await store.refreshSnapshot();
     expect(store.formatForSystemPrompt("user")).toContain("Gotham");
   });
+
+  it("retains all entries under concurrent adds from separate stores", async () => {
+    const WRITERS = 32;
+    // Artificial yield inside writeFile so reload→mutate→write would race
+    // without the fs-keyed exclusive queue.
+    const slowFs = {
+      readFile: (path: string) => fs.readFile(path),
+      writeFile: async (path: string, content: string) => {
+        await new Promise((r) => setTimeout(r, 0));
+        await fs.writeFile(path, content);
+      },
+    };
+
+    const stores = Array.from({ length: WRITERS }, () => new MemoryStore(slowFs));
+    await Promise.all(stores.map((s) => s.loadFromDisk()));
+
+    const results = await Promise.all(
+      stores.map((s, i) => s.add("user", `fact-${i}`)),
+    );
+    expect(results.every((r) => r.success)).toBe(true);
+
+    const check = new MemoryStore(slowFs);
+    await check.loadFromDisk();
+    const entries = check.getEntries("user");
+    expect(entries.sort()).toEqual(
+      Array.from({ length: WRITERS }, (_, i) => `fact-${i}`).sort(),
+    );
+  });
 });

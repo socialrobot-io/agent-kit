@@ -38,6 +38,7 @@ Everything else depends on this package; it depends on nothing.
 | ------ | ----------- |
 | Tool surface (`schemas.ts`, tool names/args) | `packages/ai` tool adapter, examples, `docs/guides/models.md` |
 | Memory/skills file layout | `packages/curator` prompts, seed logic in examples, `docs/guides/memory.md` |
+| Memory mutation concurrency / durability | `memory.spec.ts`, `tenant-home.stress.spec.ts`, `docs/guides/memory.md` |
 | Gate or pending-record shape | `packages/curator`, `approve.ts` callers, `docs/guides/skills-and-learning.md` |
 
 ## Gotchas

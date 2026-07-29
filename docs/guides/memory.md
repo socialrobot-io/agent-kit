@@ -11,6 +11,11 @@ tenant. It lives in two files on that tenant’s volume:
 Limits are character counts, not tokens. If a store is full, the write is
 rejected. Consolidate first, then add in one batch.
 
+Parallel chats for one tenant share the same volume. Memory
+`add` / `replace` / `remove` / `applyBatch` run one at a time per volume so
+concurrent writers do not overwrite each other. The frozen system-prompt
+snapshot for each open chat still does not change mid-session.
+
 ## Frozen snapshot (why mid-chat writes feel “delayed”)
 
 When a session starts, the kit copies memory into the system prompt **once**.
