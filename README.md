@@ -6,7 +6,7 @@
 
 ### Production-grade agents.<br/>Secure. Sandboxed. Self-improving.
 
-A TypeScript toolkit for shipping AI agents that are safe enough for multi-tenant SaaS.
+A TypeScript toolkit for shipping AI agents that are multi-tenant-safe, without complex infrastructure.
 Curated memory, human-gated learning, and a real execution sandbox.
 
 [![npm](https://img.shields.io/npm/v/%40socialrobot-io%2Fagent-kit-core.svg)](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core)
