@@ -8,15 +8,22 @@ import type { SkillLibrary } from "./skills.js";
 import type { PendingWriteStore } from "./approval.js";
 import { applySkillArgs } from "./gated-write.js";
 
+/** Stores required to apply staged pending writes. */
 export interface ApprovePendingDeps {
+  /** Tenant memory store that receives approved memory writes. */
   memory: MemoryStore;
+  /** Tenant skill library that receives approved skill writes. */
   skills: SkillLibrary;
+  /** Pending-write store to list and discard records. */
   pending: PendingWriteStore;
 }
 
 /**
  * Approve every pending memory and skill write.
  * Skill replay uses {@link applySkillArgs} in core (no curator injection).
+ *
+ * @param deps - Memory, skills, and pending stores for one tenant.
+ * @returns Human-readable lines describing each applied write.
  */
 export async function approvePendingWrites(deps: ApprovePendingDeps): Promise<string[]> {
   const applied: string[] = [];

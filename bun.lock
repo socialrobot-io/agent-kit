@@ -54,7 +54,7 @@
     },
     "packages/ai": {
       "name": "@socialrobot-io/agent-kit-ai",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.31",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -64,7 +64,7 @@
     },
     "packages/cli": {
       "name": "@socialrobot-io/agent-kit-cli",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -76,14 +76,14 @@
     },
     "packages/core": {
       "name": "@socialrobot-io/agent-kit-core",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@socialrobot-io/agent-kit-curator",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -91,10 +91,11 @@
     },
     "packages/node": {
       "name": "@socialrobot-io/agent-kit-node",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
+        "@socialrobot-io/agent-kit-curator": "workspace:*",
         "@socialrobot-io/agent-kit-sandbox": "workspace:*",
         "@socialrobot-io/agent-kit-sessions": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -103,7 +104,7 @@
     },
     "packages/sandbox": {
       "name": "@socialrobot-io/agent-kit-sandbox",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -113,7 +114,7 @@
     },
     "packages/sessions": {
       "name": "@socialrobot-io/agent-kit-sessions",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },

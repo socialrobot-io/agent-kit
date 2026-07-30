@@ -20,8 +20,11 @@ import { makeAuditRecord, type SandboxAuditStore } from "./audit.js";
  * Paths are POSIX within the tenant's isolated volume.
  */
 export interface SandboxFs {
+  /** Read a UTF-8 file from the tenant volume. */
   readFile(path: string): Promise<string>;
+  /** Write a file on the tenant volume. */
   writeFile(path: string, content: string | Uint8Array): Promise<void>;
+  /** Return whether `path` exists. Optional; some backends omit it. */
   exists?(path: string): Promise<boolean>;
 }
 
@@ -32,10 +35,15 @@ export interface SandboxFs {
  */
 export type CommandExecutor = (command: string) => Promise<CommandResult>;
 
+/** Options for {@link TenantAgentFSSandbox}. */
 export interface TenantSandboxOptions extends GuardrailOptions {
+  /** Stable tenant id recorded on audit events. */
   tenantId: string;
+  /** Optional audit store. When omitted, commands still run but are not logged. */
   audit?: SandboxAuditStore;
+  /** Runs the (possibly rewritten) command inside the tenant sandbox. */
   executor: CommandExecutor;
+  /** Filesystem used for `readFile` / `writeFiles` on the bash-tool Sandbox. */
   fs: SandboxFs;
   /** Returns the current AgentFS snapshot id, when the backend supports it. */
   getSnapshotId?: () => Promise<string | undefined>;

@@ -39,9 +39,10 @@
     "@socialrobot-io/agent-kit-ai": "workspace:*",
     "@socialrobot-io/agent-kit-sessions": "workspace:*",
     "@socialrobot-io/agent-kit-sandbox": "workspace:*",
+    "@socialrobot-io/agent-kit-curator": "workspace:*",
     "ai": "^7.0.41"
   },
-  "description": "Host composition: createTenantHome wires volume, transcripts, sandbox, and sessions",
+  "description": "Host composition: createTenantHome wires volume, transcripts, sandbox, sessions, and curator",
   "license": "MIT",
   "files": [
     "dist",

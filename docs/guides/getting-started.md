@@ -12,17 +12,16 @@ Happy path:
 npm i @socialrobot-io/agent-kit-node
 ```
 
-That pulls core, ai, sessions, and sandbox. Add
-`@socialrobot-io/agent-kit-curator` when you want background learning.
+That pulls core, ai, sessions, sandbox, and curator.
 
 | Package | Job |
 | ------- | --- |
-| `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session) |
+| `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session + curator) |
 | `agent-kit-core` | Definition, memory, skills, approval |
 | `agent-kit-ai` | Live model loop (`session.run` / `session.stream`) |
 | `agent-kit-sessions` | Transcripts + `session_search` |
 | `agent-kit-sandbox` | Per-tenant volume and guarded shell |
-| `agent-kit-curator` | After a chat, propose memory and skill updates |
+| `agent-kit-curator` | Background review (wired by `agent-kit-node`) |
 
 ## 2. Author the agent as files
 
@@ -57,10 +56,23 @@ Never invent numbers.
 Needs an API key (`AI_GATEWAY_API_KEY`) or a `LanguageModel` you pass yourself.
 Creates `./data/tenants/${tenantId}.db` by default.
 
+Pass `agent` so `SOUL.md`, `AGENTS.md`, and skills are installed on the volume.
+Without it, the session does not use your authored files.
+
+Happy path: compile `agent/` in predev / CI, then import the module (same as
+Next, Docker, and [`examples/example-app`](../../examples/example-app)):
+
+```ts
+// scripts/compile-agent.mjs
+import { compileAgent } from "@socialrobot-io/agent-kit-node";
+await compileAgent({ dir: "./agent", outFile: "./src/generated/agent.ts" });
+```
+
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent";
 
-const home = await createTenantHome({ tenantId: "brand-123" });
+const home = await createTenantHome({ tenantId: "brand-123", agent });
 const session = await home.openSession("chat-1");
 
 const turn = await session.run([
@@ -69,34 +81,25 @@ const turn = await session.run([
 console.log(turn.text);
 ```
 
+Plain Node with `agent/` on disk can use `loadAgent("./agent")` instead of
+compile + import.
+
 For a throwaway in-memory filesystem (no SQLite), use `openAgentSession` with
 `InMemoryFs` from `@socialrobot-io/agent-kit-core`. Do not use that path for
 multi-tenant production. See [Hosting](hosting.md).
 
-## 4. What happens after a real session
+## 4. What happens after each turn
 
-A chat turn alone does not make lasting memory. In production:
-
-1. A background **curator** reads the transcript and may propose updates.
-2. Proposals land under `pending/` on the tenant volume. They are not live yet.
-3. A human approves or rejects them.
-4. The **next** chat session sees approved content.
+With `createTenantHome`, a background **curator** runs after every turn
+(default on). It may stage memory or skill updates under `pending/`. They are
+not live until a human approves them. The **next** chat session sees approved
+content. Disable with `defineAgent({ config: { curator: false } })`.
 
 Details: [Skills & learning](skills-and-learning.md).
-
-## Try without an API key
-
-Clone the repo and run the offline demo. It walks session → curator → approve
-→ recall, and shows that tenant B cannot see tenant A’s data.
-
-```bash
-git clone git@github.com:socialrobot-io/agent-kit.git
-cd agent-kit
-bun install
-bun packages/cli/src/lib/demo.ts
-```
 
 ## Next
 
 Put the same stack in your app with auth and a stable tenant id:
 [Host an agent in your app](hosting.md).
+
+Or run the example chat app: [`examples/example-app`](../../examples/example-app).

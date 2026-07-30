@@ -33,26 +33,38 @@ type ComposeOverrides = Omit<ComposeAgentToolsOptions, "builtins" | "extraTools"
   addAiTools?: ToolSet;
 };
 
+/** Per-turn overrides for {@link AgentSession.run} / {@link AgentSession.stream}. */
 export type SessionTurnOptions = ComposeOverrides &
   ResolveModelOptions & {
     /** Override the model resolved at open time. */
     model?: ModelInput;
+    /** Max model steps (tool-call rounds). Default 8. */
     maxSteps?: number;
+    /** Retry transient provider failures. Default 2. */
     maxRetries?: number;
+    /** Called when the turn finishes (persist transcripts, kick curator, …). */
     onFinish?: (event: { text: string }) => void | Promise<void>;
     /** Override session-level toolApproval for this turn. */
     toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
   };
 
+/** Options for {@link openAgentSession}. */
 export interface OpenAgentSessionOptions extends ResolveModelOptions {
+  /** Stable tenant id. Must match the volume / transcript ownership. */
   tenantId: string;
+  /** Agent-home filesystem (volume or policy-wrapped FS). */
   fs: AgentFsLike;
+  /** Agent definition (`defineAgent`). Supplies model defaults and write-approval flags. */
   definition: AgentDefinition;
   /**
    * Live model for this session. Defaults to `definition.model`
    * (string id via AI Gateway, or a ready LanguageModel).
    */
   model?: ModelInput;
+  /**
+   * Write origin for the approval gate. Default `"foreground"`.
+   * Use `"background_review"` for curator turns.
+   */
   origin?: WriteOrigin;
   /**
    * When provided (e.g. from `createSessionSearchTool`), included in defaults.
@@ -62,7 +74,9 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
    * When provided (e.g. `createTenantBashToolkit().tools`), merged as AI tools.
    */
   sandboxTools?: ToolSet;
+  /** Extra SessionTools merged into the default surface for every turn. */
   addTools?: SessionTool[];
+  /** Tool names to remove from the default surface for every turn. */
   disableTools?: string[];
   /**
    * Pair AI SDK UI Approve/Deny with kit write application.
@@ -85,17 +99,23 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
  * the full host stack.
  */
 export interface AgentSession {
+  /** Tenant this session belongs to. */
   tenantId: string;
   /** Advanced: core engine. Prefer `memory` / `skills` / `pending` / `run`. */
   runtime: AgentSessionRuntime;
+  /** Definition used when this session was opened. */
   definition: AgentDefinition;
   /** Resolved model for this session (override per turn with run/stream options). */
   model: LanguageModel;
+  /** Curated MEMORY.md / USER.md store for this tenant. */
   memory: MemoryStore;
+  /** Skill library bound to the tenant volume. */
   skills: SkillLibrary;
+  /** Staged writes waiting for human approval. */
   pending: PendingWriteStore;
   /** Built-in tools (+ session_search if wired). */
   builtinTools: SessionTool[];
+  /** Sandbox AI tools passed at open time (`bash`, `readFile`, …). */
   sandboxTools?: ToolSet;
   /**
    * AI SDK `toolApproval` when `interactiveApproval` was enabled.
@@ -118,6 +138,9 @@ export interface AgentSession {
 /**
  * init() a runtime and expose default tool composition plus run/stream.
  * Write approval defaults come from `defineAgent` (on by default).
+ *
+ * @param opts - Tenant FS, definition, model, and optional tool wiring.
+ * @returns Session handle with `run` / `stream` and store accessors.
  */
 export async function openAgentSession(
   opts: OpenAgentSessionOptions,

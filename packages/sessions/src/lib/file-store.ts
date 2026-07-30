@@ -24,7 +24,9 @@ export interface TranscriptFs {
   rename?(from: string, to: string): Promise<void>;
 }
 
+/** Options for {@link FileTranscriptStore}. */
 export interface FileTranscriptStoreOptions {
+  /** Filesystem that holds session index + message logs (usually the tenant volume). */
   fs: TranscriptFs;
   /** Directory relative to the FS root. Default `sessions`. */
   rootDir?: string;

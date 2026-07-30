@@ -6,10 +6,15 @@
 import { sessionSearch, type TranscriptStore } from "./transcript.js";
 
 /** Structural match for @socialrobot-io/agent-kit-core SessionTool — kept local so sessions stays a leaf. */
+/** SessionTool-shaped `session_search` for composition into an agent session. */
 export interface SessionSearchTool {
+  /** Always `"session_search"`. */
   name: string;
+  /** Description shown to the model. */
   description: string;
+  /** JSON Schema for tool arguments. */
   inputSchema: Record<string, unknown>;
+  /** Run search / browse / scroll for the bound tenant. */
   execute: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -18,6 +23,13 @@ export interface CreateSessionSearchToolOptions {
   currentSessionId?: string;
 }
 
+/**
+ * Build the `session_search` SessionTool for one tenant.
+ *
+ * @param store - Transcript store scoped to the tenant volume.
+ * @param tenantId - Tenant used for every search / browse call.
+ * @param opts - Active chat id so the current session can be excluded.
+ */
 export function createSessionSearchTool(
   store: TranscriptStore,
   tenantId: string,

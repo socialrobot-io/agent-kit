@@ -15,7 +15,7 @@ Curated memory, human-gated learning, and a real execution sandbox.
 [![Nx](https://img.shields.io/badge/Nx-monorepo-143055.svg)](https://nx.dev)
 [![Bun](https://img.shields.io/badge/Bun-runtime-F9F1E1.svg)](https://bun.sh)
 
-[Why](#why) · [Install](#install) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Security](#security) · [Docs](docs/)
+[Why](#why) · [How it works](#how-it-works) · [Try it](#try-it) · [Install](#install) · [Set up](#set-up) · [Wire into your app](#wire-into-your-app) · [Security](#security) · [Docs](#docs)
 
 </div>
 
@@ -37,232 +37,35 @@ cross tenant boundaries.
 Learning without a sandbox is a liability. A sandbox without learning is just a
 cage. agent-kit is both.
 
-It is a **library**, not a hosted service. Author an agent as a directory, hand
-the runtime a per-tenant filesystem, and the production stack comes with it.
+It is a **library**, not a hosted service. You authenticate users, map each one
+to a `tenantId`, and open a per-tenant home. The kit supplies the volume,
+sandbox, session runtime, and learning loop.
 
----
+**Hosting shape today:** one Node process and one local SQLite volume file per
+tenant. Multi-machine hosting is not ready yet
+([roadmap](docs/roadmap/multi-machine.md)).
 
-## Install
+### Built on
 
-Happy path (volume + transcripts + sandbox + live loop):
+agent-kit composes existing libraries. The [Vercel AI SDK](https://sdk.vercel.ai/)
+shapes most of the live API (`ModelMessage`, `session.run` / `session.stream`,
+`toolApproval`, and AI SDK UI `useChat`).
 
-```bash
-npm i @socialrobot-io/agent-kit-node
-# also pulls core, ai, sessions, sandbox
-```
+| Layer | Library | What you feel in the API |
+| ----- | ------- | ------------------------ |
+| Model loop | [`ai`](https://www.npmjs.com/package/ai) (Vercel AI SDK) | Messages, `run` / `stream`, tools, UI approval |
+| Model routing | [`@ai-sdk/gateway`](https://www.npmjs.com/package/@ai-sdk/gateway) | String model ids (e.g. `anthropic/claude-sonnet-4-5`) |
+| Tenant volume | [AgentFS](https://www.agentfs.ai/) | One SQLite filesystem per tenant |
+| Sandbox shell | [bash-tool](https://github.com/vercel-labs/bash-tool) + [just-bash](https://github.com/vercel-labs/just-bash) | `bash` / `readFile` / `writeFile` behind guardrails |
 
-Optional: `@socialrobot-io/agent-kit-curator` for background learning.
-
-| Package | Job |
-| ------- | --- |
-| [`…-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (convention host wiring) |
-| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
-| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
-| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + `session_search` |
-| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Volume + guarded bash |
-| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review into memory / skills |
-
-## Quick start
-
-Your app authenticates the user and maps them to a stable `tenantId`. The kit
-opens that tenant’s home (volume, transcripts, sandbox) by convention.
-
-```ts
-import { createTenantHome } from "@socialrobot-io/agent-kit-node";
-
-// From your auth layer. Never take tenantId from the client body.
-const tenantId = "brand-123";
-const sessionId = "chat-abc";
-
-// Convention: ./data/tenants/${tenantId}.db + transcripts + sandbox + default model.
-const home = await createTenantHome({ tenantId });
-
-// One AgentSession per chat (frozen memory snapshot for this sessionId).
-const session = await home.openSession(sessionId);
-
-// One model turn (use session.stream for useChat).
-const turn = await session.run([
-  { role: "user", content: "Summarize /workspace; prefer short answers going forward." },
-]);
-```
-
-Common overrides (everything else stays on defaults):
-
-```ts
-const home = await createTenantHome({
-  tenantId,
-  dataDir: "/var/lib/agents",           // or volumePath: "/data/acme.db"
-  model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
-  interactiveApproval: true,            // UI Approve applies writes
-  workspaceFiles: { "README.md": "# hi\n" },
-  sandbox: { allowedHosts: ["https://api.example.com"] }, // or sandbox: false
-  // compileAgent → import { agent } from "./generated/agent"
-  agent,
-});
-
-const session = await home.openSession(sessionId, {
-  addTools: [myTool],
-  disableTools: ["skill_manage"],
-});
-```
-
-Portable agent install: [Hosting](docs/guides/hosting.md) ·
-[Skills & learning](docs/guides/skills-and-learning.md).
-
-`home.volume`, `home.transcripts`, and `home.bash` stay available when you need
-to compose differently. Low-level pieces (`openTenantVolume`,
-`openAgentSession`, …) remain exported from their packages.
-
-Learning is a later step: curator → `pending/` → human approve → next snapshot.
-[Hosting](docs/guides/hosting.md) · [Skills & learning](docs/guides/skills-and-learning.md).
-
-<details>
-<summary><strong>Next.js App Router</strong> (auth → home → stream)</summary>
-
-Assumptions: you already have login. Resolve a **stable** `tenantId` from the
-session. The client sends `sessionId` + messages only.
-
-```ts
-// lib/auth.ts
-import { cookies } from "next/headers";
-
-export async function requireTenantId(): Promise<string> {
-  const token = (await cookies()).get("session")?.value;
-  if (!token) throw new Error("unauthorized");
-  const user = await verifySession(token); // your code
-  return user.tenantId;
-}
-```
-
-```ts
-// app/api/chat/route.ts
-import { convertToModelMessages, createUIMessageStreamResponse, toUIMessageStream } from "ai";
-import { createTenantHome } from "@socialrobot-io/agent-kit-node";
-import { requireTenantId } from "@/lib/auth";
-
-export const runtime = "nodejs";
-
-export async function POST(req: Request) {
-  const tenantId = await requireTenantId();
-  const { messages, id: sessionId } = await req.json();
-  if (!sessionId) return Response.json({ error: "missing session id" }, { status: 400 });
-
-  const home = await createTenantHome({ tenantId }); // process-cached per volume path
-  const session = await home.openSession(sessionId);
-  const result = session.stream(await convertToModelMessages(messages), {
-    maxSteps: 12,
-    onFinish: async ({ text }) => {
-      await home.transcripts!.appendMessage({
-        id: `asst_${Date.now()}`,
-        sessionId,
-        role: "assistant",
-        content: text || "(no text)",
-        createdAt: Date.now() / 1000,
-      });
-    },
-  });
-
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
-  });
-}
-```
-
-Client: `useChat({ id: sessionId })`. Full app: [`examples/example-app`](examples/example-app).
-
-</details>
-
-<details>
-<summary><strong>Hono / Express</strong> (middleware auth → home → JSON turn)</summary>
-
-```ts
-// Hono
-import { Hono } from "hono";
-import { createMiddleware } from "hono/factory";
-import { createTenantHome } from "@socialrobot-io/agent-kit-node";
-
-const requireAuth = createMiddleware(async (c, next) => {
-  const header = c.req.header("authorization");
-  if (!header?.startsWith("Bearer ")) return c.json({ error: "unauthorized" }, 401);
-  const user = await verifyAccessToken(header.slice(7)); // your code
-  c.set("tenantId", user.tenantId);
-  await next();
-});
-
-const app = new Hono();
-app.use("/chat/*", requireAuth);
-
-app.post("/chat", async (c) => {
-  const tenantId = c.get("tenantId") as string;
-  const { sessionId, messages } = await c.req.json();
-  if (!sessionId || !messages?.length) {
-    return c.json({ error: "sessionId and messages required" }, 400);
-  }
-  const home = await createTenantHome({ tenantId });
-  const session = await home.openSession(sessionId);
-  const turn = await session.run(messages);
-  return c.json({ text: turn.text, toolCalls: turn.toolCalls });
-});
-```
-
-```ts
-// Express
-import express from "express";
-import { createTenantHome } from "@socialrobot-io/agent-kit-node";
-
-const app = express();
-app.use(express.json());
-
-async function requireAuth(req, res, next) {
-  try {
-    const user = await verifyAccessToken(req.headers.authorization); // your code
-    req.tenantId = user.tenantId;
-    next();
-  } catch {
-    res.status(401).json({ error: "unauthorized" });
-  }
-}
-
-app.post("/chat", requireAuth, async (req, res) => {
-  const { sessionId, messages } = req.body ?? {};
-  if (!sessionId || !messages?.length) {
-    return res.status(400).json({ error: "sessionId and messages required" });
-  }
-  const home = await createTenantHome({ tenantId: req.tenantId });
-  const session = await home.openSession(sessionId);
-  const turn = await session.run(messages);
-  res.json({ text: turn.text, toolCalls: turn.toolCalls });
-});
-```
-
-Stream with `session.stream` the same way as the Next.js route.
-[Hosting](docs/guides/hosting.md).
-
-</details>
-
-### Full example app
-
-Runnable Next.js chat in this repo (AI SDK UI `useChat`):
-
-```bash
-git clone git@github.com:socialrobot-io/agent-kit.git
-cd agent-kit && bun install
-cd examples/example-app
-cp .env.sample .env.local   # set DEEPSEEK_API_KEY (or AI_GATEWAY_API_KEY)
-npx nx dev example          # http://localhost:3000
-```
-
-### Offline demo
-
-No API keys. Exercises approval, recall, and tenant isolation:
-
-```bash
-bun packages/cli/src/lib/demo.ts
-```
+If you already use the AI SDK, agent-kit slots in as the tenant home, memory,
+skills, and sandbox around that loop.
 
 ---
 
 ## How it works
+
+Read this once before you install. Setup makes more sense with the loop in mind.
 
 <div align="center">
 <img src="docs/assets/architecture.svg" alt="Production agent stack: secure, sandboxed, self-improving" width="100%"/>
@@ -272,15 +75,235 @@ bun packages/cli/src/lib/demo.ts
 
 1. **Author** the agent as markdown files: who it is (`SOUL.md`), house rules
    (`AGENTS.md`), optional skills and memories.
-2. **Open a session** for one tenant. The system prompt is built once from
-   those files plus a memory snapshot that does not change mid-chat.
+2. **Open a session** for one tenant. Pass the compiled or loaded agent bundle
+   so identity lands on the volume. The system prompt is built once from those
+   files plus a memory snapshot that does not change mid-chat.
 3. **Guard** writes and shell commands. Bad content is scanned before it can
    enter a future prompt. Dangerous commands are blocked before they run.
-4. **Curate** after the chat. A background pass may propose lasting memory or
-   skills.
+4. **Curate** after each turn. `createTenantHome` runs a background pass that
+   may propose lasting memory or skills (disable with `config.curator: false`).
 5. **Approve.** Proposals sit under `pending/` until a human accepts them.
 6. **Recall.** The next chat sees approved memory. Past chats for that tenant
    are searchable; other tenants are not.
+
+Your app owns auth and `tenantId`. The kit owns isolation, scanning, sandbox,
+and the approval gate.
+
+---
+
+## Try it
+
+Clone the example app for a streaming Next.js chat with sandbox tools, or jump
+to [Install](#install) to wire the package into your own app.
+
+```bash
+git clone https://github.com/socialrobot-io/agent-kit.git
+cd agent-kit && bun install
+cd examples/example-app
+cp .env.sample .env.local   # set DEEPSEEK_API_KEY or AI_GATEWAY_API_KEY
+npx nx dev example          # http://localhost:3000
+```
+
+Details: [`examples/example-app`](examples/example-app).
+
+---
+
+## Install
+
+**Requirements**
+
+- Node.js 20+ (or Bun)
+- Durable local disk for per-tenant SQLite volumes (one machine today)
+- A model provider for live turns
+
+String model ids (for example `anthropic/claude-sonnet-4-5`) use the
+[Vercel AI Gateway](https://vercel.com/ai-gateway). Set a key before the first
+turn:
+
+```bash
+export AI_GATEWAY_API_KEY=...   # or pass a ready LanguageModel via `model`
+```
+
+Happy path package (volume + transcripts + sandbox + live loop):
+
+```bash
+npm i @socialrobot-io/agent-kit-node
+# also pulls core, ai, sessions, sandbox
+```
+
+| Package | Job |
+| ------- | --- |
+| [`…-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (volume, sandbox, sessions, curator) |
+| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
+| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
+| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + `session_search` |
+| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Volume + guarded bash |
+| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review (wired by `…-node`) |
+
+---
+
+## Set up
+
+Three steps: author files, compile them into your app, run a turn.
+
+### 1. Author the agent as files
+
+The agent is a directory of markdown, not a large config object.
+
+```text
+agent/
+  SOUL.md       who the agent is (always in the system prompt)
+  AGENTS.md     house rules
+  skills/       reusable how-to procedures (optional)
+  memories/     USER.md and MEMORY.md (optional; behind approval when learned)
+```
+
+Example `SOUL.md`:
+
+```md
+You are a concise research assistant for a fintech startup.
+```
+
+Example `AGENTS.md`:
+
+```md
+Prefer short, factual answers.
+Cite a source for every non-obvious claim.
+Never invent numbers.
+```
+
+Skills under `agent/skills/` are mutable unless you mark them locked
+(`locked: true` / `pinned` / `bundled` in frontmatter, or a `.locked` marker).
+See [Skills & learning](docs/guides/skills-and-learning.md).
+
+### 2. Compile the agent, open a tenant home, run a turn
+
+`createTenantHome` only installs identity and skills when you pass `agent`.
+Compile `agent/` in CI / predev into an importable module so Next, Docker, and
+workers ship the content without a runtime `agent/` directory on disk.
+
+```js
+// scripts/compile-agent.mjs — wire into predev / prebuild
+import { compileAgent } from "@socialrobot-io/agent-kit-node";
+
+await compileAgent({
+  dir: "./agent",
+  outFile: "./src/generated/agent.ts",
+});
+```
+
+```ts
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent"; // output of compileAgent
+
+const tenantId = "brand-123"; // from your auth layer — never from the client body alone
+const sessionId = "chat-abc";
+
+// Default: ./data/tenants/${tenantId}.db + transcripts + sandbox
+// + model anthropic/claude-sonnet-4-5 via AI Gateway.
+const home = await createTenantHome({ tenantId, agent });
+
+// Memory freezes when openSession returns. Reuse that AgentSession for the
+// life of the chat (cache by sessionId in your process). Calling openSession
+// again rebuilds the snapshot from disk.
+const session = await home.openSession(sessionId);
+
+const turn = await session.run([
+  { role: "user", content: "Summarize /workspace; prefer short answers going forward." },
+]);
+```
+
+Plain Node scripts that can read `./agent` at runtime may use
+`loadAgent("./agent")` instead of compile + import.
+
+### 3. Override only what you need
+
+```ts
+const home = await createTenantHome({
+  tenantId,
+  agent,
+  dataDir: "/var/lib/agents",           // or volumePath: "/data/acme.db"
+  model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
+  interactiveApproval: true,            // UI Approve applies writes
+  workspaceFiles: { "README.md": "# hi\n" },
+  sandbox: {
+    // Hostnames only (not full URLs). Or sandbox: false to disable.
+    allowedHosts: ["api.example.com"],
+    secrets: [process.env.TENANT_API_KEY!],
+  },
+});
+
+const session = await home.openSession(sessionId, {
+  addTools: [myTool],
+  disableTools: ["skill_manage"],
+});
+```
+
+You now have a working turn. Next: put auth, session cache, and transcripts
+around it.
+
+---
+
+## Wire into your app
+
+Your app authenticates the user. The kit only trusts the `tenantId` you pass.
+
+```ts
+import type { AgentSession } from "@socialrobot-io/agent-kit-ai";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent"; // from compileAgent in predev / CI
+
+// Reuse the same AgentSession for a chat so memory stays frozen.
+// Key includes tenantId so two tenants never share a session handle.
+const sessions = new Map<string, AgentSession>();
+
+async function handleTurn(opts: {
+  tenantId: string; // from your auth layer — never from the request body alone
+  sessionId: string; // one id per chat conversation
+  userText: string;
+  userMessageId: string;
+}) {
+  // Opens (or reuses) volume + transcripts + sandbox for this tenant.
+  const home = await createTenantHome({ tenantId: opts.tenantId, agent });
+
+  const key = `${opts.tenantId}:${opts.sessionId}`;
+  let session = sessions.get(key);
+  if (!session) {
+    session = await home.openSession(opts.sessionId);
+    sessions.set(key, session);
+  }
+
+  // Persist both sides so session_search can browse past chats.
+  await home.transcripts!.createSession({
+    id: opts.sessionId,
+    tenantId: opts.tenantId,
+    source: "api",
+    createdAt: Date.now() / 1000,
+  });
+  await home.transcripts!.appendMessage({
+    id: opts.userMessageId,
+    sessionId: opts.sessionId,
+    role: "user",
+    content: opts.userText,
+    createdAt: Date.now() / 1000,
+  });
+
+  const turn = await session.run([{ role: "user", content: opts.userText }]);
+
+  await home.transcripts!.appendMessage({
+    id: `asst_${Date.now()}`,
+    sessionId: opts.sessionId,
+    role: "assistant",
+    content: turn.text || "(no text)",
+    createdAt: Date.now() / 1000,
+  });
+
+  return turn;
+}
+```
+
+For streaming Next.js chat, copy [`examples/example-app`](examples/example-app).
+More detail: [Hosting](docs/guides/hosting.md).
 
 ---
 
@@ -293,38 +316,47 @@ bun packages/cli/src/lib/demo.ts
 | **Sandbox** | Destructive shell, secret dumps, hosts you did not allow. |
 | **Tenant isolation** | One volume and audit trail per tenant. Search never crosses tenants. |
 
+Before you ship:
+
+1. Resolve `tenantId` only from trusted auth. Use an opaque id safe for paths.
+2. Pass `agent` so company identity and skills are installed on the volume.
+3. Lock company-owned skills; unlocked skills stay mutable behind approval.
+4. Pass sandbox `secrets` and hostname-only `allowedHosts` at home creation.
+5. Do not hand tools the raw volume write handle.
+
 Details: [Security guide](docs/guides/security.md).
 
 ---
 
 ## Docs
 
-Read in order if you are integrating:
+Read in this order when you integrate:
 
 | Guide | Answers |
 | ----- | ------- |
 | [Getting started](docs/guides/getting-started.md) | Install, `agent/` files, first turn |
 | [Hosting](docs/guides/hosting.md) | Auth, volume, session, approve in your app |
+| [Security](docs/guides/security.md) | Scans, approval, isolation |
 | [Tools](docs/guides/tools.md) | Defaults and how to add your own |
 | [Models](docs/guides/models.md) | Pick a model, run or stream a turn |
 | [Memory](docs/guides/memory.md) | What is remembered across chats |
 | [Skills & learning](docs/guides/skills-and-learning.md) | Skills, curator, human approve |
 | [Sandbox](docs/guides/sandbox.md) | Guarded shell and workspace |
-| [Security](docs/guides/security.md) | Scans, approval, isolation |
 | [Publishing](docs/guides/publishing.md) | npm release (maintainers) |
 
 Not ready yet: [Multi-machine](docs/roadmap/multi-machine.md).
 
 ---
 
-## Commands
+## Commands (contributors)
 
 ```bash
 bun install
-bun packages/cli/src/lib/demo.ts     # offline production-loop demo
 npx nx run-many -t test --all
 npx nx run-many -t build --all
 ```
+
+Before a commit: `npx nx run-many -t typecheck test build --all` must be green.
 
 ## License
 

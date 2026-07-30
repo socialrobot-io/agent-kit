@@ -5,8 +5,10 @@ import { join } from "node:path";
 import type { LanguageModel } from "ai";
 import { loadAgent } from "./compile-agent.js";
 import { createTenantHome, resetTenantHomeCache } from "./tenant-home.js";
+import { waitForSessionCurators } from "./session-curator.js";
 
-afterEach(() => {
+afterEach(async () => {
+  await waitForSessionCurators();
   resetTenantHomeCache();
 });
 

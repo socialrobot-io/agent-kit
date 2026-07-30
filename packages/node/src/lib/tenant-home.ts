@@ -24,6 +24,7 @@ import {
   type OpenAgentSessionOptions,
   type ResolveModelOptions,
 } from "@socialrobot-io/agent-kit-ai";
+import type { CuratorModelRunner } from "@socialrobot-io/agent-kit-curator";
 import {
   openTenantVolume,
   createTenantBashToolkit,
@@ -38,6 +39,7 @@ import {
   type TranscriptStore,
 } from "@socialrobot-io/agent-kit-sessions";
 import { FRAMEWORK_SKILLS } from "./framework-skills.js";
+import { attachSessionCurator } from "./session-curator.js";
 
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4-5";
 const DEFAULT_DATA_DIR = "./data";
@@ -75,6 +77,11 @@ export type CreateTenantHomeOptions = ResolveModelOptions & {
   interactiveApproval?: OpenAgentSessionOptions["interactiveApproval"];
   /** Seed workspace files when sandbox is on. */
   workspaceFiles?: Record<string, string>;
+  /**
+   * Override the curator model runner. Default: `aiCuratorRunner` on the
+   * session model. Useful for a cheaper aux model or tests.
+   */
+  curatorRunner?: CuratorModelRunner;
 };
 
 export type OpenHomeSessionOptions = Omit<
@@ -89,16 +96,26 @@ export type OpenHomeSessionOptions = Omit<
   sandbox?: boolean;
 };
 
+/** Per-tenant home: volume, optional transcripts/sandbox, and session open. */
 export interface TenantHome {
+  /** Stable tenant id this home was opened for. */
   tenantId: string;
+  /** Absolute or relative path to the tenant SQLite volume file. */
   volumePath: string;
+  /** Opened AgentFS volume (memory, skills, workspace, audit). */
   volume: TenantVolume;
+  /** Default agent definition for sessions from this home. */
   definition: AgentDefinition;
+  /** Transcript store when `transcripts` was not disabled at home creation. */
   transcripts?: TranscriptStore;
+  /** Guarded bash toolkit when sandbox was not disabled at home creation. */
   bash?: TenantBashToolkit;
   /**
    * Open (or re-open) a chat session. Creates the transcript row, asserts
    * tenant ownership, wires search + sandbox by convention.
+   *
+   * @param sessionId - Chat id. Memory freezes for this opened session handle.
+   * @param opts - Per-chat overrides (model, tools, approval, …).
    */
   openSession: (sessionId: string, opts?: OpenHomeSessionOptions) => Promise<AgentSession>;
 }
@@ -110,7 +127,7 @@ function resolveVolumePath(opts: CreateTenantHomeOptions): string {
 }
 
 function resolveDefinition(opts: CreateTenantHomeOptions): AgentDefinition {
-  if (opts.definition) return opts.definition;
+  if (opts.definition) return defineAgent(opts.definition);
   const model =
     typeof opts.model === "string" || opts.model === undefined
       ? (opts.model ?? DEFAULT_MODEL)
@@ -195,10 +212,14 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
       ...rest
     } = sessionOpts;
 
-    return openAgentSession({
+    const activeDefinition = sessionDefinition
+      ? defineAgent(sessionDefinition)
+      : definition;
+
+    const session = await openAgentSession({
       tenantId,
       fs: agentFs,
-      definition: sessionDefinition ?? definition,
+      definition: activeDefinition,
       model:
         sessionModel ??
         (typeof opts.model !== "string" && opts.model !== undefined ? opts.model : undefined),
@@ -211,6 +232,12 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
       sandboxTools: useSandbox && bash ? bash.tools : undefined,
       ...resolveOpts,
       ...rest,
+    });
+
+    return attachSessionCurator(session, {
+      definition: activeDefinition,
+      resolveOpts,
+      curatorRunner: opts.curatorRunner,
     });
   };
 
@@ -233,6 +260,9 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
  * const home = await createTenantHome({ tenantId, agent });
  * const session = await home.openSession(sessionId);
  * ```
+ *
+ * @param opts - Tenant id, optional compiled `agent`, volume path, model, sandbox.
+ * @returns Cached {@link TenantHome} for the resolved volume path.
  */
 export async function createTenantHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
   const key = resolveVolumePath(opts);

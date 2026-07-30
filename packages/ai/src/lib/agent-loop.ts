@@ -20,10 +20,13 @@ import { composeAgentTools } from "./compose-tools.js";
 
 type AgentStreamResult = StreamTextResult<ToolSet, never, any>;
 
+/** Options for {@link runAgentTurn} / {@link streamAgentTurn}. */
 export interface AgentLoopOptions extends ResolveModelOptions {
+  /** Initialized session runtime (system prompt + builtin tools). */
   runtime: AgentSessionRuntime;
   /** Override the model (else resolved from `definition`). */
   model?: ModelInput;
+  /** Used to resolve the model when `model` is omitted. */
   definition?: AgentDefinition;
   /**
    * Extra builtins beyond `runtime.tools()` (e.g. session_search).
@@ -65,10 +68,15 @@ export interface AgentLoopOptions extends ResolveModelOptions {
   maxRetries?: number;
 }
 
+/** Result of a completed {@link runAgentTurn}. */
 export interface AgentLoopResult {
+  /** Final assistant text (may be empty when the model only called tools). */
   text: string;
+  /** Number of model steps taken. */
   steps: number;
+  /** Tool calls made during the turn. */
   toolCalls: { name: string; args: unknown }[];
+  /** Tool results returned to the model. */
   toolResults: unknown[];
 }
 
@@ -119,6 +127,9 @@ function resolveLoopModel(opts: AgentLoopOptions) {
 
 /**
  * Run one agent turn to completion against a live model.
+ *
+ * @param messages - Conversation messages for this turn.
+ * @param opts - Runtime, model, tools, and step limits.
  */
 export async function runAgentTurn(
   messages: ModelMessage[],
@@ -160,6 +171,9 @@ export async function runAgentTurn(
 
 /**
  * Stream one agent turn (tools + text) for AI SDK UI / `useChat`.
+ *
+ * @param messages - Conversation messages for this turn.
+ * @param opts - Runtime, model, tools, and step limits.
  */
 export function streamAgentTurn(
   messages: ModelMessage[],

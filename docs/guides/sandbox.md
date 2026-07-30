@@ -1,67 +1,52 @@
 # Sandbox
 
 The sandbox gives the agent a workspace and a shell that cannot freely destroy
-the host or leak secrets.
+the host or leak secrets. The agent gets `bash`, `readFile`, and `writeFile`
+tools. Commands run in [just-bash](https://github.com/vercel-labs/just-bash)
+behind kit guardrails, not on your real machine shell.
 
-It combines:
+## Happy path (`createTenantHome`)
 
-- a per-tenant volume from `openTenantVolume` (durable files), and
-- [bash-tool](https://github.com/vercel-labs/bash-tool) /
-  [just-bash](https://github.com/vercel-labs/just-bash) (the shell the model calls).
-
-## Create the toolkit
-
-Pass the same `volume` you use for memory so workspace files persist under
-`/workspace` on that tenant’s SQLite file.
+Use this unless you are building a custom host without `createTenantHome`.
+The home opens the tenant volume and wires sandbox tools into every session.
 
 ```ts
-import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent";
 
-const tenantId = "brand-123";
-const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
-
-const bash = await createTenantBashToolkit({
-  tenantId,
-  volume,
-  files: { "README.md": "# workspace\n" },
-  destination: "/workspace",
-  // optional: allow curl only to these hosts
-  allowedHosts: ["https://api.example.com"],
-  // optional: redact these names from command lines and logs
-  secrets: ["MY_API_KEY"],
+const home = await createTenantHome({
+  tenantId, // from your auth layer
+  agent,
+  workspaceFiles: { "README.md": "# workspace\n" },
+  sandbox: {
+    // Hostnames only (not full URLs)
+    allowedHosts: ["api.example.com"],
+    secrets: [process.env.TENANT_API_KEY!],
+  },
 });
 
-// bash.tools is an AI SDK ToolSet: bash, readFile, writeFile
+const session = await home.openSession(sessionId);
+// session already has bash / readFile / writeFile
 ```
 
-`createTenantHome` wires `bash.tools` for you. If you compose by hand, pass
-them into `openAgentSession` as `sandboxTools`. See [Hosting](hosting.md).
+| Option | Meaning |
+| ------ | ------- |
+| `sandbox: true` or omit | Sandbox on (default). Workspace persists on the tenant volume under `/workspace`. |
+| `sandbox: { … }` | Same, with guardrail options (`allowedHosts`, `secrets`, …). |
+| `sandbox: false` | No shell tools. |
+| `workspaceFiles` | Seed files written into `/workspace` when the home is created. |
 
-### Ephemeral workspace (no volume)
+You do **not** call `openTenantVolume` or `createTenantBashToolkit` in this path.
+`home.bash` is available if you need the toolkit handle yourself.
 
-If you omit `volume`, the workspace stays in memory and is discarded when the
-process ends.
-
-```ts
-const ephemeral = await createTenantBashToolkit({
-  tenantId: "brand-123",
-  files: { "README.md": "# workspace\n" },
-  destination: "/workspace",
-});
-```
-
-## How the pieces fit
+## What the sandbox is
 
 | Piece | Role |
 | ----- | ---- |
-| Tenant volume | Durable home for `memories/`, `skills/`, and `/workspace/*` |
-| just-bash | Unix-like shell layout |
-| Kit sandbox layer | Checks commands before they run; writes audit records |
-| bash-tool | Exposes `bash`, `readFile`, and `writeFile` to the model |
-
-Extra host hardening (“defense in depth”) stays off under Next.js, because
-Next patches `Date.now` and `process.env`. Elsewhere you can use
-`{ enabled: "auto" }`. Python and `js-exec` stay off unless you turn them on.
+| Tenant volume | One SQLite file per tenant. Holds memory, skills, and `/workspace` files. |
+| just-bash | In-process Unix-like shell (not the host shell). |
+| Guardrails | Block destructive commands, secret dumps, and non-allowlisted network. |
+| bash-tool | Exposes `bash`, `readFile`, `writeFile` to the model. |
 
 ## What is blocked before run
 
@@ -73,17 +58,39 @@ Next patches `Date.now` and `process.env`. Elsewhere you can use
 
 Blocked commands return an error string to the model. They do not execute.
 
-## Audit record
+Each command, file read, and file write is audited (tenant id, command or path,
+exit code, snapshot id when available).
 
-Each command, file read, and file write logs:
+## Advanced: build the toolkit yourself
 
-- tenant id
-- command or path
-- files touched (best effort)
-- exit code
-- snapshot id after the action
+Only if you are **not** using `createTenantHome` and you open sessions with
+`openAgentSession` by hand.
+
+```ts
+import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
+import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
+
+const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
+const bash = await createTenantBashToolkit({
+  tenantId,
+  volume, // omit for an in-memory workspace that dies with the process
+  files: { "README.md": "# workspace\n" },
+  destination: "/workspace",
+  allowedHosts: ["api.example.com"],
+  secrets: ["MY_API_KEY"],
+});
+
+const session = await openAgentSession({
+  tenantId,
+  fs: /* your agent FS */,
+  definition,
+  sandboxTools: bash.tools,
+});
+```
+
+Prefer the happy path above for product hosts.
 
 ## Next
 
-- Threat model across the whole kit: [Security](security.md)
-- Wire sandbox tools into a session: [Hosting](hosting.md)
+- Threat model: [Security](security.md)
+- Auth + volume + session: [Hosting](hosting.md)

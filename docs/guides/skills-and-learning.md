@@ -58,8 +58,7 @@ skills/
     scripts/        optional
 ```
 
-`SKILL.md` follows [agentskills.io](https://agentskills.io) (Hermes-compatible
-create rules):
+`SKILL.md` follows [agentskills.io](https://agentskills.io):
 
 ```text
 ---
@@ -85,7 +84,7 @@ How the model loads a skill (progressive disclosure):
 2. `skill_view`: full `SKILL.md` plus a `linked_files` map and `skill_dir`
 3. `skill_view` with `file_path`: one linked file, only when needed
 
-## Locked skills (any tier)
+## Locked skills
 
 When a skill is locked, the whole folder is immutable to the agent, curator,
 and approve replay. Agents may still `skills_list` / `skill_view`. They may
@@ -93,17 +92,37 @@ create **new learned** skills under other names (write approval still applies).
 
 See [Security](security.md) for the three zones.
 
-## Curator (propose updates after a chat)
+## Curator (propose updates after each turn)
 
-The curator is a separate background pass. It reads a transcript and may
-propose memory or skill writes. It does not run your full chat toolset.
+If you use `createTenantHome`, you do not start the curator yourself. After
+every completed turn, the home runs a background review. That review may
+propose memory or skill changes. Those proposals land under `pending/` on the
+tenant volume. They are not live until a human approves them.
+
+The review does not block the chat reply. It only uses `memory` and
+`skill_manage` tools (no bash, no product tools).
 
 ```text
-chat ends
-  → runBackgroundReview (curator)
-  → files under pending/memory and pending/skills
-  → human approves or rejects
-  → next session snapshot uses approved content only
+turn completes
+  → curator runs in the background
+  → proposals appear under pending/
+  → your UI shows them; a human accepts or rejects
+  → accept applies them to disk
+  → the next chat session sees approved content
+```
+
+Default: on. Change it in `defineAgent`:
+
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: {
+    curator: true, // default
+    // curator: false,                 // never run after turns
+    // curator: { mode: "memory" },    // only review memory
+    // curator: { mode: "skills" },    // only review skills
+  },
+});
 ```
 
 | Capture | Skip |
@@ -111,11 +130,25 @@ chat ends
 | Durable user facts → memory | Failures that only happen in one environment |
 | Reusable procedures → skills | “This tool is broken” one-offs |
 
-## Approve pending writes
+## Review pending writes in your app
+
+Your job after the curator (or any gated write) is to show `pending/` items
+and let a human decide.
+
+**List what is waiting:**
+
+```ts
+const memoryPending = await session.pending.list("memory");
+const skillPending = await session.pending.list("skills");
+// Each item has id, summary, payload, origin, …
+```
+
+**Accept (apply to disk):**
 
 ```ts
 import { approvePendingWrites } from "@socialrobot-io/agent-kit-core";
 
+// Applies every pending memory and skill write, then removes those records.
 const applied = await approvePendingWrites({
   memory: session.memory,
   skills: session.skills,
@@ -123,12 +156,31 @@ const applied = await approvePendingWrites({
 });
 ```
 
-Reject means discard the staged files. Do not call `approvePendingWrites`.
+Approved content shows up in the **next** session’s frozen memory snapshot.
+The chat that is already open does not change mid-turn.
 
-Locked skill targets are refused (disk unchanged).
+**Reject (throw away):**
+
+Do not call `approvePendingWrites`. Delete the staged record:
+
+```ts
+await session.pending.discard("memory", pendingId);
+// or
+await session.pending.discard("skills", pendingId);
+```
+
+**Locked skills:** if a proposal targets a locked skill folder, approve refuses
+it and the volume stays unchanged.
+
+## When the curator does not run by itself
+
+`createTenantHome().openSession` wires the curator. If you only call
+`openAgentSession` from `@socialrobot-io/agent-kit-ai` (no tenant home), nothing
+starts the review for you. In that case call `runBackgroundReview` after the
+turn. Example: [Models](models.md).
 
 ## Next
 
 - [Security](security.md) — zones and locks
-- [Hosting](hosting.md) — `company` on `createTenantHome`
+- [Hosting](hosting.md) — auth, volume, baked-in curator
 - [Memory](memory.md) — frozen snapshot

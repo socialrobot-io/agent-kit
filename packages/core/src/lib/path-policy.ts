@@ -35,6 +35,9 @@ function isUnder(path: string, prefix: string): boolean {
 /**
  * Wrap a volume FS so agent sessions cannot rewrite company identity or
  * locked skill folders. Reads stay allowed.
+ *
+ * @param inner - Privileged tenant volume (or any {@link AgentFsLike}).
+ * @param options - Agent / skills directory names for the seal.
  */
 export function createAgentFs(inner: AgentFsLike, options: PathPolicyOptions = {}): AgentFsLike {
   const agentDir = options.agentDir ?? "agent";

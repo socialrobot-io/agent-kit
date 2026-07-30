@@ -1,8 +1,8 @@
 # RULES.md (@socialrobot-io/agent-kit-node)
 
 Host composition layer. Wires volume + transcripts + sandbox + `openAgentSession`
-with convention-over-configuration defaults. Leaves stay pure; this package may
-depend on sibling packages.
++ after-turn curator with convention-over-configuration defaults. Leaves stay
+pure; this package may depend on sibling packages (including curator).
 
 ## Non-negotiables
 
@@ -12,6 +12,10 @@ depend on sibling packages.
    pieces. `openSession` accepts the same overrides as `openAgentSession`.
 3. **One home per tenant volume path per process.** Cache by path; do not open
    the same SQLite file twice.
+4. **Curator is baked into `openSession`.** After each turn, when
+   `definition.config.curator` is not `false`, schedule `runBackgroundReview`
+   without blocking the reply. Toggle only via `defineAgent` config (or
+   `curatorRunner` for the model seam).
 
 ## When you change X, also update Y
 
@@ -19,3 +23,4 @@ depend on sibling packages.
 | ------ | ----------- |
 | `createTenantHome` options / defaults | `tenant-home.spec.ts`, README quick start, `docs/guides/hosting.md` |
 | `compileAgent` / `agent` on home | `compile-agent.spec.ts`, `tenant-home.spec.ts`, hosting guide, CONTEXT.md |
+| Curator wiring / `config.curator` | `session-curator.ts`, `tenant-home.spec.ts`, skills-and-learning + hosting guides |

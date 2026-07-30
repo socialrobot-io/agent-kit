@@ -66,7 +66,12 @@ async function listSkillDirs(skillsRoot: string): Promise<string[]> {
   return entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name);
 }
 
-/** Read `agent/` into an {@link AgentBundle}. */
+/**
+ * Read `agent/` into an {@link AgentBundle}.
+ *
+ * @param dir - Agent authoring directory. Default `./agent`.
+ * @returns Bundle suitable for {@link createTenantHome} / {@link installAgent}.
+ */
 export async function loadAgent(dir: string = DEFAULT_AGENT_DIR): Promise<AgentBundle> {
   const soul = await readOptional(join(dir, "SOUL.md"));
   const agentsMd = await readOptional(join(dir, "AGENTS.md"));
@@ -114,6 +119,9 @@ function emitTypeScript(bundle: AgentBundle): string {
  * await compileAgent({ outFile: "./src/generated/agent.ts" });
  * // createTenantHome({ tenantId, agent })
  * ```
+ *
+ * @param opts - Source directory and output module path.
+ * @returns The compiled {@link AgentBundle} (also written to `outFile`).
  */
 export async function compileAgent(opts: CompileAgentOptions): Promise<AgentBundle> {
   if (!opts.outFile?.trim()) throw new Error("compileAgent requires outFile");

@@ -63,8 +63,11 @@ export interface MemoryFs {
   rename?(from: string, to: string): Promise<void>;
 }
 
+/** Options for {@link MemoryStore}. */
 export interface MemoryStoreOptions {
+  /** Max characters for MEMORY.md in the system-prompt snapshot. Default 2200. */
   memoryCharLimit?: number;
+  /** Max characters for USER.md in the system-prompt snapshot. Default 1375. */
   userCharLimit?: number;
   /** Directory holding MEMORY.md / USER.md, relative to the fs root. */
   memoryDir?: string;

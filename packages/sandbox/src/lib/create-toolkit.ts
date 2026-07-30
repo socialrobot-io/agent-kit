@@ -30,7 +30,9 @@ import { InMemorySandboxAuditStore, FileSandboxAuditStore, type SandboxAuditStor
 import { makeBeforeBashCall, type GuardrailOptions } from "./guardrails.js";
 import type { TenantVolume } from "./agentfs-open.js";
 
+/** Options for {@link createTenantBashToolkit}. */
 export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
+  /** Stable tenant id recorded on audit events. */
   tenantId: string;
   /**
    * Tenant volume from `openTenantVolume`. When set, `/workspace` persists in
@@ -48,6 +50,7 @@ export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   files?: Record<string, string>;
   /** Extra instructions appended to tool descriptions. */
   extraInstructions?: string;
+  /** Audit store for bash events. Default: in-memory store. */
   audit?: SandboxAuditStore;
   /**
    * Override just-bash DefenseInDepth. Default: off under Next.js (its
@@ -58,8 +61,11 @@ export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   executionLimitProfile?: BashOptions["executionLimitProfile"];
 }
 
+/** Guarded bash toolkit for one tenant, plus kit-owned handles. */
 export interface TenantBashToolkit extends Omit<BashToolkit, "bash"> {
+  /** Audit store receiving bash / guardrail events. */
   audit: SandboxAuditStore;
+  /** Guardrailed sandbox backend bound to this tenant. */
   tenantSandbox: TenantAgentFSSandbox;
   /** The underlying just-bash `Bash` instance. */
   bash: Bash;
@@ -257,6 +263,9 @@ function buildPersistedWorkspaceFs(agentFs: AgentFsHandle, destination: string):
  * Create AI SDK bash / readFile / writeFile tools for one tenant.
  * Commands run in just-bash (not the host shell), behind agent-kit guardrails.
  * Pass `volume` from `openTenantVolume` to persist `/workspace` on that volume.
+ *
+ * @param options - Tenant id, volume/agentFs, guardrails, and seed files.
+ * @returns Toolkit with `tools`, `bash`, `audit`, and `tenantSandbox`.
  */
 export async function createTenantBashToolkit(
   options: CreateTenantBashToolkitOptions,
