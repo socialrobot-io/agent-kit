@@ -12,7 +12,7 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
    Specialization happens in consumer apps on top of the toolkit.
 2. **Agents are files.** An agent is authored as a directory (`SOUL.md`,
    `AGENTS.md`, `skills/`) and its learned state is files in an AgentFS volume
-   (`agent/MEMORY.md`, `agent/USER.md`, `skills/`, `pending/`). Code reads and
+   (`memories/MEMORY.md`, `memories/USER.md`, `skills/`, `pending/`). Code reads and
    writes files; there is no hidden database of agent state.
 3. **The learning loop is explicit.** Session transcripts feed a background
    curator; the curator proposes memory and skill writes; a human (or an

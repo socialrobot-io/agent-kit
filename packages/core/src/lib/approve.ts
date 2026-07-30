@@ -6,6 +6,7 @@ import type { MemoryStore } from "./memory.js";
 import { applyMemoryArgs } from "./memory.js";
 import type { SkillLibrary } from "./skills.js";
 import type { PendingWriteStore } from "./approval.js";
+import { applySkillArgs } from "./gated-write.js";
 
 export interface ApprovePendingDeps {
   memory: MemoryStore;
@@ -13,19 +14,11 @@ export interface ApprovePendingDeps {
   pending: PendingWriteStore;
 }
 
-export type ApplySkillFn = (
-  args: Record<string, unknown>,
-  deps: { skills: SkillLibrary },
-) => Promise<unknown>;
-
 /**
  * Approve every pending memory and skill write.
- * Pass `applySkill` from `@socialrobot-io/agent-kit-curator` (kept there to avoid a core↔curator cycle).
+ * Skill replay uses {@link applySkillArgs} in core (no curator injection).
  */
-export async function approvePendingWrites(
-  deps: ApprovePendingDeps,
-  applySkill: ApplySkillFn,
-): Promise<string[]> {
+export async function approvePendingWrites(deps: ApprovePendingDeps): Promise<string[]> {
   const applied: string[] = [];
 
   for (const rec of await deps.pending.list("memory")) {
@@ -38,7 +31,19 @@ export async function approvePendingWrites(
   }
 
   for (const rec of await deps.pending.list("skills")) {
-    await applySkill(rec.payload, { skills: deps.skills });
+    const name = typeof rec.payload.name === "string" ? rec.payload.name : undefined;
+    if (name && (await deps.skills.isLocked(name))) {
+      throw new Error(
+        `Failed to apply pending skill ${rec.id}: Skill '${name}' is locked and cannot be modified by the agent.`,
+      );
+    }
+    const result = (await applySkillArgs(rec.payload, { skills: deps.skills })) as {
+      success?: boolean;
+      error?: string;
+    };
+    if (result && result.success === false) {
+      throw new Error(`Failed to apply pending skill ${rec.id}: ${result.error ?? "unknown"}`);
+    }
     await deps.pending.discard("skills", rec.id);
     applied.push(`skills:${rec.id} ${rec.summary}`);
   }

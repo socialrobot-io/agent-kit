@@ -8,8 +8,24 @@
       "type:example"
     ],
     "targets": {
+      "compile-agent": {
+        "command": "bun scripts/compile-agent.ts",
+        "options": {
+          "cwd": "{projectRoot}"
+        },
+        "dependsOn": [
+          "^build"
+        ]
+      },
       "dev": {
         "dependsOn": [
+          "compile-agent",
+          "^build"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "compile-agent",
           "^build"
         ]
       }

@@ -7,9 +7,8 @@ Everything else depends on this package; it depends on nothing.
 ## Non-negotiables
 
 1. **Zero dependencies.** Never add a runtime dependency or an `@socialrobot-io/agent-kit-*`
-   sibling dep to this package. If a helper needs one, it lives elsewhere
-   (example: skill replay for approvals takes `applySkill` as an injected
-   function in `approve.ts` precisely to avoid a core-curator cycle).
+   sibling dep to this package. Skill replay lives in `gated-write.ts`
+   (`applySkillArgs`); curator and approve call that seam.
 2. **Upstream semantic parity.** `memory.ts`, `skills.ts`, `approval.ts`, and
    `threats.ts` are deliberate ports of `vendor/hermes`. Behavior that upstream
    pins (the `"\n§\n"` entry delimiter, per-block character limits, the frozen
@@ -39,7 +38,8 @@ Everything else depends on this package; it depends on nothing.
 | Tool surface (`schemas.ts`, tool names/args) | `packages/ai` tool adapter, examples, `docs/guides/models.md` |
 | Memory/skills file layout | `packages/curator` prompts, seed logic in examples, `docs/guides/memory.md` |
 | Memory mutation concurrency / durability | `memory.spec.ts`, `tenant-home.stress.spec.ts`, `docs/guides/memory.md` |
-| Gate or pending-record shape | `packages/curator`, `approve.ts` callers, `docs/guides/skills-and-learning.md` |
+| Gate or pending-record shape | `packages/curator`, `gated-write.ts`, `approve.ts` callers, `docs/guides/skills-and-learning.md` |
+| Skill tiers / lock marks | `skill-locks.ts`, `seed-company.ts`, `skill-tiers.spec.ts`, CONTEXT.md, skills guide |
 
 ## Gotchas
 

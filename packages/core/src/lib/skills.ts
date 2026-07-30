@@ -22,6 +22,8 @@
  */
 
 import { firstThreatMessage } from "./threats.js";
+import { scrubSecrets } from "./scrub-secrets.js";
+import { isSkillNameLocked, parseLockFlags } from "./skill-locks.js";
 
 export interface SkillMeta {
   name: string;
@@ -36,6 +38,12 @@ export interface SkillMeta {
   agentCreated?: boolean;
   bundled?: boolean;
   pinned?: boolean;
+  locked?: boolean;
+}
+
+export interface SkillLibraryOptions {
+  /** Host secrets scrubbed before skill content is stored. */
+  secrets?: string[];
 }
 
 export interface SkillsFs {
@@ -225,13 +233,37 @@ function descriptionForList(data: Record<string, string>, body: string): string 
 }
 
 export class SkillLibrary {
+  private readonly secrets: string[];
+
   constructor(
     private readonly fs: SkillsFs,
     private readonly homeDir = "",
-  ) {}
+    options: SkillLibraryOptions = {},
+  ) {
+    this.secrets = options.secrets ?? [];
+  }
 
   private get root(): string {
     return this.homeDir ? `${this.homeDir}/${SKILLS_DIR}` : SKILLS_DIR;
+  }
+
+  private scrub(content: string): string {
+    return scrubSecrets(content, this.secrets);
+  }
+
+  /** True when the skill name is locked by registry or protected meta. */
+  async isLocked(name: string): Promise<boolean> {
+    if (await isSkillNameLocked(this.fs, name, SKILLS_DIR)) return true;
+    // Category-nested skills: registry / top-level check missed; use loaded meta.
+    const meta = await this.find(name);
+    return Boolean(meta?.locked || meta?.pinned || meta?.bundled);
+  }
+
+  private lockedError(name: string): SkillResult {
+    return {
+      success: false,
+      error: `Skill '${name}' is locked and cannot be modified by the agent.`,
+    };
   }
 
   private async listDir(dir: string): Promise<string[]> {
@@ -249,6 +281,7 @@ export class SkillLibrary {
     // Lenient load (agentskills.io client guide): prefer frontmatter name, fall
     // back to directory name when missing or mismatched.
     const name = data.name || dirName;
+    const flags = parseLockFlags(data);
     return {
       name,
       description: descriptionForList(data, body),
@@ -256,6 +289,7 @@ export class SkillLibrary {
       version: data.version,
       author: data.author,
       path: dirPath,
+      ...flags,
     };
   }
 
@@ -349,10 +383,12 @@ export class SkillLibrary {
 
   async create(name: string, content: string, category?: string): Promise<SkillResult> {
     if (!content) return { success: false, error: "content is required for 'create'." };
+    if (await this.isLocked(name)) return this.lockedError(name);
     const nameErr = validateName(name);
     if (nameErr) return { success: false, error: nameErr };
     const catErr = validateCategory(category);
     if (catErr) return { success: false, error: catErr };
+    content = this.scrub(content);
     const fmErr = validateFrontmatter(content, { newSkill: true, expectName: name });
     if (fmErr) return { success: false, error: fmErr };
     const sizeErr = validateContentSize(content);
@@ -379,6 +415,8 @@ export class SkillLibrary {
 
   async edit(name: string, content: string): Promise<SkillResult> {
     if (!content) return { success: false, error: "content is required for 'edit'." };
+    if (await this.isLocked(name)) return this.lockedError(name);
+    content = this.scrub(content);
     const fmErr = validateFrontmatter(content, { expectName: name });
     if (fmErr) return { success: false, error: fmErr };
     const sizeErr = validateContentSize(content);
@@ -399,6 +437,7 @@ export class SkillLibrary {
     replaceAll = false,
   ): Promise<SkillResult> {
     if (!oldString) return { success: false, error: "old_string is required for 'patch'." };
+    if (await this.isLocked(name)) return this.lockedError(name);
     const meta = await this.find(name);
     if (!meta) return { success: false, error: `Skill '${name}' not found.` };
     const rel = filePath ?? "SKILL.md";
@@ -419,6 +458,7 @@ export class SkillLibrary {
     if (occurrences > 1 && !replaceAll) {
       return { success: false, error: `old_string matches ${occurrences} times in '${rel}'. Provide more context or set replace_all=true.` };
     }
+    newString = this.scrub(newString);
     const scanError = firstThreatMessage(newString, "strict");
     if (scanError) return { success: false, error: scanError };
 
@@ -437,6 +477,7 @@ export class SkillLibrary {
   }
 
   async deleteSkill(name: string): Promise<SkillResult> {
+    if (await this.isLocked(name)) return this.lockedError(name);
     const meta = await this.find(name);
     if (!meta) return { success: false, error: `Skill '${name}' not found.` };
     if (!this.fs.deleteFile) return { success: false, error: "delete not supported by this fs." };
@@ -448,6 +489,8 @@ export class SkillLibrary {
     const pathErr = validateSupportFilePath(filePath);
     if (pathErr) return { success: false, error: pathErr };
     if (fileContent == null) return { success: false, error: "file_content is required for 'write_file'." };
+    if (await this.isLocked(name)) return this.lockedError(name);
+    fileContent = this.scrub(fileContent);
     const byteLength = new TextEncoder().encode(fileContent).byteLength;
     if (byteLength > MAX_SKILL_FILE_BYTES) {
       return {
@@ -473,6 +516,7 @@ export class SkillLibrary {
   async removeFile(name: string, filePath: string): Promise<SkillResult> {
     const pathErr = validateSupportFilePath(filePath);
     if (pathErr) return { success: false, error: pathErr };
+    if (await this.isLocked(name)) return this.lockedError(name);
     const meta = await this.find(name);
     if (!meta) return { success: false, error: `Skill '${name}' not found.` };
     if (!this.fs.deleteFile) return { success: false, error: "delete not supported by this fs." };

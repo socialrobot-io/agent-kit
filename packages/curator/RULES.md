@@ -34,7 +34,7 @@ session transcripts into proposed memory and skill writes.
 
 ## Gotchas
 
-- `applySkill` lives here (not in core) to keep core dependency-free; core's
-  approval helper receives it as an injected function.
+- Skill apply/replay lives in core (`applySkillArgs` / `submitGatedWrite`).
+  Curator re-exports deprecated `applySkill` as a thin alias.
 - The runner contract asks models for tool calls by name; runners that
   hallucinate unknown tool names must be surfaced in `errors`, not applied.

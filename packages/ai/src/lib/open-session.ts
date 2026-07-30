@@ -76,6 +76,8 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
    * a custom prompt. Omit for background curator turns (staging stays on).
    */
   promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
+  /** Host secrets scrubbed before memory/skill writes (and paired with sandbox). */
+  secrets?: string[];
 }
 
 /**
@@ -144,6 +146,7 @@ export async function openAgentSession(
     origin: opts.origin ?? "foreground",
     promptInline,
     extraToolNames,
+    secrets: opts.secrets,
   });
   await runtime.init();
 

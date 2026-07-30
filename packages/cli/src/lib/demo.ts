@@ -17,7 +17,7 @@
  */
 
 import { AgentSessionRuntime, defineAgent, InMemoryFs, approvePendingWrites } from "@socialrobot-io/agent-kit-core";
-import { runBackgroundReview, applySkill, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@socialrobot-io/agent-kit-curator";
+import { runBackgroundReview, COMBINED_REVIEW_PROMPT, type CuratorModelRunner } from "@socialrobot-io/agent-kit-curator";
 import { InMemoryTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
 import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
 
@@ -75,10 +75,7 @@ function scriptedCurator(): CuratorModelRunner {
 
 /** Approve every staged write by replaying it through the runtime. */
 async function approveAllPending(t: DemoTenant): Promise<void> {
-  await approvePendingWrites(
-    { memory: t.runtime.memory, skills: t.runtime.skills, pending: t.runtime.pending },
-    applySkill,
-  );
+  await approvePendingWrites({ memory: t.runtime.memory, skills: t.runtime.skills, pending: t.runtime.pending });
 }
 
 export async function runDemo(log: (s: string) => void = console.log): Promise<boolean> {

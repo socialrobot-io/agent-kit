@@ -1,5 +1,10 @@
 //@ts-check
 
+/**
+ * Agent content is compiled into `src/generated/agent.ts` (nx compile-agent).
+ * No runtime `agent/` tree is required at deploy time.
+ */
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: [

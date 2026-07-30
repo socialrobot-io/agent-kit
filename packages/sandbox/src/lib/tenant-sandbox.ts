@@ -11,7 +11,7 @@
  */
 
 import type { Sandbox, CommandResult } from "bash-tool";
-import { evaluateCommand, type GuardrailOptions } from "./guardrails.js";
+import { evaluateCommand, scrubToolOutput, type GuardrailOptions } from "./guardrails.js";
 import { makeAuditRecord, type SandboxAuditStore } from "./audit.js";
 
 /**
@@ -71,14 +71,20 @@ export class TenantAgentFSSandbox implements Sandbox {
       return result;
     }
     const result = await this.executor(decision.command ?? command);
-    await this.record("bash", command, { exitCode: result.exitCode, filesTouched: inferFiles(command) });
-    return result;
+    const secrets = this.guardrails.secrets ?? [];
+    const scrubbed: CommandResult = {
+      ...result,
+      stdout: scrubToolOutput(result.stdout ?? "", secrets),
+      stderr: scrubToolOutput(result.stderr ?? "", secrets),
+    };
+    await this.record("bash", command, { exitCode: scrubbed.exitCode, filesTouched: inferFiles(command) });
+    return scrubbed;
   }
 
   async readFile(path: string): Promise<string> {
     const content = await this.fs.readFile(path);
     await this.record("readFile", path);
-    return content;
+    return scrubToolOutput(content, this.guardrails.secrets ?? []);
   }
 
   async writeFiles(files: Array<{ path: string; content: string | Buffer }>): Promise<void> {

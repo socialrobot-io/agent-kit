@@ -1,6 +1,7 @@
 ---
 name: bullet-briefing
 description: Format a short bullet-point briefing from a longer request.
+locked: true
 ---
 
 # Bullet briefing

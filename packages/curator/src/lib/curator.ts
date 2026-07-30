@@ -15,9 +15,8 @@ import {
   MemoryStore,
   SkillLibrary,
   PendingWriteStore,
-  evaluateGateAsync,
-  skillGist,
-  applyMemoryArgs,
+  submitGatedWrite,
+  applySkillArgs,
   type GateContext,
   type ApprovalSubsystem,
 } from "@socialrobot-io/agent-kit-core";
@@ -49,8 +48,8 @@ export const SKILL_REVIEW_PROMPT =
   "umbrella (references/, templates/, scripts/), (4) create a new class-level " +
   "umbrella skill. New SKILL.md files must use agentskills.io frontmatter: " +
   "required `name` (matching the skill folder) and `description` (≤60 chars, " +
-  "trigger first), then a non-empty body. Do NOT edit bundled, pinned, or " +
-  "user-owned skills. Do NOT capture environment-dependent failures, negative " +
+  "trigger first), then a non-empty body. Do NOT edit bundled, pinned, locked, " +
+  "or framework skills. Do NOT capture environment-dependent failures, negative " +
   "tool claims, transient resolved errors, or one-off task narratives. " +
   "If nothing stands out, say 'Nothing to save.' and stop.";
 
@@ -64,7 +63,7 @@ export const COMBINED_REVIEW_PROMPT =
   "need agentskills.io frontmatter (`name` matching the folder, `description` " +
   "≤60 chars) plus a non-empty body. Embed user-preference lessons into the " +
   "governing skill, not just memory. Do NOT edit protected (bundled/pinned/" +
-  "user-owned) skills. Do NOT capture environment-dependent failures, negative " +
+  "locked/framework) skills. Do NOT capture environment-dependent failures, negative " +
   "tool claims, transient resolved errors, or one-off narratives.\n\n" +
   "Act on whichever dimension has real signal. If genuinely nothing stands " +
   "out, say 'Nothing to save.' and stop.";
@@ -135,13 +134,16 @@ export async function runBackgroundReview(
   });
 
   const outcome: CuratorOutcome = { reviewText: result.text, staged: [], applied: [], errors: [] };
+  const gatedDeps = { memory: deps.memory, skills: deps.skills, pending: deps.pending };
 
   for (const call of result.toolCalls) {
     try {
       if (call.name === "memory") {
-        await handleMemoryCall(call.args, deps, gateCtx, outcome);
+        const write = await submitGatedWrite("memory", call.args, gatedDeps, gateCtx);
+        recordGatedOutcome("memory", write, outcome);
       } else if (call.name === "skill_manage") {
-        await handleSkillCall(call.args, deps, gateCtx, outcome);
+        const write = await submitGatedWrite("skills", call.args, gatedDeps, gateCtx);
+        recordGatedOutcome("skills", write, outcome);
       }
     } catch (e) {
       outcome.errors.push(e instanceof Error ? e.message : String(e));
@@ -150,103 +152,26 @@ export async function runBackgroundReview(
   return outcome;
 }
 
-async function handleMemoryCall(
-  args: Record<string, unknown>,
-  deps: CuratorDeps,
-  gateCtx: GateContext,
+function recordGatedOutcome(
+  subsystem: ApprovalSubsystem,
+  write: Awaited<ReturnType<typeof submitGatedWrite>>,
   outcome: CuratorOutcome,
-): Promise<void> {
-  const summary = memorySummary(args);
-
-  // Background origin always stages when the gate is on.
-  const decision = await evaluateGateAsync("memory", gateCtx, { summary });
-  if (decision.kind === "blocked") {
-    outcome.errors.push(decision.message);
+): void {
+  if (write.kind === "blocked" || write.kind === "error") {
+    outcome.errors.push(write.error);
     return;
   }
-  if (decision.kind === "stage") {
-    const rec = await deps.pending.stage("memory", args, { summary, origin: "background_review" });
-    outcome.staged.push({ subsystem: "memory", id: rec.id, summary });
+  if (write.kind === "staged") {
+    outcome.staged.push({ subsystem, id: write.id, summary: write.summary });
     return;
   }
-  const result = await applyMemoryArgs(deps.memory, args);
-  if (!result.success) {
-    outcome.errors.push(result.error ?? "memory apply failed");
-    return;
-  }
-  outcome.applied.push({ subsystem: "memory", summary });
+  outcome.applied.push({ subsystem, summary: write.summary });
 }
 
-function memorySummary(args: Record<string, unknown>): string {
-  if (typeof args.content === "string" && args.content.trim()) {
-    const action = (args.action as string) ?? "add";
-    return `${action}: ${args.content.slice(0, 60)}`;
-  }
-  if (Array.isArray(args.operations)) {
-    const first = args.operations.find(
-      (op): op is { content?: string } =>
-        typeof op === "object" && op != null && typeof (op as { content?: string }).content === "string",
-    );
-    if (first?.content) return `batch: ${first.content.slice(0, 50)}`;
-    return `memory batch (${args.operations.length})`;
-  }
-  return `memory ${(args.action as string) ?? "batch"}`;
-}
-
-async function handleSkillCall(
+/** @deprecated Use `applySkillArgs` from `@socialrobot-io/agent-kit-core`. */
+export async function applySkill(
   args: Record<string, unknown>,
-  deps: CuratorDeps,
-  gateCtx: GateContext,
-  outcome: CuratorOutcome,
-): Promise<void> {
-  const action = (args.action as string) ?? "";
-  const name = (args.name as string) ?? "";
-  const summary = skillGist(action, name, {
-    content: args.content as string,
-    file_path: args.file_path as string,
-    old_string: args.old_string as string,
-    new_string: args.new_string as string,
-  });
-
-  // Skills always stage when the gate is on (too big to review inline).
-  const decision = await evaluateGateAsync("skills", gateCtx, { summary });
-  if (decision.kind === "blocked") {
-    outcome.errors.push(decision.message);
-    return;
-  }
-  if (decision.kind === "stage") {
-    const rec = await deps.pending.stage("skills", args, { summary, origin: "background_review" });
-    outcome.staged.push({ subsystem: "skills", id: rec.id, summary });
-    return;
-  }
-  await applySkill(args, deps);
-  outcome.applied.push({ subsystem: "skills", summary });
-}
-
-/** Replay an approved staged skill write (used by the approval flow too). */
-export async function applySkill(args: Record<string, unknown>, deps: Pick<CuratorDeps, "skills">): Promise<unknown> {
-  const action = args.action as string;
-  const name = (args.name as string) ?? "";
-  switch (action) {
-    case "create":
-      return deps.skills.create(name, (args.content as string) ?? "", args.category as string | undefined);
-    case "edit":
-      return deps.skills.edit(name, (args.content as string) ?? "");
-    case "patch":
-      return deps.skills.patch(
-        name,
-        (args.old_string as string) ?? "",
-        (args.new_string as string) ?? "",
-        args.file_path as string | undefined,
-        (args.replace_all as boolean) ?? false,
-      );
-    case "delete":
-      return deps.skills.deleteSkill(name);
-    case "write_file":
-      return deps.skills.writeFile(name, (args.file_path as string) ?? "", (args.file_content as string) ?? "");
-    case "remove_file":
-      return deps.skills.removeFile(name, (args.file_path as string) ?? "");
-    default:
-      return { success: false, error: `unknown skill action '${action}'` };
-  }
+  deps: Pick<CuratorDeps, "skills">,
+): Promise<unknown> {
+  return applySkillArgs(args, deps);
 }

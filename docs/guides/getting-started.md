@@ -1,8 +1,8 @@
 # Getting started
 
 This guide gets packages installed, shows the agent file layout, and runs one
-model turn. For production wiring (auth, volume, sandbox, transcripts), use
-[Host an agent in your app](hosting.md).
+model turn. For production wiring (auth, company envelope seed, volume,
+sandbox, transcripts), use [Host an agent in your app](hosting.md).
 
 ## 1. Install
 
@@ -26,14 +26,16 @@ That pulls core, ai, sessions, and sandbox. Add
 
 ## 2. Author the agent as files
 
-The agent is a directory of markdown, not a big config object.
+The agent is a directory of markdown, not a big config object. Company identity
+(`SOUL.md`, `AGENTS.md`, locked skills) is seeded onto the volume; the agent
+cannot rewrite those paths once the envelope is sealed. See [Security](security.md).
 
 ```text
 agent/
-  SOUL.md       who the agent is (always in the system prompt)
-  AGENTS.md     house rules
-  skills/       reusable how-to procedures (optional at first)
-  memories/     USER.md and MEMORY.md (the agent writes these later)
+  SOUL.md       who the agent is (always in the system prompt; company-sealed)
+  AGENTS.md     house rules (company-sealed)
+  skills/       reusable how-to procedures (optional; some may be locked)
+  memories/     USER.md and MEMORY.md (tenant-curated, behind approval)
 ```
 
 Example `SOUL.md`:

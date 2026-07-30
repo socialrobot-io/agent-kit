@@ -11,7 +11,12 @@
 
 import { MemoryStore, applyMemoryArgs } from "./memory.js";
 import { SkillLibrary } from "./skills.js";
-import { PendingWriteStore, evaluateGateAsync, skillGist, type ApprovalSubsystem, type GateContext, type WriteOrigin } from "./approval.js";
+import {
+  PendingWriteStore,
+  type ApprovalSubsystem,
+  type GateContext,
+  type WriteOrigin,
+} from "./approval.js";
 import type { AgentFsLike, AgentDefinition } from "./agent.js";
 import { loadAgentFiles, buildBaseSystemPrompt } from "./agent.js";
 import {
@@ -21,6 +26,7 @@ import {
   SKILL_MANAGE_SCHEMA,
 } from "./schemas.js";
 import { buildToolGuidance, type ToolGuidanceConfig } from "./tool-guidance.js";
+import { submitGatedWrite } from "./gated-write.js";
 
 export interface SessionToolCall {
   name: string;
@@ -47,6 +53,8 @@ export interface SessionRuntimeOptions {
    * only for pairing system-prompt guidance.
    */
   extraToolNames?: string[];
+  /** Host secrets scrubbed before memory/skill writes. */
+  secrets?: string[];
 }
 
 export class AgentSessionRuntime {
@@ -64,11 +72,13 @@ export class AgentSessionRuntime {
 
   constructor(private readonly opts: SessionRuntimeOptions) {
     this.tenantId = opts.tenantId;
+    const secrets = opts.secrets ?? [];
     this.memory = new MemoryStore(opts.fs, {
       memoryCharLimit: opts.definition?.config?.memoryCharLimit,
       userCharLimit: opts.definition?.config?.userCharLimit,
+      secrets,
     });
-    this.skills = new SkillLibrary(opts.fs);
+    this.skills = new SkillLibrary(opts.fs, "", { secrets });
     this.pending = new PendingWriteStore(opts.fs);
     this.origin = opts.origin ?? "foreground";
     const cfg = opts.definition?.config?.writeApproval;
@@ -125,6 +135,10 @@ export class AgentSessionRuntime {
     return [this.memoryTool(), this.skillsListTool(), this.skillViewTool(), this.skillManageTool()];
   }
 
+  private gatedDeps() {
+    return { memory: this.memory, skills: this.skills, pending: this.pending };
+  }
+
   private memoryTool(): SessionTool {
     return {
       name: MEMORY_SCHEMA.name,
@@ -136,17 +150,14 @@ export class AgentSessionRuntime {
         if (action === "list" || action === "get" || action === "read") {
           return applyMemoryArgs(this.memory, args);
         }
-        const summary = memoryToolSummary(args);
-        const decision = await evaluateGateAsync("memory", this.gateCtx(), {
-          summary,
-          detail: (args.content as string) ?? summary,
-        });
-        if (decision.kind === "blocked") return { success: false, error: decision.message };
-        if (decision.kind === "stage") {
-          await this.pending.stage("memory", args, { summary, origin: this.origin });
-          return { success: true, staged: true, message: decision.message };
+        const outcome = await submitGatedWrite("memory", args, this.gatedDeps(), this.gateCtx());
+        if (outcome.kind === "blocked" || outcome.kind === "error") {
+          return { success: false, error: outcome.error };
         }
-        return applyMemoryArgs(this.memory, args);
+        if (outcome.kind === "staged") {
+          return { success: true, staged: true, message: outcome.message };
+        }
+        return outcome.result;
       },
     };
   }
@@ -179,58 +190,15 @@ export class AgentSessionRuntime {
       description: SKILL_MANAGE_SCHEMA.description,
       inputSchema: { ...SKILL_MANAGE_SCHEMA.inputSchema },
       execute: async (args) => {
-        const action = (args.action as string) ?? "";
-        const name = (args.name as string) ?? "";
-        const summary = skillGist(action, name, {
-          content: args.content as string,
-          file_path: args.file_path as string,
-          old_string: args.old_string as string,
-          new_string: args.new_string as string,
-        });
-        const decision = await evaluateGateAsync("skills", this.gateCtx(), { summary });
-        if (decision.kind === "blocked") return { success: false, error: decision.message };
-        if (decision.kind === "stage") {
-          await this.pending.stage("skills", args, { summary, origin: this.origin });
-          return { success: true, staged: true, message: decision.message };
+        const outcome = await submitGatedWrite("skills", args, this.gatedDeps(), this.gateCtx());
+        if (outcome.kind === "blocked" || outcome.kind === "error") {
+          return { success: false, error: outcome.error };
         }
-        switch (action) {
-          case "create":
-            return this.skills.create(name, (args.content as string) ?? "", args.category as string | undefined);
-          case "edit":
-            return this.skills.edit(name, (args.content as string) ?? "");
-          case "patch":
-            return this.skills.patch(
-              name,
-              (args.old_string as string) ?? "",
-              (args.new_string as string) ?? "",
-              args.file_path as string | undefined,
-              (args.replace_all as boolean) ?? false,
-            );
-          case "delete":
-            return this.skills.deleteSkill(name);
-          case "write_file":
-            return this.skills.writeFile(name, (args.file_path as string) ?? "", (args.file_content as string) ?? "");
-          case "remove_file":
-            return this.skills.removeFile(name, (args.file_path as string) ?? "");
-          default:
-            return { success: false, error: `unknown skill action '${action}'` };
+        if (outcome.kind === "staged") {
+          return { success: true, staged: true, message: outcome.message };
         }
+        return outcome.result;
       },
     };
   }
-}
-
-function memoryToolSummary(args: Record<string, unknown>): string {
-  if (typeof args.content === "string" && args.content.trim()) {
-    return args.content.slice(0, 60);
-  }
-  if (Array.isArray(args.operations)) {
-    const first = args.operations.find(
-      (op): op is { content?: string } =>
-        typeof op === "object" && op != null && typeof (op as { content?: string }).content === "string",
-    );
-    if (first?.content) return `batch: ${first.content.slice(0, 50)}`;
-    return `memory batch (${args.operations.length})`;
-  }
-  return `memory ${String(args.action ?? "batch")}`;
 }

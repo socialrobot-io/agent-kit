@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/hero.png" alt="agent-kit: self-improving AI agents" width="100%"/>
+<img src="docs/assets/hero.jpg" alt="agent-kit: self-improving AI agents" width="100%"/>
 
 <br/>
 
@@ -96,6 +96,8 @@ const home = await createTenantHome({
   interactiveApproval: true,            // UI Approve applies writes
   workspaceFiles: { "README.md": "# hi\n" },
   sandbox: { allowedHosts: ["https://api.example.com"] }, // or sandbox: false
+  // compileAgent → import { agent } from "./generated/agent"
+  agent,
 });
 
 const session = await home.openSession(sessionId, {
@@ -103,6 +105,9 @@ const session = await home.openSession(sessionId, {
   disableTools: ["skill_manage"],
 });
 ```
+
+Portable agent install: [Hosting](docs/guides/hosting.md) ·
+[Skills & learning](docs/guides/skills-and-learning.md).
 
 `home.volume`, `home.transcripts`, and `home.bash` stay available when you need
 to compose differently. Low-level pieces (`openTenantVolume`,

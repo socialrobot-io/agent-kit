@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LanguageModel } from "ai";
+import { loadAgent } from "./compile-agent.js";
 import { createTenantHome, resetTenantHomeCache } from "./tenant-home.js";
 
 afterEach(() => {
@@ -86,6 +87,54 @@ describe("createTenantHome", () => {
       const session = await home.openSession("c1");
       expect(session.builtinTools.map((t) => t.name)).not.toContain("session_search");
       expect(session.sandboxTools).toBeUndefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("installs a compiled agent on boot; locked skills stay immutable", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-home-"));
+    const agentDir = join(dir, "agent");
+    try {
+      await mkdir(join(agentDir, "skills", "team-notes"), { recursive: true });
+      await mkdir(join(agentDir, "skills", "billing-api"), { recursive: true });
+      await writeFile(join(agentDir, "SOUL.md"), "You are company bot.\n", "utf8");
+      await writeFile(join(agentDir, "AGENTS.md"), "Be brief.\n", "utf8");
+      await writeFile(
+        join(agentDir, "skills", "team-notes", "SKILL.md"),
+        "---\nname: team-notes\ndescription: Unlocked agent-folder skill.\n---\n\n# Notes\n",
+        "utf8",
+      );
+      await writeFile(
+        join(agentDir, "skills", "billing-api", "SKILL.md"),
+        "---\nname: billing-api\ndescription: Locked agent skill.\nlocked: true\n---\n\n# Billing\n",
+        "utf8",
+      );
+
+      const home = await createTenantHome({
+        tenantId: "brand-env",
+        dataDir: dir,
+        model: mockModel(),
+        sandbox: false,
+        transcripts: false,
+        agent: await loadAgent(agentDir),
+      });
+
+      const session = await home.openSession("chat-1");
+      expect(session.runtime.systemPrompt()).toContain("You are company bot.");
+      expect(await session.skills.isLocked("billing-api")).toBe(true);
+      expect(await session.skills.isLocked("team-notes")).toBe(false);
+
+      const toolResult = (await session.runtime
+        .tools()
+        .find((t) => t.name === "skill_manage")!
+        .execute({
+          action: "delete",
+          name: "billing-api",
+        })) as { success?: boolean; error?: string };
+      expect(toolResult.success).toBe(false);
+      expect(toolResult.error).toMatch(/locked/i);
+      expect((await session.skills.view("billing-api")).success).toBe(true);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

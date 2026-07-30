@@ -13,6 +13,7 @@ import type { TenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
 import { examplePackageRoot, seedAgentHome } from "./seed";
 import { resolveLiveModel, type LiveModel } from "./env";
 import { join } from "node:path";
+import { agent } from "../generated/agent";
 
 export const TENANT_ID = "demo-user";
 
@@ -76,8 +77,9 @@ async function bootShared(): Promise<SharedState> {
     // Chat UI Approve/Deny for memory/skill writes (pairs toolApproval + apply).
     interactiveApproval: !allowUnapproved,
     workspaceFiles: WORKSPACE_FILES,
+    // Build-time compile (nx compile-agent / predev). Portable across hosts.
+    agent,
   });
-  await seedAgentHome(home.volume);
 
   return {
     home,

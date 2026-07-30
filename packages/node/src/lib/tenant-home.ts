@@ -5,13 +5,16 @@
  * Default model: anthropic/claude-sonnet-4-5
  * Default tools: transcripts + session_search + sandbox
  *
- * Override any piece; leave the rest alone.
+ * Pass a compiled {@link AgentBundle} from `compileAgent`.
  */
 
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   defineAgent,
+  createAgentFs,
+  installAgent,
+  type AgentBundle,
   type AgentDefinition,
 } from "@socialrobot-io/agent-kit-core";
 import {
@@ -34,6 +37,7 @@ import {
   createSessionSearchTool,
   type TranscriptStore,
 } from "@socialrobot-io/agent-kit-sessions";
+import { FRAMEWORK_SKILLS } from "./framework-skills.js";
 
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4-5";
 const DEFAULT_DATA_DIR = "./data";
@@ -44,6 +48,11 @@ const homes = new Map<string, Promise<TenantHome>>();
 export type CreateTenantHomeOptions = ResolveModelOptions & {
   /** Stable tenant id from your auth layer. Never from the client body alone. */
   tenantId: string;
+  /**
+   * Compiled agent (from {@link compileAgent}). Installed on the privileged
+   * volume at boot. Required for a working SOUL/skills home.
+   */
+  agent?: AgentBundle;
   /**
    * Directory for tenant volumes. Convention: `${dataDir}/tenants/${tenantId}.db`.
    * Ignored when `volumePath` is set. Default `./data`.
@@ -109,6 +118,17 @@ function resolveDefinition(opts: CreateTenantHomeOptions): AgentDefinition {
   return defineAgent({ model });
 }
 
+async function installEnvelope(volume: TenantVolume, agent?: AgentBundle): Promise<void> {
+  if (agent) {
+    await installAgent(volume, agent);
+  }
+  if (FRAMEWORK_SKILLS.length) {
+    await installAgent(volume, {
+      skills: FRAMEWORK_SKILLS.map((s) => ({ ...s, tier: "framework" as const })),
+    });
+  }
+}
+
 async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
   const tenantId = opts.tenantId;
   if (!tenantId.trim()) throw new Error("createTenantHome requires tenantId");
@@ -118,6 +138,9 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
 
   const volume = await openTenantVolume(volumePath);
   const definition = resolveDefinition(opts);
+  const agentFs = createAgentFs(volume);
+
+  await installEnvelope(volume, opts.agent);
 
   const wantTranscripts = opts.transcripts !== false;
   const transcripts = wantTranscripts ? new FileTranscriptStore({ fs: volume }) : undefined;
@@ -125,6 +148,8 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
   const sandboxOpt = opts.sandbox;
   const wantSandbox = sandboxOpt !== false;
   let bash: TenantBashToolkit | undefined;
+  const sandboxSecrets =
+    typeof sandboxOpt === "object" && sandboxOpt.secrets ? sandboxOpt.secrets : undefined;
   if (wantSandbox) {
     const extra = typeof sandboxOpt === "object" ? sandboxOpt : {};
     bash = await createTenantBashToolkit({
@@ -172,12 +197,13 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
 
     return openAgentSession({
       tenantId,
-      fs: volume,
+      fs: agentFs,
       definition: sessionDefinition ?? definition,
       model:
         sessionModel ??
         (typeof opts.model !== "string" && opts.model !== undefined ? opts.model : undefined),
       interactiveApproval: interactiveApproval ?? opts.interactiveApproval,
+      secrets: sandboxSecrets,
       sessionSearchTool:
         useSearch && transcripts
           ? createSessionSearchTool(transcripts, tenantId, { currentSessionId: sessionId })
@@ -203,9 +229,9 @@ async function bootHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
  * Open (or reuse) the process-local home for one tenant volume.
  *
  * ```ts
- * const home = await createTenantHome({ tenantId });
+ * import { agent } from "./generated/agent";
+ * const home = await createTenantHome({ tenantId, agent });
  * const session = await home.openSession(sessionId);
- * await session.run(messages);
  * ```
  */
 export async function createTenantHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
