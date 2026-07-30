@@ -20,6 +20,54 @@ tenant on local disk. Multi-machine hosting is not ready yet
 | `sessionId` | Id for one chat conversation. |
 | `createTenantHome` | Convention entry: opens volume + transcripts + sandbox and caches per process. |
 
+## Agent install
+
+Author identity and skills under `agent/`. Compile once, import everywhere.
+Sessions already use a policy-wrapped FS (`createAgentFs`).
+
+```bash
+# any host — Node script, no Next APIs
+bun -e '
+import { compileAgent } from "@socialrobot-io/agent-kit-node";
+await compileAgent({
+  dir: "./agent",
+  outFile: "./src/generated/agent.ts", // or .json
+});
+'
+```
+
+```ts
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent";
+
+const home = await createTenantHome({
+  tenantId,
+  agent,
+  sandbox: {
+    secrets: [process.env.TENANT_API_KEY!],
+    allowedHosts: ["api.company.com"],
+  },
+});
+
+const session = await home.openSession(sessionId);
+```
+
+Skill locking (see [Skills & learning](skills-and-learning.md)):
+
+| Source | Locked? |
+| ------ | ------- |
+| `agent/skills/*` | Only if `locked`/`pinned`/`bundled` or `.locked` |
+| Created at runtime | Never (approval still applies) |
+
+### Checklist
+
+1. Author `agent/` and run `compileAgent` in CI / predev
+2. Mark company-owned skills with frontmatter or `.locked`
+3. Pass sandbox `secrets` / `allowedHosts` at home creation
+4. Add product tools with `addTools`
+5. Do not give the agent the raw volume write handle for tools
+
+See also: [Security](security.md) · [Company envelope PRD](../roadmap/company-envelope-prd.md).
 ## What your app must do
 
 1. Authenticate the user (cookie, JWT, session, or similar).
@@ -58,8 +106,11 @@ const turn = await session.run([
 Override only what you need. The rest stays on convention.
 
 ```ts
+import { agent } from "./generated/agent";
+
 const home = await createTenantHome({
   tenantId,
+  agent,
   dataDir: "/var/lib/agents", // or volumePath: "/data/acme.db"
   model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
   interactiveApproval: true, // chat UI Approve applies writes

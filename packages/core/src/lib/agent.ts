@@ -64,6 +64,7 @@ export interface AgentFiles {
 
 export interface AgentFsLike extends MemoryFs {
   list(dir: string): Promise<string[]>;
+  deleteFile?(path: string): Promise<void>;
 }
 
 /**

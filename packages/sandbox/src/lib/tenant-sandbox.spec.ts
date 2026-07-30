@@ -85,4 +85,31 @@ describe("TenantAgentFSSandbox", () => {
     expect(await audit.list("B")).toHaveLength(1);
     expect((await audit.list("A"))[0].subject).toBe("echo a");
   });
+
+  it("scrubs secrets from command output", async () => {
+    const sandbox = new TenantAgentFSSandbox({
+      tenantId: "tenantA",
+      fs: makeFs(),
+      secrets: ["super-secret"],
+      executor: async (): Promise<CommandResult> => ({
+        stdout: "token=super-secret",
+        stderr: "",
+        exitCode: 0,
+      }),
+    });
+    const res = await sandbox.executeCommand("echo token=super-secret");
+    expect(res.stdout).toBe("token=***REDACTED***");
+  });
+
+  it("scrubs secrets from readFile results", async () => {
+    const fs = makeFs();
+    await fs.writeFile("/workspace/a.txt", "key=super-secret");
+    const sandbox = new TenantAgentFSSandbox({
+      tenantId: "tenantA",
+      fs,
+      secrets: ["super-secret"],
+      executor: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+    });
+    expect(await sandbox.readFile("/workspace/a.txt")).toBe("key=***REDACTED***");
+  });
 });

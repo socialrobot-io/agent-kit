@@ -1,6 +1,6 @@
 # Skills & learning
 
-Two kinds of lasting knowledge:
+Two kinds of lasting knowledge, and two host-visible skill sources:
 
 | | Memory | Skills |
 | - | ------ | ------ |
@@ -10,6 +10,43 @@ Two kinds of lasting knowledge:
 
 Read [Memory](memory.md) first if you have not.
 
+## Skill sources
+
+| Source | Where it comes from | Locked? |
+| ------ | ------------------- | ------- |
+| **Agent-folder** | Host `agent/skills/<name>/` | **No**, unless marked (see below). |
+| **Learned** | Agent or curator on the live volume | **No.** Write approval still applies by default. |
+
+**Mark an agent-folder skill locked** (whole folder immutable):
+
+1. Frontmatter: `locked: true` (or `pinned: true` / `bundled: true`), or
+2. Sidecar file: `agent/skills/<name>/.locked`
+
+```text
+agent/
+  SOUL.md
+  AGENTS.md
+  skills/
+    team-notes/           ← editable under approval
+      SKILL.md
+    billing-api/          ← locked via frontmatter or .locked
+      SKILL.md
+      .locked             ← optional marker
+      references/
+```
+
+Compile and install via home:
+
+```ts
+import { compileAgent, createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent";
+
+await compileAgent({ dir: "./agent", outFile: "./src/generated/agent.ts" });
+
+const home = await createTenantHome({ tenantId, agent });
+```
+
+The durable copy lives on the AgentFS volume after install.
 ## Skill layout
 
 ```text
@@ -48,6 +85,14 @@ How the model loads a skill (progressive disclosure):
 2. `skill_view`: full `SKILL.md` plus a `linked_files` map and `skill_dir`
 3. `skill_view` with `file_path`: one linked file, only when needed
 
+## Locked skills (any tier)
+
+When a skill is locked, the whole folder is immutable to the agent, curator,
+and approve replay. Agents may still `skills_list` / `skill_view`. They may
+create **new learned** skills under other names (write approval still applies).
+
+See [Security](security.md) for the three zones.
+
 ## Curator (propose updates after a chat)
 
 The curator is a separate background pass. It reads a transcript and may
@@ -65,64 +110,25 @@ chat ends
 | ------- | ---- |
 | Durable user facts → memory | Failures that only happen in one environment |
 | Reusable procedures → skills | “This tool is broken” one-offs |
-| Prefer updating an existing umbrella skill | Long narratives of a single task |
 
-## Approve (make proposals real)
-
-When write approval is on (the default), curator output is staged. It is not
-applied until a human approves.
+## Approve pending writes
 
 ```ts
-import type { ModelMessage } from "ai";
-import {
-  AgentSessionRuntime,
-  defineAgent,
-  InMemoryFs,
-  approvePendingWrites,
-} from "@socialrobot-io/agent-kit-core";
-import { applySkill, runBackgroundReview } from "@socialrobot-io/agent-kit-curator";
-import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
+import { approvePendingWrites } from "@socialrobot-io/agent-kit-core";
 
-const fs = new InMemoryFs();
-await fs.writeFile("agent/SOUL.md", "You are helpful.");
-await fs.writeFile("agent/AGENTS.md", "Be brief.");
-
-const runtime = new AgentSessionRuntime({
-  tenantId: "brand-123",
-  fs,
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
+const applied = await approvePendingWrites({
+  memory: session.memory,
+  skills: session.skills,
+  pending: session.pending,
 });
-await runtime.init();
-
-const transcript: ModelMessage[] = [
-  { role: "user", content: "Stop being so verbose." },
-  { role: "assistant", content: "Understood." },
-];
-
-await runBackgroundReview(transcript, {
-  memory: runtime.memory,
-  skills: runtime.skills,
-  pending: runtime.pending,
-  writeApprovalEnabled: () => true,
-  mode: "combined",
-  model: aiCuratorRunner("anthropic/claude-haiku-4-5"),
-});
-
-// Only after a human accepts the staged files:
-const applied = await approvePendingWrites(
-  {
-    memory: runtime.memory,
-    skills: runtime.skills,
-    pending: runtime.pending,
-  },
-  applySkill,
-);
-console.log(applied);
 ```
 
 Reject means discard the staged files. Do not call `approvePendingWrites`.
 
+Locked skill targets are refused (disk unchanged).
+
 ## Next
 
-- Threat scan and isolation: [Security](security.md)
-- Host wiring for pending review in your UI: [Hosting](hosting.md)
+- [Security](security.md) — zones and locks
+- [Hosting](hosting.md) — `company` on `createTenantHome`
+- [Memory](memory.md) — frozen snapshot

@@ -18,3 +18,4 @@ depend on sibling packages.
 | Change | Also update |
 | ------ | ----------- |
 | `createTenantHome` options / defaults | `tenant-home.spec.ts`, README quick start, `docs/guides/hosting.md` |
+| `compileAgent` / `agent` on home | `compile-agent.spec.ts`, `tenant-home.spec.ts`, hosting guide, CONTEXT.md |

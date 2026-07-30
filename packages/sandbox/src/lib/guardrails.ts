@@ -48,11 +48,26 @@ const URL_RE = /\b(?:https?|ftp):\/\/([a-z0-9.-]+)(?::\d+)?/gi;
 const BARE_HOST_RE = /\b(?:curl|wget)\s+(?:-[^\s]+\s+)*([a-z0-9.-]+\.[a-z]{2,})(?:\/|\s|$)/gi;
 
 function redactSecrets(command: string, secrets: string[]): string {
+  // Keep in sync with @socialrobot-io/agent-kit-core scrubSecrets (leaf: no core dep).
   let out = command;
   for (const s of secrets) {
     if (s) out = out.split(s).join("***REDACTED***");
   }
+  const staticPatterns: RegExp[] = [
+    /\bsk-[A-Za-z0-9_-]{16,}\b/g,
+    /\bghp_[A-Za-z0-9_]{20,}\b/g,
+    /\bAKIA[A-Z0-9]{12,}\b/g,
+    /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g,
+  ];
+  for (const re of staticPatterns) {
+    out = out.replace(new RegExp(re.source, re.flags), "***REDACTED***");
+  }
   return out;
+}
+
+/** Scrub secrets from tool output (stdout/stderr / file reads). */
+export function scrubToolOutput(text: string, secrets: readonly string[] = []): string {
+  return redactSecrets(text, [...secrets]);
 }
 
 function extractHosts(command: string): string[] {

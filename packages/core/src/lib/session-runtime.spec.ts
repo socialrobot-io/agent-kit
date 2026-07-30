@@ -165,10 +165,7 @@ describe("AgentSessionRuntime", () => {
     expect(broken[0].payload.action).toBeUndefined();
     expect(Array.isArray(broken[0].payload.operations)).toBe(true);
 
-    await approvePendingWrites(
-      { memory: gated.memory, skills: gated.skills, pending: gated.pending },
-      async () => undefined,
-    );
+    await approvePendingWrites({ memory: gated.memory, skills: gated.skills, pending: gated.pending });
 
     expect(await gated.pending.count("memory")).toBe(0);
     expect(gated.memory.getEntries("user")).toEqual(

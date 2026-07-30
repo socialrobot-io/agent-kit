@@ -40,6 +40,26 @@ describe("evaluateCommand", () => {
     const d = evaluateCommand("echo token=sk-abc123", { secrets: ["sk-abc123"] });
     expect(d.command).toBe("echo token=***REDACTED***");
   });
+
+  it("redacts static credential shapes without an explicit secrets list", () => {
+    const d = evaluateCommand("echo sk-abcdefghijklmnopqrstuvwxyz");
+    expect(d.command).toContain("***REDACTED***");
+    expect(d.command).not.toContain("sk-abcdefghijklmnopqrstuvwxyz");
+  });
+});
+
+describe("scrubToolOutput", () => {
+  it("redacts secrets from tool output", async () => {
+    const { scrubToolOutput } = await import("./guardrails.js");
+    expect(scrubToolOutput("key=my-secret", ["my-secret"])).toBe("key=***REDACTED***");
+  });
+
+  it("redacts static credential shapes without a secrets list", async () => {
+    const { scrubToolOutput } = await import("./guardrails.js");
+    const out = scrubToolOutput("token sk-abcdefghijklmnopqrstuvwxyz end");
+    expect(out).not.toContain("sk-abcdefghijklmnopqrstuvwxyz");
+    expect(out).toContain("***REDACTED***");
+  });
 });
 
 describe("makeBeforeBashCall", () => {

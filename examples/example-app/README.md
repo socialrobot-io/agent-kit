@@ -29,7 +29,25 @@ bash tool calls appear as they run.
 
 ## Layout
 
-- `agent/` — SOUL.md, AGENTS.md, seed skill
+- `agent/` — SOUL.md, AGENTS.md, `skills/` (seeded via `createTenantHome({ company })`)
+- `agent/skills/bullet-briefing/` — agent-folder skill marked `locked: true`
 - `src/lib/agent.ts` — `createTenantHome` + per-chat `openSession`
 - `src/app/api/chat/route.ts` — `session.stream` with built-in and bash tools
 - `src/app/page.tsx` — `@ai-sdk/react` `useChat` UI
+
+## Deploy: compile `agent/` into the bundle
+
+Author skills under `agent/`. Before build/dev, compile them into an importable
+module (works on Next, Docker, workers, plain Node):
+
+```bash
+npx nx run example:compile-agent
+# → src/generated/agent.ts
+```
+
+`createTenantHome({ agent })` imports that module, so bundlers ship the content
+without a runtime `agent/` directory.
+
+`dev` / `build` already depend on `compile-agent`. After editing `agent/`,
+re-run compile (or restart `nx dev`). Optional: `seedAgentHome` on new chats
+still re-reads disk for local HMR.

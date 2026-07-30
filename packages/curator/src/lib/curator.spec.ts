@@ -1,12 +1,20 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   runBackgroundReview,
+  applySkill,
   MEMORY_REVIEW_PROMPT,
   SKILL_REVIEW_PROMPT,
   COMBINED_REVIEW_PROMPT,
   type CuratorModelRunner,
 } from "./curator.js";
-import { MemoryStore, SkillLibrary, PendingWriteStore, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import {
+  MemoryStore,
+  SkillLibrary,
+  PendingWriteStore,
+  InMemoryFs,
+  seedCompanyFiles,
+  createAgentFs,
+} from "@socialrobot-io/agent-kit-core";
 
 const conversation = [
   { role: "user" as const, content: "Stop being so verbose. Just give me the answer." },
@@ -117,7 +125,68 @@ describe("runBackgroundReview", () => {
       writeApprovalEnabled: () => false,
       model: makeModel([{ name: "skill_manage", args: { action: "delete", name: "missing" } }]),
     });
-    // delete of a missing skill returns a non-success result, not an exception
-    expect(outcome.applied).toHaveLength(1); // applied path returns the result
+    expect(outcome.applied).toHaveLength(0);
+    expect(outcome.errors.some((e) => /not found|missing/i.test(e))).toBe(true);
+  });
+
+  it("applySkill refuses edits to locked company skills", async () => {
+    await seedCompanyFiles(fs, {
+      skills: [
+        {
+          name: "billing-api",
+          files: {
+            "SKILL.md":
+              "---\nname: billing-api\ndescription: Company billing API skill.\nlocked: true\n---\n\n# Billing\n",
+          },
+        },
+      ],
+    });
+    const lockedLib = new SkillLibrary(createAgentFs(fs));
+    const result = (await applySkill(
+      {
+        action: "edit",
+        name: "billing-api",
+        content:
+          "---\nname: billing-api\ndescription: Company billing API skill.\nlocked: true\n---\n\n# Hacked\n",
+      },
+      { skills: lockedLib },
+    )) as { success: boolean; error?: string };
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/locked/i);
+  });
+
+  it("does not stage locked skill writes during background review", async () => {
+    await seedCompanyFiles(fs, {
+      skills: [
+        {
+          name: "billing-api",
+          files: {
+            "SKILL.md":
+              "---\nname: billing-api\ndescription: Company billing API skill.\nlocked: true\n---\n\n# Billing\n",
+          },
+        },
+      ],
+    });
+    const lockedLib = new SkillLibrary(createAgentFs(fs));
+    const outcome = await runBackgroundReview(conversation, {
+      memory,
+      skills: lockedLib,
+      pending,
+      writeApprovalEnabled: () => true,
+      model: makeModel([
+        {
+          name: "skill_manage",
+          args: {
+            action: "edit",
+            name: "billing-api",
+            content:
+              "---\nname: billing-api\ndescription: Company billing API skill.\nlocked: true\n---\n\n# Hacked\n",
+          },
+        },
+      ]),
+    });
+    expect(outcome.staged).toHaveLength(0);
+    expect(await pending.count("skills")).toBe(0);
+    expect(outcome.errors.some((e) => /locked/i.test(e))).toBe(true);
   });
 });

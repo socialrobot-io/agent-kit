@@ -23,6 +23,7 @@
 
 import { exclusiveFor } from "./exclusive.js";
 import { firstThreatMessage } from "./threats.js";
+import { scrubSecrets } from "./scrub-secrets.js";
 
 export const ENTRY_DELIMITER = "\n§\n";
 
@@ -67,6 +68,8 @@ export interface MemoryStoreOptions {
   userCharLimit?: number;
   /** Directory holding MEMORY.md / USER.md, relative to the fs root. */
   memoryDir?: string;
+  /** Host secrets scrubbed before memory content is stored. */
+  secrets?: string[];
 }
 
 const DEFAULT_MEMORY_LIMIT = 2200;
@@ -85,6 +88,7 @@ export class MemoryStore {
   private readonly memoryCharLimit: number;
   private readonly userCharLimit: number;
   private readonly memoryDir: string;
+  private readonly secrets: string[];
   private systemPromptSnapshot: Record<MemoryTarget, string> = { memory: "", user: "" };
   private loaded = false;
 
@@ -95,6 +99,11 @@ export class MemoryStore {
     this.memoryCharLimit = options.memoryCharLimit ?? DEFAULT_MEMORY_LIMIT;
     this.userCharLimit = options.userCharLimit ?? DEFAULT_USER_LIMIT;
     this.memoryDir = options.memoryDir ?? DEFAULT_MEMORY_DIR;
+    this.secrets = options.secrets ?? [];
+  }
+
+  private scrub(content: string): string {
+    return scrubSecrets(content, this.secrets);
   }
 
   private pathFor(target: MemoryTarget): string {
@@ -255,7 +264,7 @@ export class MemoryStore {
   }
 
   async add(target: MemoryTarget, content: string): Promise<MemoryResult> {
-    content = content.trim();
+    content = this.scrub(content.trim());
     if (!content) return { success: false, error: "Content cannot be empty." };
 
     const scanError = firstThreatMessage(content, "strict");
@@ -297,7 +306,7 @@ export class MemoryStore {
 
   async replace(target: MemoryTarget, oldText: string, newContent: string): Promise<MemoryResult> {
     oldText = oldText.trim();
-    newContent = newContent.trim();
+    newContent = this.scrub(newContent.trim());
     if (!oldText) return { success: false, error: "old_text cannot be empty." };
     if (!newContent) {
       return { success: false, error: "new_content cannot be empty. Use 'remove' to delete entries." };
@@ -423,14 +432,14 @@ export class MemoryStore {
       const op = operations[i] ?? {};
       const label = `Operation ${i + 1}/${operations.length} (${op.action})`;
       if (op.action === "add") {
-        const content = (op.content ?? "").trim();
+        const content = this.scrub((op.content ?? "").trim());
         if (!content) return this.batchError(target, `${label}: content cannot be empty.`);
         const scanError = firstThreatMessage(content, "strict");
         if (scanError) return this.batchError(target, `${label}: ${scanError}`);
         if (!working.includes(content)) working.push(content);
       } else if (op.action === "replace") {
         const oldText = (op.old_text ?? "").trim();
-        const content = (op.content ?? "").trim();
+        const content = this.scrub((op.content ?? "").trim());
         if (!oldText) return this.batchError(target, `${label}: old_text cannot be empty.`);
         if (!content) return this.batchError(target, `${label}: content cannot be empty.`);
         const scanError = firstThreatMessage(content, "strict");
