@@ -33,7 +33,7 @@ import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
 All seven share one version. A bump updates every package.
 
-## One-time npm setup
+## One-time setup
 
 1. Confirm you can publish under the `socialrobot-io` organization on
    [npmjs.com](https://www.npmjs.com).
@@ -45,6 +45,13 @@ All seven share one version. A bump updates every package.
 3. You can add Trusted Publishers before the first publish when you own the
    scope. If npm requires an existing package, publish once with a granular
    token, then switch to OIDC and revoke the token.
+4. Create a classic or fine-grained GitHub PAT for a **repo admin** with
+   contents read/write (and permission to create releases / tags). Store it as
+   the repository Actions secret `RELEASE_TOKEN`. The default-branch ruleset
+   requires pull requests; org policy also blocks adding GitHub Actions as a
+   ruleset bypass actor, so the release job needs this admin PAT to push the
+   version commit and tag. Prefer a dedicated classic PAT over a personal
+   `gh` login token so rotation does not break releases.
 
 npm provenance attestations need a public GitHub repository. This repo can stay
 private; publishes still work, but provenance is omitted until the repo is
@@ -88,6 +95,8 @@ would commit concrete versions and break local workspace installs.
 ## Notes
 
 - The workflow refuses to run on branches other than `main`.
+- `RELEASE_TOKEN` must stay set; without it, version/tag push fails the
+  default-branch “require pull request” ruleset.
 - Do not set `NODE_AUTH_TOKEN` in the release job. The npm CLI uses OIDC when
   `id-token: write` is present and Trusted Publishing is configured.
 - Require npm CLI `>= 11.5.1` (the workflow installs latest npm on Node 24).
