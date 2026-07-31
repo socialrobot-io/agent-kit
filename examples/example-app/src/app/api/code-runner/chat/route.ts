@@ -1,4 +1,9 @@
-import { convertToModelMessages, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
 import { NextResponse } from "next/server";
 import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
 import {
@@ -62,7 +67,6 @@ export async function POST(req: Request) {
     const modelMessages = await convertToModelMessages(messages);
     const result = agent.session.stream(modelMessages, {
       maxSteps: 12,
-      toolApproval: agent.session.writeToolApproval,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;
         await agent.transcripts.appendMessage({
@@ -75,7 +79,8 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toUIMessageStreamResponse({
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({ stream: result.stream }),
       headers: {
         "x-agent-kit-model": agent.label,
         "x-agent-kit-provider": agent.provider,

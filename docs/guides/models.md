@@ -1,43 +1,51 @@
 # Models
 
 This guide shows how to pick a model and run one agent turn. The kit uses the
-[Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7 and `@ai-sdk/gateway`).
+[Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7).
 
 ## Pick a model
 
-Pass either:
+**1. Preferred:** pass a ready `LanguageModel` from any AI SDK provider.
 
-- a `"provider/model"` string on `defineAgent` (resolved through the AI Gateway
-  when you run a turn), or
-- a ready `LanguageModel` via `createTenantHome({ model })` or
-  `openAgentSession({ model })` (any AI SDK provider).
+```ts
+import { anthropic } from "@ai-sdk/anthropic";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent";
+
+const home = await createTenantHome({
+  tenantId: "brand-123",
+  agent,
+  model: anthropic("claude-sonnet-4-5"),
+});
+```
+
+Works the same on `openAgentSession({ model })`. Use any provider package
+(`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/deepseek`, `@ai-sdk/google`,
+…). Auth is whatever that provider expects (for example `ANTHROPIC_API_KEY`).
+
+**2. Optional:** pass a `"provider/model"` string and let the
+[Vercel AI Gateway](https://vercel.com/ai-gateway) resolve it. Set
+`AI_GATEWAY_API_KEY` before the first turn.
 
 ```ts
 import { defineAgent } from "@socialrobot-io/agent-kit-core";
 import { openAgentSession, resolveModel } from "@socialrobot-io/agent-kit-ai";
 
-// String id on the definition (needs AI_GATEWAY_API_KEY at run time):
 const definition = defineAgent({ model: "anthropic/claude-sonnet-4-5" });
 
-// Or resolve / pass a provider model yourself:
-// import { openai } from "@ai-sdk/openai";
-// const session = await openAgentSession({
-//   tenantId, fs, definition,
-//   model: openai("gpt-4o"),
-// });
-
-// Low-level helper if you need a LanguageModel outside a session:
+// Or resolve a LanguageModel yourself:
 const fromGateway = resolveModel("anthropic/claude-sonnet-4-5");
 ```
 
 | You pass | What happens |
 | -------- | ------------ |
-| `"provider/model"` on `defineAgent` | Resolved via AI Gateway on `session.run` / `session.stream` |
-| `model: LanguageModel` on `openAgentSession` | Used as-is |
+| `model: LanguageModel` on `createTenantHome` / `openAgentSession` | Used as-is (any AI SDK provider) |
+| `"provider/model"` on `defineAgent` | Resolved via AI Gateway on `session.run` / `session.stream` (needs `AI_GATEWAY_API_KEY`) |
 
 ## Run a turn
 
 ```ts
+import { anthropic } from "@ai-sdk/anthropic";
 import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
 import { openAgentSession } from "@socialrobot-io/agent-kit-ai";
 
@@ -48,7 +56,7 @@ await fs.writeFile("agent/AGENTS.md", "Be brief.");
 const session = await openAgentSession({
   tenantId: "brand-123",
   fs,
-  definition: defineAgent({ model: "anthropic/claude-sonnet-4-5" }),
+  definition: defineAgent({ model: anthropic("claude-sonnet-4-5") }),
 });
 
 const turn = await session.run(
@@ -57,10 +65,15 @@ const turn = await session.run(
 );
 
 console.log(turn.text);
-console.log(turn.toolCalls);
+console.log(turn.toolCalls); // AI SDK TypedToolCall[]
+console.log(turn.usage);
 ```
 
-`maxSteps` caps how many tool-call rounds the model may take (default 8).
+`maxSteps` is a convenience for `stopWhen: stepCountIs(n)` (default 8). Turn
+options are typed from the AI SDK: `session.run` accepts
+`generateText` options, `session.stream` accepts `streamText` options
+(`temperature`, `abortSignal`, `providerOptions`, `telemetry`, `maxRetries`,
+`onFinish` / `onEnd`, `prepareStep`, …). Results are the SDK result types.
 
 Built-in tools write through the same approval rules as the rest of the kit.
 To add product tools, see [Tools](tools.md).
@@ -68,10 +81,16 @@ To add product tools, see [Tools](tools.md).
 ## Stream a turn
 
 ```ts
-const stream = session.stream(messages, { maxSteps: 12 });
+const stream = session.stream(messages, {
+  maxSteps: 12,
+  temperature: 0.2,
+  abortSignal: controller.signal,
+});
 ```
 
-The example app uses this with AI SDK UI `useChat`.
+`session.stream` returns the AI SDK `StreamTextResult`. For chat UI, wrap
+`result.stream` with `toUIMessageStream` + `createUIMessageStreamResponse`
+(see the example app).
 
 ## Curator model (usually automatic)
 
@@ -81,13 +100,14 @@ the session model. Toggle with `defineAgent({ config: { curator } })`.
 To use a cheaper model, pass `curatorRunner` into `createTenantHome`:
 
 ```ts
+import { anthropic } from "@ai-sdk/anthropic";
 import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
 const home = await createTenantHome({
   tenantId,
   agent,
-  curatorRunner: aiCuratorRunner("anthropic/claude-haiku-4-5"),
+  curatorRunner: aiCuratorRunner(anthropic("claude-haiku-4-5")),
 });
 ```
 

@@ -44,8 +44,9 @@ const session = await home.openSession(sessionId, {
 
 ## Add your own tool
 
-You need an API key (`AI_GATEWAY_API_KEY`) or a `LanguageModel` you pass in.
-This example uses in-memory files. For a tenant volume, see [Hosting](hosting.md).
+Pass a `LanguageModel` from any AI SDK provider (or use a Gateway string id
+with `AI_GATEWAY_API_KEY`). This example uses in-memory files. For a tenant
+volume, see [Hosting](hosting.md).
 
 ```ts
 import type { SessionTool } from "@socialrobot-io/agent-kit-core";

@@ -223,7 +223,8 @@ describe("attachSessionCurator via createTenantHome", () => {
     });
     base.stream = ((_messages, opts) => {
       const text = (async () => {
-        await opts?.onFinish?.({ text: "streamed" });
+        // Minimal finish event for the curator wrap (only `.text` is read).
+        await opts?.onFinish?.({ text: "streamed" } as never);
         return "streamed";
       })();
       return { text } as unknown as ReturnType<typeof base.stream>;

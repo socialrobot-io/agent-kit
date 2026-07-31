@@ -53,8 +53,9 @@ Never invent numbers.
 
 ## 3. Run one turn (tenant home)
 
-Needs an API key (`AI_GATEWAY_API_KEY`) or a `LanguageModel` you pass yourself.
-Creates `./data/tenants/${tenantId}.db` by default.
+Pass a `LanguageModel` from any AI SDK provider, or set `AI_GATEWAY_API_KEY`
+and use a `"provider/model"` string. Creates `./data/tenants/${tenantId}.db`
+by default.
 
 Pass `agent` so `SOUL.md`, `AGENTS.md`, and skills are installed on the volume.
 Without it, the session does not use your authored files.
@@ -69,10 +70,15 @@ await compileAgent({ dir: "./agent", outFile: "./src/generated/agent.ts" });
 ```
 
 ```ts
+import { anthropic } from "@ai-sdk/anthropic";
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 import { agent } from "./generated/agent";
 
-const home = await createTenantHome({ tenantId: "brand-123", agent });
+const home = await createTenantHome({
+  tenantId: "brand-123",
+  agent,
+  model: anthropic("claude-sonnet-4-5"),
+});
 const session = await home.openSession("chat-1");
 
 const turn = await session.run([

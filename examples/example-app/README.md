@@ -13,11 +13,15 @@ Two demos share the same Next app; each has its own folder under `agents/`:
 ```bash
 cd examples/example-app
 cp .env.sample .env.local
-# Preferred: set DEEPSEEK_API_KEY from https://platform.deepseek.com
-# Fallback: set AI_GATEWAY_API_KEY from https://vercel.com/ai-gateway
+# First: set DEEPSEEK_API_KEY (AI SDK provider @ai-sdk/deepseek)
+# https://platform.deepseek.com
+# Second: set AI_GATEWAY_API_KEY (Vercel AI Gateway)
+# https://vercel.com/ai-gateway
 ```
 
-Default model is `deepseek-v4-flash` via [`@ai-sdk/deepseek`](https://ai-sdk.dev/providers/ai-sdk-providers/deepseek).
+Default model is `deepseek-v4-flash` via
+[`@ai-sdk/deepseek`](https://ai-sdk.dev/providers/ai-sdk-providers/deepseek).
+Gateway is used only when `DEEPSEEK_API_KEY` is unset.
 
 ## Run
 

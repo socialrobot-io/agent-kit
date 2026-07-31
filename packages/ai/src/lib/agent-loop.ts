@@ -1,7 +1,9 @@
 /**
- * A real agent loop over the AI SDK: resolves `defineAgent({ model })`, hands
- * the runtime's frozen system prompt + tools to `generateText` / `streamText`,
- * and lets the model call tools until it stops (bounded by `stopWhen`).
+ * Thin AI SDK loop: kit owns system prompt + tool composition; every other
+ * `generateText` / `streamText` option is typed from the AI SDK and passed through.
+ *
+ * @see https://ai-sdk.dev/docs/reference/ai-sdk-core/generate-text
+ * @see https://ai-sdk.dev/docs/reference/ai-sdk-core/stream-text
  */
 
 import {
@@ -9,8 +11,6 @@ import {
   streamText,
   stepCountIs,
   type ModelMessage,
-  type StreamTextResult,
-  type ToolApprovalConfiguration,
   type ToolSet,
 } from "ai";
 import type { AgentSessionRuntime, AgentDefinition, SessionTool } from "@socialrobot-io/agent-kit-core";
@@ -18,10 +18,24 @@ import { MEMORY_SCHEMA, SKILL_MANAGE_SCHEMA } from "@socialrobot-io/agent-kit-co
 import { resolveModel, type ResolveModelOptions, type ModelInput } from "./models.js";
 import { composeAgentTools } from "./compose-tools.js";
 
-type AgentStreamResult = StreamTextResult<ToolSet, never, any>;
+/** Exact AI SDK call parameter objects. */
+export type GenerateTextParams = Parameters<typeof generateText>[0];
+export type StreamTextParams = Parameters<typeof streamText>[0];
 
-/** Options for {@link runAgentTurn} / {@link streamAgentTurn}. */
-export interface AgentLoopOptions extends ResolveModelOptions {
+/**
+ * Fields the kit fills from the session. Hosts must not set these on the call;
+ * they come from `runtime` / composed tools / the `messages` argument.
+ */
+type KitFilledSdkKeys =
+  | "model"
+  | "system"
+  | "messages"
+  | "prompt"
+  | "tools"
+  | "instructions";
+
+/** Kit-owned fields for one turn (not AI SDK call options). */
+export type AgentLoopKitOptions = {
   /** Initialized session runtime (system prompt + builtin tools). */
   runtime: AgentSessionRuntime;
   /** Override the model (else resolved from `definition`). */
@@ -30,14 +44,14 @@ export interface AgentLoopOptions extends ResolveModelOptions {
   definition?: AgentDefinition;
   /**
    * Extra builtins beyond `runtime.tools()` (e.g. session_search).
-   * Prefer `openAgentSession` which wires this for you.
+   * Prefer `openAgentSession`, which wires this for you.
    */
   builtinTools?: SessionTool[];
   /** Append or replace by name on top of defaults. */
   addTools?: SessionTool[];
   /** Drop tools by name. */
   disableTools?: string[];
-  /** Full SessionTool replace. */
+  /** Full SessionTool replace (kit). Not the AI SDK `tools` ToolSet. */
   tools?: SessionTool[];
   /** AI SDK tools (bash toolkit, etc.). */
   addAiTools?: ToolSet;
@@ -49,150 +63,165 @@ export interface AgentLoopOptions extends ResolveModelOptions {
    * @deprecated Use `addAiTools`.
    */
   extraAiTools?: ToolSet;
-  /** Max model steps (tool-call rounds). Default 8. */
-  maxSteps?: number;
   /**
    * Full AI SDK ToolSet from `openAgentSession().composeTools().toolSet`.
    * When set, skips internal compose (addTools / disableTools ignored).
    */
   toolSet?: ToolSet;
   /**
-   * AI SDK UI approval gate for write tools. Prefer
-   * `openAgentSession({ interactiveApproval: true })`, which sets this and
-   * pairs it with `promptInline`.
+   * Convenience for `stopWhen: stepCountIs(n)`.
+   * Ignored when `stopWhen` is set. Default 8.
    */
-  toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
-  /** Called when a streamed turn finishes (persist transcripts, curator, …). */
-  onFinish?: (event: { text: string }) => void | Promise<void>;
-  /** Retry transient provider failures. Default 2 retries. */
-  maxRetries?: number;
+  maxSteps?: number;
+};
+
+/** AI SDK `generateText` options the host may set (kit-filled keys omitted). */
+export type AgentRunCallOptions = Omit<GenerateTextParams, KitFilledSdkKeys>;
+
+/** AI SDK `streamText` options the host may set (kit-filled keys omitted). */
+export type AgentStreamCallOptions = Omit<StreamTextParams, KitFilledSdkKeys>;
+
+/** Options for {@link runAgentTurn}. */
+export type AgentRunOptions = AgentLoopKitOptions & ResolveModelOptions & AgentRunCallOptions;
+
+/** Options for {@link streamAgentTurn}. */
+export type AgentStreamOptions = AgentLoopKitOptions & ResolveModelOptions & AgentStreamCallOptions;
+
+/**
+ * @deprecated Prefer {@link AgentRunOptions} or {@link AgentStreamOptions}.
+ * Alias of stream options (the wider AI SDK surface).
+ */
+export type AgentLoopOptions = AgentStreamOptions;
+
+/** AI SDK result of {@link runAgentTurn}. */
+export type AgentLoopResult = Awaited<ReturnType<typeof generateText>>;
+
+/** AI SDK result of {@link streamAgentTurn}. */
+export type AgentStreamResult = ReturnType<typeof streamText>;
+
+function peelKitOptions<T extends AgentLoopKitOptions & ResolveModelOptions>(opts: T) {
+  const {
+    runtime,
+    model,
+    definition,
+    builtinTools,
+    addTools,
+    disableTools,
+    tools,
+    addAiTools,
+    extraTools,
+    extraAiTools,
+    toolSet,
+    maxSteps,
+    gateway,
+    apiKey,
+    baseURL,
+    ...call
+  } = opts;
+
+  const kit: AgentLoopKitOptions & ResolveModelOptions = {
+    runtime,
+    model,
+    definition,
+    builtinTools,
+    addTools,
+    disableTools,
+    tools,
+    addAiTools,
+    extraTools,
+    extraAiTools,
+    toolSet,
+    maxSteps,
+    gateway,
+    apiKey,
+    baseURL,
+  };
+
+  return { kit, call };
 }
 
-/** Result of a completed {@link runAgentTurn}. */
-export interface AgentLoopResult {
-  /** Final assistant text (may be empty when the model only called tools). */
-  text: string;
-  /** Number of model steps taken. */
-  steps: number;
-  /** Tool calls made during the turn. */
-  toolCalls: { name: string; args: unknown }[];
-  /** Tool results returned to the model. */
-  toolResults: unknown[];
+function resolveToolSet(kit: AgentLoopKitOptions): ToolSet {
+  if (kit.toolSet) return kit.toolSet;
+  return composeAgentTools({
+    builtins: kit.builtinTools ?? kit.runtime.tools(),
+    addTools: kit.addTools,
+    disableTools: kit.disableTools,
+    tools: kit.tools,
+    addAiTools: kit.addAiTools,
+    extraTools: kit.extraTools,
+    extraAiTools: kit.extraAiTools,
+  }).toolSet;
 }
 
-function isTransientError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /rate limit|timeout|429|503|ECONNRESET|ETIMEDOUT|temporarily/i.test(msg);
-}
-
-async function withRetries<T>(fn: () => Promise<T>, maxRetries: number): Promise<T> {
-  let last: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      last = err;
-      if (!isTransientError(err) || attempt === maxRetries) throw err;
-      await new Promise((r) => setTimeout(r, 200 * 2 ** attempt));
-    }
-  }
-  throw last instanceof Error ? last : new Error(String(last));
-}
-
-function resolveLoopModel(opts: AgentLoopOptions) {
-  const modelInput = opts.model ?? opts.definition?.model;
+function resolveTurnModel(kit: AgentLoopKitOptions & ResolveModelOptions) {
+  const modelInput = kit.model ?? kit.definition?.model;
   if (!modelInput) {
     throw new Error("Agent loop needs a model: pass `model` or `definition.model`.");
   }
-  const tools =
-    opts.toolSet ??
-    composeAgentTools({
-      builtins: opts.builtinTools ?? opts.runtime.tools(),
-      addTools: opts.addTools,
-      disableTools: opts.disableTools,
-      tools: opts.tools,
-      addAiTools: opts.addAiTools,
-      extraTools: opts.extraTools,
-      extraAiTools: opts.extraAiTools,
-    }).toolSet;
-  return {
-    model: resolveModel(modelInput, opts),
-    tools,
-    maxSteps: opts.maxSteps ?? 8,
-    system: opts.runtime.systemPrompt(),
-    maxRetries: opts.maxRetries ?? 2,
-    toolApproval: opts.toolApproval,
-  };
+  return resolveModel(modelInput, {
+    gateway: kit.gateway,
+    apiKey: kit.apiKey,
+    baseURL: kit.baseURL,
+  });
 }
 
 /**
- * Run one agent turn to completion against a live model.
- *
- * @param messages - Conversation messages for this turn.
- * @param opts - Runtime, model, tools, and step limits.
+ * Run one agent turn to completion.
+ * Returns the AI SDK `generateText` result unchanged.
  */
 export async function runAgentTurn(
   messages: ModelMessage[],
-  opts: AgentLoopOptions,
+  opts: AgentRunOptions,
 ): Promise<AgentLoopResult> {
-  const { model, tools, maxSteps, system, maxRetries, toolApproval } = resolveLoopModel(opts);
+  const { kit, call } = peelKitOptions(opts);
+  const { stopWhen, ...sdk } = call;
 
-  const result = await withRetries(
-    () =>
-      generateText({
-        model,
-        system,
-        messages,
-        tools,
-        stopWhen: stepCountIs(maxSteps),
-        ...(toolApproval ? { toolApproval } : {}),
-      }),
-    maxRetries,
-  );
-
-  const toolCalls: { name: string; args: unknown }[] = [];
-  const toolResults: unknown[] = [];
-  for (const step of result.steps) {
-    for (const tc of step.toolCalls ?? []) {
-      toolCalls.push({ name: tc.toolName, args: (tc as { input?: unknown }).input });
-    }
-    for (const tr of step.toolResults ?? []) {
-      toolResults.push((tr as { output?: unknown }).output ?? tr);
-    }
-  }
-
-  return {
-    text: result.text,
-    steps: result.steps.length,
-    toolCalls,
-    toolResults,
-  };
+  return generateText({
+    ...sdk,
+    model: resolveTurnModel(kit),
+    system: kit.runtime.systemPrompt(),
+    messages,
+    tools: resolveToolSet(kit),
+    stopWhen: stopWhen ?? stepCountIs(kit.maxSteps ?? 8),
+  });
 }
 
 /**
- * Stream one agent turn (tools + text) for AI SDK UI / `useChat`.
- *
- * @param messages - Conversation messages for this turn.
- * @param opts - Runtime, model, tools, and step limits.
+ * Stream one agent turn for AI SDK UI / `useChat`.
+ * Returns the AI SDK `streamText` result unchanged.
  */
 export function streamAgentTurn(
   messages: ModelMessage[],
-  opts: AgentLoopOptions,
+  opts: AgentStreamOptions,
 ): AgentStreamResult {
-  const { model, tools, maxSteps, system, toolApproval } = resolveLoopModel(opts);
+  const { kit, call } = peelKitOptions(opts);
+  const { stopWhen, ...sdk } = call;
+
   return streamText({
-    model,
-    system,
+    ...sdk,
+    model: resolveTurnModel(kit),
+    system: kit.runtime.systemPrompt(),
     messages,
-    tools,
-    stopWhen: stepCountIs(maxSteps),
-    ...(toolApproval ? { toolApproval } : {}),
-    onFinish: opts.onFinish
-      ? async ({ text }) => {
-          await opts.onFinish?.({ text });
-        }
-      : undefined,
-  }) as AgentStreamResult;
+    tools: resolveToolSet(kit),
+    stopWhen: stopWhen ?? stepCountIs(kit.maxSteps ?? 8),
+  });
+}
+
+function toCuratorModelMessages(
+  messages: { role: string; content: string }[],
+): ModelMessage[] {
+  return messages.map((m): ModelMessage => {
+    if (m.role === "assistant") return { role: "assistant", content: m.content };
+    if (m.role === "system") return { role: "system", content: m.content };
+    return { role: "user", content: m.content };
+  });
+}
+
+function toToolArgs(input: unknown): Record<string, unknown> {
+  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
+    return input as Record<string, unknown>;
+  }
+  return {};
 }
 
 /**
@@ -226,23 +255,17 @@ export function aiCuratorRunner(model: ModelInput, opts: ResolveModelOptions = {
     const result = await generateText({
       model: resolved,
       system: input.systemPrompt,
-      messages: input.messages.map((m) => ({
-        role: m.role as ModelMessage["role"],
-        content: m.content,
-      })) as ModelMessage[],
+      messages: toCuratorModelMessages(input.messages),
       tools: toolSet,
       stopWhen: stepCountIs(4),
     });
 
-    const toolCalls: { name: string; args: Record<string, unknown> }[] = [];
-    for (const step of result.steps) {
-      for (const tc of step.toolCalls ?? []) {
-        toolCalls.push({
-          name: tc.toolName,
-          args: ((tc as { input?: unknown }).input ?? {}) as Record<string, unknown>,
-        });
-      }
-    }
-    return { text: result.text, toolCalls };
+    return {
+      text: result.text,
+      toolCalls: result.toolCalls.map((tc) => ({
+        name: tc.toolName,
+        args: toToolArgs(tc.input),
+      })),
+    };
   };
 }
