@@ -1,3 +1,19 @@
+## 0.2.2 (2026-07-31)
+
+### 🚀 Features
+
+- ship company envelope with compileAgent host install ([#12](https://github.com/socialrobot-io/agent-kit/pull/12))
+- bake curator into createTenantHome + clarify docs ([#14](https://github.com/socialrobot-io/agent-kit/pull/14))
+
+### 🩹 Fixes
+
+- **ci:** push releases with admin RELEASE_TOKEN ([734cb2f](https://github.com/socialrobot-io/agent-kit/commit/734cb2f))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 ## 0.2.1 (2026-07-29)
 
 ### 🩹 Fixes
