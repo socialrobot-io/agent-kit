@@ -40,7 +40,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN cannot push to main while the default-branch ruleset
+          # requires PRs (org free plan also blocks GitHub Actions as a bypass
+          # actor). RELEASE_TOKEN must be a PAT for a repo admin so the version
+          # commit + tag can bypass that rule.
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -80,7 +84,7 @@ jobs:
 
       - name: Version, changelog, tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           # --yes and --skip-publish are mutually exclusive in Nx.
           FLAGS=(--skip-publish)
@@ -100,6 +104,6 @@ jobs:
       - name: Publish to npm
         if: ${{ inputs.dry_run != true }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           # Do not set NODE_AUTH_TOKEN; npm OIDC trusted publishing uses id-token.
         run: bunx nx release publish --yes
