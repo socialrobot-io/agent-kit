@@ -54,17 +54,22 @@
     },
     "packages/ai": {
       "name": "@socialrobot-io/agent-kit-ai",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.31",
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
+      },
+      "devDependencies": {
         "ai": "^7.0.41",
+      },
+      "peerDependencies": {
+        "ai": "^7.0.0",
       },
     },
     "packages/cli": {
       "name": "@socialrobot-io/agent-kit-cli",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -72,18 +77,19 @@
         "@socialrobot-io/agent-kit-sandbox": "workspace:*",
         "@socialrobot-io/agent-kit-sessions": "workspace:*",
         "@swc/helpers": "~0.5.18",
+        "ai": "^7.0.41",
       },
     },
     "packages/core": {
       "name": "@socialrobot-io/agent-kit-core",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@socialrobot-io/agent-kit-curator",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -91,7 +97,7 @@
     },
     "packages/node": {
       "name": "@socialrobot-io/agent-kit-node",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -99,12 +105,17 @@
         "@socialrobot-io/agent-kit-sandbox": "workspace:*",
         "@socialrobot-io/agent-kit-sessions": "workspace:*",
         "@swc/helpers": "~0.5.18",
+      },
+      "devDependencies": {
         "ai": "^7.0.41",
+      },
+      "peerDependencies": {
+        "ai": "^7.0.0",
       },
     },
     "packages/sandbox": {
       "name": "@socialrobot-io/agent-kit-sandbox",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -114,12 +125,15 @@
     },
     "packages/sessions": {
       "name": "@socialrobot-io/agent-kit-sessions",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
   },
+  "trustedDependencies": [
+    "@mongodb-js/zstd",
+  ],
   "packages": {
     "@ai-sdk/deepseek": ["@ai-sdk/deepseek@3.0.15", "", { "dependencies": { "@ai-sdk/provider": "4.0.4", "@ai-sdk/provider-utils": "5.0.14" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ajZySPn1s/CXYrxdCWiwrX0x1dl7KbhKmxgdavxw5Cc853NczRhgi1BcQX6aZqA4w6jEF/E2zGniSqtFFAeXWA=="],
 

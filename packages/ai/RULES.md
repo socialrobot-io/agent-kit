@@ -16,11 +16,14 @@ The model layer: resolves `defineAgent({ model })` to a live Vercel AI SDK
    do not invent parallel option types or cast away SDK types. Return
    `ReturnType` / `Awaited<ReturnType>` of the SDK functions. Do not add
    custom retry layers (`maxRetries` is the SDK's).
-3. **AI SDK v7 (v4 spec) is pinned by reality.** Mocks and custom models must
-   declare `specificationVersion: "v4"`. When upgrading `ai` or
-   `@ai-sdk/gateway`, keep their spec versions in lockstep and re-run
-   `agent-loop.spec.ts` first; spec mismatches fail at the type level in
-   confusing places.
+3. **`ai` is a peer dependency (`^7.0.0`).** Hosts install one copy next to
+   the kit so provider packages share types and runtime with the loop. Keep
+   the pinned version in this package's `devDependencies` for local
+   typecheck and tests. AI SDK v7 (v4 spec) is pinned by reality: mocks and
+   custom models must declare `specificationVersion: "v4"`. When upgrading
+   `ai` or `@ai-sdk/gateway`, keep their spec versions in lockstep and
+   re-run `agent-loop.spec.ts` first; spec mismatches fail at the type
+   level in confusing places.
 4. **Tool-call input is stringified JSON.** Any mock, custom runner, or
    provider shim that emits tool calls MUST set `input` to
    `JSON.stringify(args)`. A raw object makes the SDK treat the call as

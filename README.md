@@ -129,6 +129,48 @@ npx nx dev example          # http://localhost:3000
 - Durable local disk for per-tenant SQLite volumes (one machine today)
 - A model provider for live turns
 
+Happy path package (volume + transcripts + sandbox + live loop):
+
+```bash
+npm i @socialrobot-io/agent-kit-node ai
+# also pulls core, agent-kit-ai, sessions, sandbox, curator
+# `ai` is a peer (Vercel AI SDK); install it next to the kit
+```
+
+| Package | Job |
+| ------- | --- |
+| [`…-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (volume, sandbox, sessions, curator) |
+| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
+| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
+| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + `session_search` |
+| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Volume + guarded bash |
+| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review (wired by `…-node`) |
+
+**Package manager notes**
+
+- **Bun**: Bun blocks lifecycle scripts by default. Trust `@mongodb-js/zstd`
+  so its `prebuild-install` can fetch a binary:
+
+  ```json
+  {
+    "trustedDependencies": ["@mongodb-js/zstd"]
+  }
+  ```
+
+  Then reinstall (`bun install`), or run `bun pm trust @mongodb-js/zstd`.
+  Do not trust `node-liblzma` unless your machine can compile it
+  (`pkg-config` + system `liblzma`). A failed trusted install can delete the
+  optional package under Bun.
+- **npm**: `Cannot find native binding` outside a bundler means a missing
+  platform package (known npm bug [npm/cli#4828](https://github.com/npm/cli/issues/4828)).
+  Remove `node_modules` and `package-lock.json`, then install again.
+- **Next.js / Turbopack**: native packages must stay outside the bundle. See
+  [Next.js (App Router)](docs/guides/hosting.md#nextjs-app-router).
+
+Full notes: [Getting started](docs/guides/getting-started.md#package-manager-notes).
+
+**Model provider**
+
 Pass a ready `LanguageModel` from any [AI SDK provider](https://sdk.vercel.ai/providers)
 (`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/deepseek`, …). That is the
 usual path.
@@ -145,22 +187,6 @@ const home = await createTenantHome({
 
 Or pass a `"provider/model"` string and set `AI_GATEWAY_API_KEY` so the
 [Vercel AI Gateway](https://vercel.com/ai-gateway) resolves it.
-
-Happy path package (volume + transcripts + sandbox + live loop):
-
-```bash
-npm i @socialrobot-io/agent-kit-node
-# also pulls core, ai, sessions, sandbox
-```
-
-| Package | Job |
-| ------- | --- |
-| [`…-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (volume, sandbox, sessions, curator) |
-| [`…-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
-| [`…-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
-| [`…-sessions`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sessions) | Transcripts + `session_search` |
-| [`…-sandbox`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-sandbox) | Volume + guarded bash |
-| [`…-curator`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-curator) | Background review (wired by `…-node`) |
 
 ---
 
@@ -327,6 +353,8 @@ async function handleTurn(opts: {
 ```
 
 For streaming Next.js chat, copy [`examples/example-app`](examples/example-app).
+On Next.js App Router, keep the native packages outside the bundle with
+`serverExternalPackages`: [Next.js (App Router)](docs/guides/hosting.md#nextjs-app-router).
 More detail: [Hosting](docs/guides/hosting.md).
 
 ---

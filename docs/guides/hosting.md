@@ -81,7 +81,8 @@ that caller is allowed to use it.
 
 ## Happy path
 
-Install `@socialrobot-io/agent-kit-node`. Defaults:
+Install `@socialrobot-io/agent-kit-node` and its peer `ai` (Vercel AI SDK).
+Defaults:
 
 - volume at `./data/tenants/${tenantId}.db`
 - transcripts + `session_search`
@@ -144,6 +145,49 @@ messages yourself, inspect the volume, or call sandbox tools outside a turn.
 
 A full streaming chat with the same shape lives in
 [`examples/example-app`](../../examples/example-app).
+
+## Next.js (App Router)
+
+agent-kit works in App Router route handlers and server actions on the
+`nodejs` runtime. Turbopack and webpack cannot bundle the native bindings that
+agent-kit loads at runtime:
+
+- `agentfs-sdk` loads `@tursodatabase/database`, which loads a per-platform
+  `.node` package (`@tursodatabase/database-linux-x64-gnu` and similar).
+- `just-bash` can load optional native helpers for archive commands
+  (`@mongodb-js/zstd`, and `node-liblzma` when built on the host).
+
+Keep these packages outside the bundle. When they are bundled, the route
+fails at module evaluation with `Error: Cannot find native binding`.
+
+```js
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  serverExternalPackages: ["agentfs-sdk", "just-bash", "bash-tool"],
+};
+
+module.exports = nextConfig;
+```
+
+Rules:
+
+1. Set `export const runtime = "nodejs"` in the route or action file. The
+   edge runtime cannot load native bindings or local SQLite files.
+2. Do not add `@socialrobot-io/*` packages to `serverExternalPackages` when
+   you install them from npm. They ship plain JavaScript and bundle safely.
+   `examples/example-app` lists them under `transpilePackages` because the
+   monorepo maps them to TypeScript source. That setting is workspace-only.
+3. If the error names a different native package, add that package to
+   `serverExternalPackages`. Known extras: `@tursodatabase/database`,
+   `@mongodb-js/zstd`, `node-liblzma`, `better-sqlite3`.
+
+The same `Cannot find native binding` error in plain Node (no bundler) means
+the platform package is missing from `node_modules`. See the npm note in
+[Getting started](getting-started.md#package-manager-notes).
+
+Reference wiring: [`examples/example-app`](../../examples/example-app) (route
+handler, session cache, approval UI, working `serverExternalPackages`).
 
 ## Rules you must keep
 

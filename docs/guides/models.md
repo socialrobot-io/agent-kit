@@ -1,7 +1,9 @@
 # Models
 
 This guide shows how to pick a model and run one agent turn. The kit uses the
-[Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7).
+[Vercel AI SDK](https://sdk.vercel.ai) (`ai` v7). Install `ai` next to the kit:
+it is a peer of `@socialrobot-io/agent-kit-ai` and
+`@socialrobot-io/agent-kit-node`.
 
 ## Pick a model
 
