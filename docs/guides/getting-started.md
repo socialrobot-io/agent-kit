@@ -127,8 +127,9 @@ multi-tenant production. See [Hosting](hosting.md).
 
 With `createTenantHome`, a background **curator** runs after every turn
 (default on). It may stage memory or skill updates under `pending/`. They are
-not live until a human approves them. The **next** chat session sees approved
-content. Disable with `defineAgent({ config: { curator: false } })`.
+not live until a human approves them, unless you set
+`config.curator: { autoApprove: true }`. The **next** chat session sees
+approved content. Disable with `defineAgent({ config: { curator: false } })`.
 
 Details: [Skills & learning](skills-and-learning.md).
 

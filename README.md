@@ -40,7 +40,7 @@ No huge cloud bill. No fancy infrastructure.
 | **Secure by default** | Prompt-injection, promptware, and exfiltration scanning on every memory and skill write. Threats never reach the system prompt. |
 | **Sandboxed execution** | Per-tenant [AgentFS](https://www.agentfs.ai/) volumes and [bash-tool](https://github.com/vercel-labs/bash-tool) guardrails. Destructive commands, secret exfil, and non-allowlisted network egress are blocked before they run. |
 | **Production multi-tenancy** | One isolated filesystem, memory, skill library, transcript store, and audit trail per tenant. A bug in tenant A cannot touch tenant B. |
-| **Self-improving under approval** | A background curator distills sessions into durable memory and reusable skills. Writes stage for human review. They are never applied silently. |
+| **Self-improving under approval** | A background curator distills sessions into durable memory and reusable skills. Writes stage for human review by default. Hosts can set `curator.autoApprove` when end users are not the right reviewers. |
 
 Learning without a sandbox is a liability. A sandbox without learning is just a
 cage. agent-kit is both.
@@ -92,7 +92,8 @@ optional skills or memories. Then the session loop is:
    shell commands before they run.
 3. **Curate.** After each turn, `createTenantHome` can propose durable memory or
    skills in the background. Set `config.curator: false` to turn this off.
-4. **Approve.** Proposals stay under `pending/` until a human accepts them.
+4. **Approve.** Proposals stay under `pending/` until a human accepts them, or
+   apply immediately when `config.curator.autoApprove` is true.
 5. **Recall.** The next chat includes approved memory. Past chats for that
    tenant are searchable. Other tenants stay isolated.
 

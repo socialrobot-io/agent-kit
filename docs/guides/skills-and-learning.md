@@ -96,8 +96,10 @@ See [Security](security.md) for the three zones.
 
 If you use `createTenantHome`, you do not start the curator yourself. After
 every completed turn, the home runs a background review. That review may
-propose memory or skill changes. Those proposals land under `pending/` on the
-tenant volume. They are not live until a human approves them.
+propose memory or skill changes. By default those proposals land under
+`pending/` on the tenant volume. They are not live until a human approves
+them. Set `curator.autoApprove: true` when your end users are not the right
+reviewers (see below).
 
 The review does not block the chat reply. It only uses `memory` and
 `skill_manage` tools (no bash, no product tools).
@@ -105,7 +107,7 @@ The review does not block the chat reply. It only uses `memory` and
 ```text
 turn completes
   → curator runs in the background
-  → proposals appear under pending/
+  → default: proposals appear under pending/
   → your UI shows them; a human accepts or rejects
   → accept applies them to disk
   → the next chat session sees approved content
@@ -118,9 +120,10 @@ defineAgent({
   model: "anthropic/claude-sonnet-4-5",
   config: {
     curator: true, // default
-    // curator: false,                 // never run after turns
-    // curator: { mode: "memory" },    // only review memory
-    // curator: { mode: "skills" },    // only review skills
+    // curator: false,                      // never run after turns
+    // curator: { mode: "memory" },         // only review memory
+    // curator: { mode: "skills" },         // only review skills
+    // curator: { autoApprove: true },      // apply curator proposals now
   },
 });
 ```
@@ -130,10 +133,35 @@ defineAgent({
 | Durable user facts → memory | Failures that only happen in one environment |
 | Reusable procedures → skills | “This tool is broken” one-offs |
 
+### When end users should not review
+
+Use `autoApprove` when the host product trusts the curator and end users are
+not suited to accept or discard proposals. Curator writes apply immediately.
+In-chat agent `memory` / `skill_manage` writes still follow `writeApproval`.
+
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: {
+    writeApproval: { memory: true, skills: true },
+    curator: { mode: "combined", autoApprove: true },
+  },
+});
+```
+
+| Posture | Config | Who decides |
+| ------- | ------ | ----------- |
+| Human review (default) | `writeApproval` on; curator without `autoApprove` | Operator or admin UI via `approvePendingWrites` |
+| Trust curator | `curator: { autoApprove: true }` | Host at deploy time |
+| Silent everything | `writeApproval: { memory: false, skills: false }` | Host; agent tool writes also apply immediately |
+
+Skill locks, path locks, and threat scanning still apply when `autoApprove` is
+on. See [Security](security.md).
+
 ## Review pending writes in your app
 
-Your job after the curator (or any gated write) is to show `pending/` items
-and let a human decide.
+When you do not set `curator.autoApprove`, your job after the curator (or any
+gated write) is to show `pending/` items and let a human decide.
 
 **List what is waiting:**
 

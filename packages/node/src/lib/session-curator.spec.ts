@@ -50,16 +50,24 @@ function mockModel(text = "ok"): LanguageModel {
 
 describe("resolveCuratorConfig", () => {
   it("defaults to combined when curator is true", () => {
-    expect(resolveCuratorConfig(defineAgent({ model: "m" }))).toEqual({ mode: "combined" });
+    expect(resolveCuratorConfig(defineAgent({ model: "m" }))).toEqual({
+      mode: "combined",
+      autoApprove: false,
+    });
   });
 
-  it("respects false and mode", () => {
+  it("respects false, mode, and autoApprove", () => {
     expect(
       resolveCuratorConfig(defineAgent({ model: "m", config: { curator: false } })),
     ).toBe(false);
     expect(
       resolveCuratorConfig(defineAgent({ model: "m", config: { curator: { mode: "memory" } } })),
-    ).toEqual({ mode: "memory" });
+    ).toEqual({ mode: "memory", autoApprove: false });
+    expect(
+      resolveCuratorConfig(
+        defineAgent({ model: "m", config: { curator: { autoApprove: true } } }),
+      ),
+    ).toEqual({ mode: "combined", autoApprove: true });
   });
 });
 
@@ -112,6 +120,45 @@ describe("attachSessionCurator via createTenantHome", () => {
       expect(pending.some((p) => p.summary.includes("Prefers short") || p.payload.content === "Prefers short answers.")).toBe(
         true,
       );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("applies curator memory immediately when autoApprove is on", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-curator-auto-"));
+    const runner: CuratorModelRunner = async () => ({
+      text: "Saving preference.",
+      toolCalls: [
+        {
+          name: "memory",
+          args: { action: "add", target: "user", content: "Prefers short answers." },
+        },
+      ],
+    });
+
+    try {
+      const home = await createTenantHome({
+        tenantId: "t1",
+        dataDir: dir,
+        model: mockModel(),
+        sandbox: false,
+        transcripts: false,
+        definition: defineAgent({
+          model: "mock",
+          config: {
+            writeApproval: { memory: true, skills: true },
+            curator: { autoApprove: true },
+          },
+        }),
+        curatorRunner: runner,
+      });
+      const session = await home.openSession("chat-1");
+      await session.run([{ role: "user", content: "Keep answers short." }]);
+      await waitForSessionCurators();
+
+      expect(await session.pending.list("memory")).toEqual([]);
+      expect(session.memory.getEntries("user")).toContain("Prefers short answers.");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

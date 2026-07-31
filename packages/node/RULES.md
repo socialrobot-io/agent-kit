@@ -15,7 +15,9 @@ pure; this package may depend on sibling packages (including curator).
 4. **Curator is baked into `openSession`.** After each turn, when
    `definition.config.curator` is not `false`, schedule `runBackgroundReview`
    without blocking the reply. Toggle only via `defineAgent` config (or
-   `curatorRunner` for the model seam).
+   `curatorRunner` for the model seam). When `curator.autoApprove` is true,
+   pass `writeApprovalEnabled: () => false` into that run only so proposals
+   apply immediately; do not change foreground `writeApproval`.
 
 ## When you change X, also update Y
 
