@@ -1,3 +1,14 @@
+## 0.2.3 (2026-07-31)
+
+### 🚀 Features
+
+- **ai:** pass through AI SDK call options and tighten docs ([31c6ef4](https://github.com/socialrobot-io/agent-kit/commit/31c6ef4))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 ## 0.2.2 (2026-07-31)
 
 ### 🚀 Features
