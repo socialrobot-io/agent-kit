@@ -31,12 +31,17 @@ declare global {
   var __agentKitCodeRunnerBoot: Promise<SharedState> | undefined;
 }
 
+/** Dummy secret for the demo; guardrails redact it from bash/tool output. */
+export const CODE_RUNNER_DEMO_SECRET = "sk-demo-code-runner-not-real";
+
 const WORKSPACE_FILES: Record<string, string> = {
   "README.md":
     "# Code runner workspace\n\n" +
     "Use `js-exec` for calculations. Example:\n" +
     "`js-exec -c \"console.log(1+2)\"`\n" +
-    "Write longer scripts with writeFile, then run them with js-exec.\n",
+    "Write longer scripts with writeFile, then run them with js-exec.\n\n" +
+    "A dummy secret is registered with the sandbox (`sk-demo-…`). " +
+    "If you print it via bash, the kit redacts it from tool output.\n",
 };
 
 const MAX_SESSIONS = 32;
@@ -83,6 +88,7 @@ async function bootShared(): Promise<SharedState> {
     workspaceFiles: WORKSPACE_FILES,
     sandbox: {
       javascript: true,
+      secrets: [CODE_RUNNER_DEMO_SECRET],
     },
     agent,
   });
