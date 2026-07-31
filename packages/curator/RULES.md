@@ -13,7 +13,9 @@ session transcripts into proposed memory and skill writes.
 2. **Approval semantics flow through `writeApprovalEnabled`.** When the gate is
    on for a subsystem, writes are staged into `PendingWriteStore` and nothing
    is applied. When it is off, writes apply immediately. Never add a third
-   path that writes memory or skills directly, bypassing both.
+   path that writes memory or skills directly, bypassing both. Host
+   `config.curator.autoApprove` is wired by `@socialrobot-io/agent-kit-node`:
+   it passes `writeApprovalEnabled: () => false` for the curator run only.
 3. **Prompt fidelity.** `MEMORY_REVIEW_PROMPT`, `SKILL_REVIEW_PROMPT`, and
    `COMBINED_REVIEW_PROMPT` mirror `vendor/hermes` background-review prompts.
    Edit them deliberately and note the divergence; they encode what counts as

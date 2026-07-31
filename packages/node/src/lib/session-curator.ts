@@ -18,17 +18,28 @@ import type { ModelMessage } from "ai";
 
 export type CuratorMode = "memory" | "skills" | "combined";
 
+export interface ResolvedCuratorConfig {
+  mode: CuratorMode;
+  /** Apply curator proposals immediately (host trust; default false). */
+  autoApprove: boolean;
+}
+
 /** In-flight curator tasks (tests can {@link waitForSessionCurators}). */
 const pendingCurators = new Set<Promise<unknown>>();
 
 /** Resolve curator config after {@link defineAgent}. Returns false when disabled. */
 export function resolveCuratorConfig(
   definition: AgentDefinition,
-): { mode: CuratorMode } | false {
+): ResolvedCuratorConfig | false {
   const c = definition.config?.curator;
   if (c === false) return false;
-  if (typeof c === "object") return { mode: c.mode ?? "combined" };
-  return { mode: "combined" };
+  if (typeof c === "object") {
+    return {
+      mode: c.mode ?? "combined",
+      autoApprove: c.autoApprove ?? false,
+    };
+  }
+  return { mode: "combined", autoApprove: false };
 }
 
 function textFromContent(content: ModelMessage["content"]): string {
@@ -98,8 +109,12 @@ export function attachSessionCurator(
   if (!cfg) return session;
 
   const writeApproval = opts.definition.config?.writeApproval;
-  const writeApprovalEnabled = (subsystem: "memory" | "skills") =>
-    subsystem === "memory" ? !!writeApproval?.memory : !!writeApproval?.skills;
+  // Curator-only auto-approve: reuse the existing allow path by disabling
+  // the gate for this run. Foreground session tools still use writeApproval.
+  const writeApprovalEnabled = cfg.autoApprove
+    ? () => false
+    : (subsystem: "memory" | "skills") =>
+        subsystem === "memory" ? !!writeApproval?.memory : !!writeApproval?.skills;
 
   const runner: CuratorModelRunner =
     opts.curatorRunner ??

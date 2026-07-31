@@ -38,7 +38,8 @@ await session.run([{ role: "user", content: "Hello" }]);
 | `home.openSession` | Open one chat (frozen memory; curator after each turn) |
 
 Curator default is on (`defineAgent` `config.curator`). Disable with
-`config.curator: false`.
+`config.curator: false`. Apply curator proposals immediately (no pending UI)
+with `config.curator: { autoApprove: true }`.
 
 ## Overrides
 

@@ -26,14 +26,20 @@ describe("defineAgent", () => {
     expect(d.config?.writeApproval).toEqual({ memory: false, skills: false });
   });
 
-  it("allows explicit curator off or mode", () => {
+  it("allows explicit curator off, mode, or autoApprove", () => {
     expect(defineAgent({ model: "openai/gpt-5", config: { curator: false } }).config?.curator).toBe(
       false,
     );
     expect(
       defineAgent({ model: "openai/gpt-5", config: { curator: { mode: "memory" } } }).config
         ?.curator,
-    ).toEqual({ mode: "memory" });
+    ).toEqual({ mode: "memory", autoApprove: false });
+    expect(
+      defineAgent({
+        model: "openai/gpt-5",
+        config: { curator: { autoApprove: true } },
+      }).config?.curator,
+    ).toEqual({ mode: "combined", autoApprove: true });
   });
 });
 

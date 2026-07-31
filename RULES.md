@@ -15,8 +15,8 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
    (`memories/MEMORY.md`, `memories/USER.md`, `skills/`, `pending/`). Code reads and
    writes files; there is no hidden database of agent state.
 3. **The learning loop is explicit.** Session transcripts feed a background
-   curator; the curator proposes memory and skill writes; a human (or an
-   explicit auto-approve path) applies them; the next session's frozen system
+   curator; the curator proposes memory and skill writes; a human (or
+   `config.curator.autoApprove`) applies them; the next session's frozen system
    prompt reflects them. Every arrow in that loop is inspectable and testable.
 4. **Multi-tenancy by construction.** Isolation comes from one AgentFS volume
    per tenant plus tenant-scoped transcript/audit stores, not from filters

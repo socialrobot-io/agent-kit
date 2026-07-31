@@ -52,9 +52,20 @@ export interface AgentDefinition {
     /**
      * After each completed turn, run the background curator
      * (`createTenantHome` wires this). Default `true` in {@link defineAgent}.
-     * Pass `false` to disable, or `{ mode }` to review memory, skills, or both.
+     * Pass `false` to disable, or an object to set `mode` and/or
+     * `autoApprove` (apply curator proposals immediately; default false).
      */
-    curator?: boolean | { mode?: "memory" | "skills" | "combined" };
+    curator?:
+      | boolean
+      | {
+          mode?: "memory" | "skills" | "combined";
+          /**
+           * Apply curator proposals immediately instead of staging under
+           * `pending/`. Default false. Does not change in-chat agent write
+           * approval (`writeApproval`).
+           */
+          autoApprove?: boolean;
+        };
   };
 }
 
@@ -81,7 +92,10 @@ export function defineAgent(def: AgentDefinition): AgentDefinition {
         curator === false
           ? false
           : typeof curator === "object"
-            ? { mode: curator.mode ?? "combined" }
+            ? {
+                mode: curator.mode ?? "combined",
+                autoApprove: curator.autoApprove ?? false,
+              }
             : true,
     },
   };

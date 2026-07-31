@@ -128,9 +128,29 @@ If you only attach AI SDK `toolApproval` / `createWriteToolApproval` and skip
 `interactiveApproval` (or an equivalent `promptInline: async () => true`), a
 UI Approve still ends up **staged** under `pending/`. Use the home flag above.
 
+### Option C: Auto-approve curator proposals only
+
+When end users are not the right reviewers, trust the curator at deploy time.
+Curator proposals apply immediately. In-chat agent writes still use the gate
+(Option A or B).
+
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: {
+    writeApproval: { memory: true, skills: true },
+    curator: { autoApprove: true },
+  },
+});
+```
+
+This is not a security bypass. Skill locks, path locks, and threat scanning
+still run. Details: [Skills & learning](skills-and-learning.md).
+
 ### Turn the gate off
 
-Only when you intentionally want silent applies:
+Only when you intentionally want silent applies for **agent and curator**
+writes:
 
 ```ts
 defineAgent({
@@ -140,6 +160,7 @@ defineAgent({
 ```
 
 Do not do this for multi-tenant production unless you accept silent self-edits.
+Prefer Option C when only curator suggestions should skip human review.
 
 ## What stays isolated per tenant
 

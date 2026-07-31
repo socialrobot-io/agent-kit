@@ -193,7 +193,8 @@ handler, session cache, approval UI, working `serverExternalPackages`).
 
 1. One volume file per tenant. Never open tenant A’s path for tenant B.
 2. Do not share one open volume across tenants.
-3. Leave write approval on unless you opt out for a local demo.
+3. Leave write approval on unless you opt out for a local demo. Use
+   `curator.autoApprove` when only curator proposals should skip human review.
 4. Prefer `home.openSession(sessionId)` so transcript ownership is asserted for you.
 
 | Detail | Fact |
@@ -209,7 +210,7 @@ exists. The default home is the volume itself. Do not mix modes by accident.
 
 `createTenantHome().openSession` runs the curator after every completed turn
 (Hermes-style). It does not block the user reply. Proposals stage under
-`pending/` when write approval is on.
+`pending/` when write approval is on and `curator.autoApprove` is off.
 
 Toggle with agent config:
 
@@ -217,17 +218,26 @@ Toggle with agent config:
 defineAgent({
   model: "anthropic/claude-sonnet-4-5",
   config: {
-    curator: false, // or { mode: "memory" | "skills" | "combined" }
+    // curator: false,
+    // curator: { mode: "memory" | "skills" | "combined" },
+    // curator: { autoApprove: true }, // apply curator proposals; no pending UI
   },
 });
 ```
 
-Default is on (`curator: true`, mode `combined`). Your app still must:
+Default is on (`curator: true`, mode `combined`, `autoApprove` false). Pick one
+host posture:
 
-1. Show staged proposals in a UI or ops tool.
-2. Call `approvePendingWrites` only when a human accepts them.
-3. Open a **new** session to see approved content (the open chat keeps its
-   frozen memory snapshot).
+1. **Human review:** show staged proposals in a UI or ops tool, then call
+   `approvePendingWrites` when a human accepts them.
+2. **Trust curator:** set `curator: { autoApprove: true }` when end users are
+   not suited to accept or discard suggestions. No pending UI for curator
+   output. In-chat agent writes still follow `writeApproval`.
+3. **Disable curator:** set `curator: false` if you do not want the learning
+   loop.
+
+Approved or auto-applied content shows up in a **new** session (the open chat
+keeps its frozen memory snapshot).
 
 Bare `openAgentSession` (without `createTenantHome`) does not auto-run the
 curator. Call `runBackgroundReview` yourself in that case.
