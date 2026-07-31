@@ -20,12 +20,20 @@ Curated memory, human-gated learning, and a real execution sandbox.
 </div>
 
 ---
+## Example 
+<img src="docs/assets/agent-kit.gif" alt="agent-kit"/>
 
 ## Why
 
-Most agent frameworks optimize for demos. agent-kit optimizes for shipping
-agents into production, where one mistake can delete files, leak secrets, or
-cross tenant boundaries.
+Most agent harnesses are built for local use: one developer, one machine, one
+trust boundary. Shipping agents into production is different. One mistake can
+delete files, leak secrets, or cross tenant boundaries.
+
+You stay in control of auth, tenancy, and the tools the agent can reach. Your users
+get a real agent that can run code and improve over time, inside an isolated home. 
+
+No huge cloud bill. No fancy infrastructure.
+
 
 | Pillar | What you get |
 | ------ | ------------ |
