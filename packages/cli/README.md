@@ -1,7 +1,6 @@
 # @socialrobot-io/agent-kit-cli
 
-Offline demo of the production loop: session, curator, approval, recall, and
-tenant isolation.
+Internal CLI helpers for the monorepo.
 
 ## Build
 
@@ -13,10 +12,4 @@ npx nx build cli
 
 ```bash
 npx nx test cli
-```
-
-## Demo
-
-```bash
-bun packages/cli/src/lib/demo.ts
 ```

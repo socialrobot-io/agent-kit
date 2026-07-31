@@ -41,7 +41,7 @@
     "@socialrobot-io/agent-kit-curator": "workspace:*",
     "@socialrobot-io/agent-kit-ai": "workspace:*"
   },
-  "description": "Offline demo and CLI helpers for agent-kit",
+  "description": "Internal CLI helpers for agent-kit",
   "license": "MIT",
   "files": [
     "dist",

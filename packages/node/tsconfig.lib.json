@@ -13,7 +13,8 @@
     { "path": "../core/tsconfig.lib.json" },
     { "path": "../ai/tsconfig.lib.json" },
     { "path": "../sessions/tsconfig.lib.json" },
-    { "path": "../sandbox/tsconfig.lib.json" }
+    { "path": "../sandbox/tsconfig.lib.json" },
+    { "path": "../curator/tsconfig.lib.json" }
   ],
   "exclude": [
     "vite.config.ts",

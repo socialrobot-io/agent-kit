@@ -33,7 +33,6 @@ hosted service. Product-specific logic never lands here.
 | Verify everything       | `npx nx run-many -t typecheck test build --all` |
 | Sync project references | `npx nx sync`                                   |
 | Scaffold a package      | `npx nx g @nx/js:library` (always use the CLI)  |
-| Run the offline demo    | `bun packages/cli/src/lib/demo.ts`              |
 | Preview a release       | `bunx nx release patch --dry-run`               |
 | Publish to npm          | Actions → Release (`docs/guides/publishing.md`) |
 

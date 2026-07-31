@@ -68,15 +68,24 @@ export type GatedWriteResult =
   | { kind: "applied"; summary: string; result: unknown }
   | { kind: "error"; error: string };
 
+/** Stores required to stage or apply a gated write. */
 export interface GatedWriteDeps {
+  /** Tenant memory store. */
   memory: MemoryStore;
+  /** Tenant skill library (also used for lock checks). */
   skills: SkillLibrary;
+  /** Pending-write store for staged proposals. */
   pending: PendingWriteStore;
 }
 
 /**
  * Lock-check (skills) → gate → stage or apply.
  * Memory read actions must not call this (handle in the tool).
+ *
+ * @param subsystem - `memory` or `skills`.
+ * @param args - Tool arguments to apply or stage.
+ * @param deps - Memory, skills, and pending stores.
+ * @param gateCtx - Approval gate configuration for this origin.
  */
 export async function submitGatedWrite(
   subsystem: ApprovalSubsystem,

@@ -1,7 +1,12 @@
 import { convertToModelMessages, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
-import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
+import {
+  CODE_RUNNER_TENANT_ID,
+  getCodeRunnerSession,
+  getCodeRunnerShared,
+  getCodeRunnerTranscripts,
+} from "@/lib/code-runner-agent";
 import { persistUiMessages, transcriptToUiMessages } from "@/lib/transcripts";
 import { hasApiKey } from "@/lib/env";
 
@@ -10,7 +15,6 @@ export const dynamic = "force-dynamic";
 
 type ChatBody = {
   messages?: UIMessage[];
-  /** Chat session id — memory snapshot freezes once per id. */
   id?: string;
   sessionId?: string;
 };
@@ -37,7 +41,7 @@ export async function POST(req: Request) {
   const sessionId = (body.sessionId ?? body.id ?? "").trim();
   if (!sessionId) {
     return NextResponse.json(
-      { error: "Missing chat session id. The client must send `id` (useChat) so memory can freeze per session." },
+      { error: "Missing chat session id. The client must send `id` (useChat)." },
       { status: 400 },
     );
   }
@@ -46,19 +50,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    const agent = await getSessionAgent(sessionId);
+    const agent = await getCodeRunnerSession(sessionId);
 
     await persistUiMessages(
       agent.transcripts,
       sessionId,
       messages.filter((m) => m.role === "user"),
-      TENANT_ID,
+      CODE_RUNNER_TENANT_ID,
     );
 
     const modelMessages = await convertToModelMessages(messages);
     const result = agent.session.stream(modelMessages, {
       maxSteps: 12,
-      // Keep session-level toolApproval (interactiveApproval) unless overridden.
       toolApproval: agent.session.writeToolApproval,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;
@@ -72,21 +75,19 @@ export async function POST(req: Request) {
       },
     });
 
-    // Prefer StreamTextResult.toUIMessageStreamResponse so approval-requested
-    // tool parts reach the chat UI (Approve / Deny).
     return result.toUIMessageStreamResponse({
       headers: {
         "x-agent-kit-model": agent.label,
         "x-agent-kit-provider": agent.provider,
         "x-agent-kit-session": sessionId,
-        "x-agent-kit-sandbox": "bash-tool",
+        "x-agent-kit-sandbox": "js-exec",
         "x-agent-kit-transcripts": "agentfs",
         "x-agent-kit-interactive-approval": agent.session.writeToolApproval ? "1" : "0",
       },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[api/chat]", err);
+    console.error("[api/code-runner/chat]", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -104,9 +105,9 @@ export async function GET(req: Request) {
 
   try {
     if (sessionId) {
-      const transcripts = await getTranscripts();
+      const transcripts = await getCodeRunnerTranscripts();
       try {
-        await assertTenantSession(transcripts, TENANT_ID, sessionId);
+        await assertTenantSession(transcripts, CODE_RUNNER_TENANT_ID, sessionId);
       } catch {
         return NextResponse.json({ ok: true, sessionId, messages: [] });
       }
@@ -118,12 +119,13 @@ export async function GET(req: Request) {
       });
     }
 
-    const agent = await getSharedAgent();
+    const agent = await getCodeRunnerShared();
     return NextResponse.json({
       ok: true,
       model: agent.label,
       provider: agent.provider,
       sandbox: true,
+      javascript: true,
       interactiveApproval: process.env.ALLOW_UNAPPROVED_WRITES !== "1",
       tools: [
         "memory",
@@ -134,12 +136,10 @@ export async function GET(req: Request) {
         "bash",
         "readFile",
         "writeFile",
+        "server_time",
       ],
       openSessions: agent.openSessions,
       savedSessions: agent.savedSessions,
-      ...(agent.liveUserMemory
-        ? { memoryOnDisk: { user: agent.liveUserMemory, notes: agent.liveNotesMemory } }
-        : {}),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

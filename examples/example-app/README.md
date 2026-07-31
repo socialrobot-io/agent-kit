@@ -1,8 +1,12 @@
 # Example app (Next.js)
 
 Streaming chat over agent-kit via AI SDK UI (`useChat` and UI message stream).
-Persistent AgentFS memory and skills, live DeepSeek by default, and bash-tool
-sandbox tools (`bash`, `readFile`, `writeFile`) behind agent-kit guardrails.
+Two demos share the same Next app; each has its own folder under `agents/`:
+
+| Route | Agent | Volume | Sandbox |
+| ----- | ----- | ------ | ------- |
+| `/` | `agents/chat/` | `.agentfs/example.db` | bash / readFile / writeFile |
+| `/code-runner` | `agents/code-runner/` | `.agentfs/code-runner.db` | same + `js-exec` (`javascript: true`) |
 
 ## Setup
 
@@ -21,33 +25,25 @@ Default model is `deepseek-v4-flash` via [`@ai-sdk/deepseek`](https://ai-sdk.dev
 npx nx dev example
 ```
 
-Open http://localhost:3000. Messages stream token-by-token. Memory, skill, and
-bash tool calls appear as they run.
-
-- Agent home volume: `.agentfs/example.db`
-- Bash workspace: isolated just-bash FS seeded with `/workspace/README.md`
+- Chat: http://localhost:3000
+- Code runner: http://localhost:3000/code-runner
 
 ## Layout
 
-- `agent/` — SOUL.md, AGENTS.md, `skills/` (seeded via `createTenantHome({ company })`)
-- `agent/skills/bullet-briefing/` — agent-folder skill marked `locked: true`
-- `src/lib/agent.ts` — `createTenantHome` + per-chat `openSession`
-- `src/app/api/chat/route.ts` — `session.stream` with built-in and bash tools
-- `src/app/page.tsx` — `@ai-sdk/react` `useChat` UI
+- `agents/chat/` — main chat SOUL / AGENTS / skills
+- `agents/code-runner/` — js-exec-focused SOUL / AGENTS
+- `src/lib/agent.ts` — main `createTenantHome` + sessions
+- `src/lib/code-runner-agent.ts` — second home with `sandbox: { javascript: true }`
+- `src/app/api/chat` · `src/app/api/code-runner/chat` — stream routes
+- `src/app/chat-shell.tsx` — shared chat UI
 
-## Deploy: compile `agent/` into the bundle
-
-Author skills under `agent/`. Before build/dev, compile them into an importable
-module (works on Next, Docker, workers, plain Node):
+## Deploy: compile agents into the bundle
 
 ```bash
 npx nx run example:compile-agent
-# → src/generated/agent.ts
+# → src/generated/agent.ts          (from agents/chat)
+# → src/generated/code-runner-agent.ts
 ```
 
-`createTenantHome({ agent })` imports that module, so bundlers ship the content
-without a runtime `agent/` directory.
-
-`dev` / `build` already depend on `compile-agent`. After editing `agent/`,
-re-run compile (or restart `nx dev`). Optional: `seedAgentHome` on new chats
-still re-reads disk for local HMR.
+`dev` / `build` already depend on `compile-agent`. After editing either agent
+tree, re-run compile (or restart `nx dev`).

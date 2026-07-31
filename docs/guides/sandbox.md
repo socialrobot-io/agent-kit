@@ -1,89 +1,82 @@
 # Sandbox
 
-The sandbox gives the agent a workspace and a shell that cannot freely destroy
-the host or leak secrets.
+The agent gets `bash`, `readFile`, and `writeFile` in an isolated
+[just-bash](https://github.com/vercel-labs/just-bash) workspace. That is not
+your host shell. Kit guardrails block destructive commands, secret dumps, and
+hosts you did not allow.
 
-It combines:
+Command list (optional `curl`, `js-exec`, `python3`, …):
+[just-bash supported commands](https://github.com/vercel-labs/just-bash/tree/main/packages/just-bash#supported-commands).
 
-- a per-tenant volume from `openTenantVolume` (durable files), and
-- [bash-tool](https://github.com/vercel-labs/bash-tool) /
-  [just-bash](https://github.com/vercel-labs/just-bash) (the shell the model calls).
+## Happy path
 
-## Create the toolkit
-
-Pass the same `volume` you use for memory so workspace files persist under
-`/workspace` on that tenant’s SQLite file.
-
-```ts
-import { openTenantVolume, createTenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
-
-const tenantId = "brand-123";
-const volume = await openTenantVolume(`/data/tenants/${tenantId}.db`);
-
-const bash = await createTenantBashToolkit({
-  tenantId,
-  volume,
-  files: { "README.md": "# workspace\n" },
-  destination: "/workspace",
-  // optional: allow curl only to these hosts
-  allowedHosts: ["https://api.example.com"],
-  // optional: redact these names from command lines and logs
-  secrets: ["MY_API_KEY"],
-});
-
-// bash.tools is an AI SDK ToolSet: bash, readFile, writeFile
-```
-
-`createTenantHome` wires `bash.tools` for you. If you compose by hand, pass
-them into `openAgentSession` as `sandboxTools`. See [Hosting](hosting.md).
-
-### Ephemeral workspace (no volume)
-
-If you omit `volume`, the workspace stays in memory and is discarded when the
-process ends.
+`createTenantHome` opens the tenant volume and wires sandbox tools into every
+session. You do not call `createTenantBashToolkit` yourself.
 
 ```ts
-const ephemeral = await createTenantBashToolkit({
-  tenantId: "brand-123",
-  files: { "README.md": "# workspace\n" },
-  destination: "/workspace",
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { defineCommand } from "@socialrobot-io/agent-kit-sandbox";
+import { agent } from "./generated/agent";
+
+const hello = defineCommand("hello", async (args) => ({
+  stdout: `Hello, ${args[0] || "world"}!\n`,
+  stderr: "",
+  exitCode: 0,
+}));
+
+const home = await createTenantHome({
+  tenantId, // from your auth layer
+  agent,
+  workspaceFiles: { "README.md": "# workspace\n" },
+  sandbox: {
+    allowedHosts: ["api.example.com"], // hostnames only; enables curl (GET/HEAD)
+    secrets: [process.env.TENANT_API_KEY!],
+    javascript: true, // js-exec (QuickJS). Or python: true for python3
+    customCommands: [hello], // optional host-defined bash commands
+  },
 });
+
+const session = await home.openSession(sessionId);
 ```
 
-## How the pieces fit
+| Option | Meaning |
+| ------ | ------- |
+| `sandbox: true` or omit | Sandbox on (default). `/workspace` persists on the tenant volume. |
+| `sandbox: false` | No shell tools. |
+| `allowedHosts` | Hostnames only. Registers `curl` for those hosts (GET/HEAD). Off = no `curl`. |
+| `secrets` | Redacted from dumps / tool output. Do not put secrets in prompts. |
+| `javascript` | `true` or `{ bootstrap }` → `js-exec`. Node only. Off by default. |
+| `python` | `true` → `python3` / `python`. Node only. Off by default. |
+| `customCommands` | Host commands from `defineCommand`. Runs in your process; treat as trusted. |
+| `workspaceFiles` | Seed files under `/workspace` when the home is created. |
 
-| Piece | Role |
-| ----- | ---- |
-| Tenant volume | Durable home for `memories/`, `skills/`, and `/workspace/*` |
-| just-bash | Unix-like shell layout |
-| Kit sandbox layer | Checks commands before they run; writes audit records |
-| bash-tool | Exposes `bash`, `readFile`, and `writeFile` to the model |
+With runtimes on, the agent can run for example:
 
-Extra host hardening (“defense in depth”) stays off under Next.js, because
-Next patches `Date.now` and `process.env`. Elsewhere you can use
-`{ enabled: "auto" }`. Python and `js-exec` stay off unless you turn them on.
+```bash
+js-exec -c "console.log(1 + 2)"
+python3 -c "print(1 + 2)"
+curl -s https://api.example.com/health
+hello Alice
+```
 
-## What is blocked before run
+Demo: [`examples/example-app`](../../examples/example-app) at `/code-runner` (`javascript: true`).
+
+For product APIs (CRM, billing), prefer a host `SessionTool` via `addTools`
+([Tools](tools.md)), not a custom bash command.
+
+## What is blocked
 
 | Category | Examples |
 | -------- | -------- |
-| Destructive | `rm -rf /`, fork bombs, writing block devices, shutdown |
-| Credential theft | `curl … $SECRET`, `cat .env`, reading SSH private keys |
-| Bad network | Host not listed in `allowedHosts` |
+| Destructive | `rm -rf /`, fork bombs, writing block devices |
+| Credential theft | `curl … $SECRET`, `cat .env`, reading SSH keys |
+| Bad network | Host not in `allowedHosts` |
 
-Blocked commands return an error string to the model. They do not execute.
-
-## Audit record
-
-Each command, file read, and file write logs:
-
-- tenant id
-- command or path
-- files touched (best effort)
-- exit code
-- snapshot id after the action
+Blocked commands return an error to the model; they do not run. Bash, reads,
+and writes are audited per tenant.
 
 ## Next
 
-- Threat model across the whole kit: [Security](security.md)
-- Wire sandbox tools into a session: [Hosting](hosting.md)
+- Host tools vs sandbox vs skills: [Tools](tools.md)
+- Threat model: [Security](security.md)
+- Auth + volume + session: [Hosting](hosting.md)

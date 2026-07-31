@@ -12,9 +12,10 @@ describe("defineAgent", () => {
     expect(defineAgent({ model: "openai/gpt-5" }).model).toBe("openai/gpt-5");
   });
 
-  it("defaults writeApproval to on", () => {
+  it("defaults writeApproval and curator to on", () => {
     const d = defineAgent({ model: "openai/gpt-5" });
     expect(d.config?.writeApproval).toEqual({ memory: true, skills: true });
+    expect(d.config?.curator).toBe(true);
   });
 
   it("allows explicit writeApproval off", () => {
@@ -23,6 +24,16 @@ describe("defineAgent", () => {
       config: { writeApproval: { memory: false, skills: false } },
     });
     expect(d.config?.writeApproval).toEqual({ memory: false, skills: false });
+  });
+
+  it("allows explicit curator off or mode", () => {
+    expect(defineAgent({ model: "openai/gpt-5", config: { curator: false } }).config?.curator).toBe(
+      false,
+    );
+    expect(
+      defineAgent({ model: "openai/gpt-5", config: { curator: { mode: "memory" } } }).config
+        ?.curator,
+    ).toEqual({ mode: "memory" });
   });
 });
 

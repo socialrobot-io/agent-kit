@@ -30,7 +30,9 @@ import { InMemorySandboxAuditStore, FileSandboxAuditStore, type SandboxAuditStor
 import { makeBeforeBashCall, type GuardrailOptions } from "./guardrails.js";
 import type { TenantVolume } from "./agentfs-open.js";
 
+/** Options for {@link createTenantBashToolkit}. */
 export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
+  /** Stable tenant id recorded on audit events. */
   tenantId: string;
   /**
    * Tenant volume from `openTenantVolume`. When set, `/workspace` persists in
@@ -48,6 +50,7 @@ export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   files?: Record<string, string>;
   /** Extra instructions appended to tool descriptions. */
   extraInstructions?: string;
+  /** Audit store for bash events. Default: in-memory store. */
   audit?: SandboxAuditStore;
   /**
    * Override just-bash DefenseInDepth. Default: off under Next.js (its
@@ -56,10 +59,28 @@ export interface CreateTenantBashToolkitOptions extends GuardrailOptions {
   defenseInDepth?: BashOptions["defenseInDepth"];
   /** just-bash execution limit profile. Default `hardened` for untrusted agents. */
   executionLimitProfile?: BashOptions["executionLimitProfile"];
+  /**
+   * Enable just-bash `python3` / `python` (CPython WASM). Off by default.
+   * Node only; not available in browsers.
+   */
+  python?: boolean;
+  /**
+   * Enable just-bash `js-exec` (QuickJS). Off by default.
+   * Pass `true` or `{ bootstrap }` for per-run setup code. Node only.
+   */
+  javascript?: BashOptions["javascript"];
+  /**
+   * Host-defined bash commands (via {@link defineCommand} from this package).
+   * Registered alongside just-bash builtins; same-name commands win.
+   */
+  customCommands?: BashOptions["customCommands"];
 }
 
+/** Guarded bash toolkit for one tenant, plus kit-owned handles. */
 export interface TenantBashToolkit extends Omit<BashToolkit, "bash"> {
+  /** Audit store receiving bash / guardrail events. */
   audit: SandboxAuditStore;
+  /** Guardrailed sandbox backend bound to this tenant. */
   tenantSandbox: TenantAgentFSSandbox;
   /** The underlying just-bash `Bash` instance. */
   bash: Bash;
@@ -211,7 +232,19 @@ function wrapJustBash(bash: Bash, cwd: string): Sandbox {
   };
 }
 
-function staticToolPrompt(destination: string, persisted: boolean): string {
+function staticToolPrompt(
+  destination: string,
+  persisted: boolean,
+  runtimes: { python?: boolean; javascript?: boolean; curl?: boolean },
+): string {
+  const runtimeBits: string[] = [];
+  if (runtimes.javascript) runtimeBits.push("`js-exec` (JavaScript/TypeScript via QuickJS)");
+  if (runtimes.python) runtimeBits.push("`python3` / `python` (CPython WASM)");
+  if (runtimes.curl) runtimeBits.push("`curl` (GET/HEAD only, allowlisted hosts)");
+  const runtimeLine =
+    runtimeBits.length > 0
+      ? `Enabled runtimes: ${runtimeBits.join("; ")}.`
+      : `Optional runtimes (python, js-exec, curl) are off until the host enables them.`;
   return [
     `You have bash, readFile, and writeFile inside an isolated just-bash workspace.`,
     `Working directory: ${destination}.`,
@@ -219,9 +252,10 @@ function staticToolPrompt(destination: string, persisted: boolean): string {
       ? `Workspace files persist in the tenant AgentFS volume under ${destination}/ (same SQLite DB as memories/skills).`
       : `Workspace files are in-memory for this process only.`,
     `Common Unix utilities are available (ls, cat, grep, sed, jq, …).`,
+    runtimeLine,
     `Prefer relative paths under the workspace.`,
     `Destructive commands and non-allowlisted network egress are blocked by agent-kit.`,
-    `just-bash has no host shell access; python/js-exec are off unless explicitly enabled.`,
+    `just-bash has no host shell access.`,
   ].join(" ");
 }
 
@@ -236,19 +270,55 @@ async function seedMissingFiles(fs: IFileSystem, files: Record<string, string>):
   }
 }
 
+/** PATH stubs for commands when the FS lacks just-bash's sync writer (MountableFs). */
+async function ensureBinStubs(fs: IFileSystem, names: string[]): Promise<void> {
+  for (const name of names) {
+    if (!name || name.includes("/")) continue;
+    const path = `/bin/${name}`;
+    if (await fs.exists(path)) continue;
+    if (!(await fs.exists("/bin"))) {
+      await fs.mkdir("/bin", { recursive: true });
+    }
+    await fs.writeFile(path, `#!/bin/bash\n# agent-kit command stub: ${name}\n`);
+    await fs.chmod(path, 0o755);
+  }
+}
+
 /**
  * Default just-bash layout (/bin, /usr, /home, …) as a MountableFs base so
  * command resolution and `ls /bin` keep working when /workspace is AgentFS.
+ *
+ * Optional runtimes must be enabled here too: just-bash writes `/bin` stubs via
+ * `writeFileSync` on the layout's InMemoryFs. MountableFs has no sync writer, so
+ * the outer Bash cannot add stubs itself — without them, PATH resolution returns
+ * "command not found" even when the command is registered in memory.
  */
-function defaultLayoutFs(): IFileSystem {
-  return new Bash({ defenseInDepth: false }).fs;
+function defaultLayoutFs(runtimes?: {
+  python?: boolean;
+  javascript?: BashOptions["javascript"];
+  network?: NetworkConfig;
+}): IFileSystem {
+  return new Bash({
+    defenseInDepth: false,
+    ...(runtimes?.python ? { python: true } : {}),
+    ...(runtimes?.javascript !== undefined ? { javascript: runtimes.javascript } : {}),
+    ...(runtimes?.network ? { network: runtimes.network } : {}),
+  }).fs;
 }
 
-function buildPersistedWorkspaceFs(agentFs: AgentFsHandle, destination: string): IFileSystem {
+function buildPersistedWorkspaceFs(
+  agentFs: AgentFsHandle,
+  destination: string,
+  runtimes?: {
+    python?: boolean;
+    javascript?: BashOptions["javascript"];
+    network?: NetworkConfig;
+  },
+): IFileSystem {
   const agentRoot = toIFileSystem(new AgentFsWrapper({ fs: agentFs, mountPoint: "/" }));
   const workspaceStore = prefixFileSystem(agentRoot, destination);
   return new MountableFs({
-    base: defaultLayoutFs(),
+    base: defaultLayoutFs(runtimes),
     mounts: [{ mountPoint: destination, filesystem: workspaceStore }],
   });
 }
@@ -257,6 +327,9 @@ function buildPersistedWorkspaceFs(agentFs: AgentFsHandle, destination: string):
  * Create AI SDK bash / readFile / writeFile tools for one tenant.
  * Commands run in just-bash (not the host shell), behind agent-kit guardrails.
  * Pass `volume` from `openTenantVolume` to persist `/workspace` on that volume.
+ *
+ * @param options - Tenant id, volume/agentFs, guardrails, and seed files.
+ * @returns Toolkit with `tools`, `bash`, `audit`, and `tenantSandbox`.
  */
 export async function createTenantBashToolkit(
   options: CreateTenantBashToolkitOptions,
@@ -283,9 +356,17 @@ export async function createTenantBashToolkit(
       : new InMemorySandboxAuditStore());
   const seedFiles = toAbsoluteSeedFiles(options.files, destination);
   const persisted = Boolean(agentFs);
+  const network = toJustBashNetwork(options.allowedHosts);
+  const javascriptEnabled = Boolean(options.javascript);
+  const pythonEnabled = Boolean(options.python);
+  const layoutRuntimes = {
+    ...(pythonEnabled ? { python: true as const } : {}),
+    ...(options.javascript !== undefined ? { javascript: options.javascript } : {}),
+    ...(network ? { network } : {}),
+  };
 
   const fs: IFileSystem | undefined = agentFs
-    ? buildPersistedWorkspaceFs(agentFs, destination)
+    ? buildPersistedWorkspaceFs(agentFs, destination, layoutRuntimes)
     : undefined;
 
   if (fs && Object.keys(seedFiles).length) {
@@ -300,9 +381,19 @@ export async function createTenantBashToolkit(
       TERM: "dumb",
     },
     executionLimitProfile: options.executionLimitProfile ?? "hardened",
-    network: toJustBashNetwork(options.allowedHosts),
+    network,
     defenseInDepth: resolveDefenseInDepth(options.defenseInDepth),
+    ...(pythonEnabled ? { python: true } : {}),
+    ...(options.javascript !== undefined ? { javascript: options.javascript } : {}),
+    ...(options.customCommands?.length ? { customCommands: options.customCommands } : {}),
   });
+
+  if (fs && options.customCommands?.length) {
+    await ensureBinStubs(
+      bash.fs,
+      options.customCommands.map((cmd) => cmd.name),
+    );
+  }
 
   const inner = wrapJustBash(bash, destination);
 
@@ -327,7 +418,11 @@ export async function createTenantBashToolkit(
     destination,
     files: options.files,
     promptOptions: {
-      toolPrompt: staticToolPrompt(destination, persisted),
+      toolPrompt: staticToolPrompt(destination, persisted, {
+        python: pythonEnabled,
+        javascript: javascriptEnabled,
+        curl: Boolean(network),
+      }),
     },
     onBeforeBashCall: makeBeforeBashCall(options),
     extraInstructions:
@@ -339,6 +434,8 @@ export async function createTenantBashToolkit(
           : "The host machine is not available.",
         "Prefer relative paths under the workspace.",
         "Destructive commands and non-allowlisted network egress are blocked.",
+        ...(javascriptEnabled ? ["JavaScript/TypeScript: use js-exec (e.g. js-exec -c 'console.log(1+2)')."] : []),
+        ...(pythonEnabled ? ["Python: use python3 (e.g. python3 -c 'print(1+2)')."] : []),
       ].join(" "),
   });
 

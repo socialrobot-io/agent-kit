@@ -10,7 +10,12 @@ export class InMemoryFs {
   private files = new Map<string, string>();
 
   private normalize(path: string): string {
-    return path.replace(/^\/+/, "").replace(/\/+$/, "");
+    // Strip leading/trailing '/' without regex (avoids js/polynomial-redos).
+    let start = 0;
+    let end = path.length;
+    while (start < end && path.charCodeAt(start) === 47 /* / */) start++;
+    while (end > start && path.charCodeAt(end - 1) === 47) end--;
+    return path.slice(start, end);
   }
 
   async readFile(path: string): Promise<string | null> {

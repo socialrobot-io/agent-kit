@@ -68,8 +68,11 @@ export const COMBINED_REVIEW_PROMPT =
   "Act on whichever dimension has real signal. If genuinely nothing stands " +
   "out, say 'Nothing to save.' and stop.";
 
+/** One message in the conversation under review. */
 export interface ReviewMessage {
+  /** Message role in the finished chat. */
   role: "user" | "assistant" | "system" | "tool";
+  /** Plain-text content (tool JSON may be stringified by the host). */
   content: string;
 }
 
@@ -80,28 +83,44 @@ export interface ReviewMessage {
  * auxiliary model (or reuses the main model's warm cache).
  */
 export type CuratorModelRunner = (input: {
+  /** Curator system prompt (kit-owned + mode prompt). */
   systemPrompt: string;
+  /** Finished conversation to review. */
   messages: ReviewMessage[];
-  tools: string[]; // ["memory", "skill_manage"]
+  /** Restricted tool names. Always `["memory", "skill_manage"]`. */
+  tools: string[];
 }) => Promise<{
+  /** Short internal note from the curator model. */
   text: string;
+  /** Proposed memory / skill_manage calls to stage or apply. */
   toolCalls: { name: string; args: Record<string, unknown> }[];
 }>;
 
+/** Dependencies for {@link runBackgroundReview}. */
 export interface CuratorDeps {
+  /** Tenant memory store (same instance as the live session). */
   memory: MemoryStore;
+  /** Tenant skill library. */
   skills: SkillLibrary;
+  /** Pending-write store for staged curator proposals. */
   pending: PendingWriteStore;
+  /** Whether the approval gate is on for memory / skills. */
   writeApprovalEnabled: (subsystem: ApprovalSubsystem) => boolean;
-  /** Which prompt to use. */
+  /** Which prompt to use. Default `"combined"`. */
   mode?: "memory" | "skills" | "combined";
+  /** Model runner that performs the review turn. */
   model: CuratorModelRunner;
 }
 
+/** Result of one {@link runBackgroundReview} pass. */
 export interface CuratorOutcome {
+  /** Curator model text (internal note, not shown to the user). */
   reviewText: string;
+  /** Writes staged under `pending/` for human approval. */
   staged: { subsystem: ApprovalSubsystem; id: string; summary: string }[];
+  /** Writes applied immediately (gate off or interactive allow). */
   applied: { subsystem: ApprovalSubsystem; summary: string }[];
+  /** Non-fatal errors while applying individual tool calls. */
   errors: string[];
 }
 
@@ -113,6 +132,10 @@ const CURATOR_SYSTEM =
 
 /**
  * Run one background review pass over a finished conversation.
+ *
+ * @param conversation - Finished chat messages to review.
+ * @param deps - Memory, skills, pending store, gate, and model runner.
+ * @returns Staged / applied writes plus any per-call errors.
  */
 export async function runBackgroundReview(
   conversation: ReviewMessage[],

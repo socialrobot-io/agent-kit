@@ -28,6 +28,8 @@ function isMemoryRead(input: unknown): boolean {
 /**
  * Build a `toolApproval` map for streamText / generateText.
  * Returns undefined when both gates are off (caller can omit the option).
+ *
+ * @param opts - Which write tools require UI approval.
  */
 export function createWriteToolApproval(
   opts: WriteToolApprovalOptions = {},

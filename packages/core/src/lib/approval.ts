@@ -19,12 +19,19 @@
 export type ApprovalSubsystem = "memory" | "skills";
 export type WriteOrigin = "foreground" | "background_review";
 
+/** One staged write waiting under `pending/{memory,skills}/`. */
 export interface PendingWriteRecord {
+  /** Unique id for this pending record (filename stem). */
   id: string;
+  /** Which store the write targets. */
   subsystem: ApprovalSubsystem;
+  /** Tool action name (e.g. `add`, `create`). */
   action: string;
+  /** Short human-readable summary for review UIs. */
   summary: string;
+  /** Whether the write came from a live turn or the curator. */
   origin: WriteOrigin;
+  /** Unix timestamp (seconds) when the write was staged. */
   created_at: number;
   /** The exact kwargs needed to replay the write when approved. */
   payload: Record<string, unknown>;
@@ -32,9 +39,13 @@ export interface PendingWriteRecord {
 
 /** Filesystem surface for the pending store (same fs as the agent home). */
 export interface ApprovalFs {
+  /** Read a file; return `null` when missing. */
   readFile(path: string): Promise<string | null>;
+  /** Create or overwrite a file. */
   writeFile(path: string, content: string): Promise<void>;
+  /** Delete a file. Required to discard pending records. */
   deleteFile?(path: string): Promise<void>;
+  /** List entries in a directory; return `[]` when missing. */
   list?(dir: string): Promise<string[]>;
 }
 

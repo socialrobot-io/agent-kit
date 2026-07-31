@@ -25,16 +25,17 @@ tenant on local disk. Multi-machine hosting is not ready yet
 Author identity and skills under `agent/`. Compile once, import everywhere.
 Sessions already use a policy-wrapped FS (`createAgentFs`).
 
-```bash
-# any host — Node script, no Next APIs
-bun -e '
+```js
+// scripts/compile-agent.mjs — run with: node scripts/compile-agent.mjs
 import { compileAgent } from "@socialrobot-io/agent-kit-node";
+
 await compileAgent({
   dir: "./agent",
   outFile: "./src/generated/agent.ts", // or .json
 });
-'
 ```
+
+Wire that script into `predev` / `prebuild` in your app `package.json`.
 
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
@@ -64,10 +65,11 @@ Skill locking (see [Skills & learning](skills-and-learning.md)):
 1. Author `agent/` and run `compileAgent` in CI / predev
 2. Mark company-owned skills with frontmatter or `.locked`
 3. Pass sandbox `secrets` / `allowedHosts` at home creation
-4. Add product tools with `addTools`
-5. Do not give the agent the raw volume write handle for tools
+4. Enable `javascript` / `python` on `sandbox` if the agent should run `js-exec` / `python3`
+5. Add product tools with `addTools` (see [Tools](tools.md))
+6. Do not give the agent the raw volume write handle for tools
 
-See also: [Security](security.md) · [Company envelope PRD](../roadmap/company-envelope-prd.md).
+See also: [Sandbox](sandbox.md) · [Security](security.md) · [Company envelope PRD](../roadmap/company-envelope-prd.md).
 ## What your app must do
 
 1. Authenticate the user (cookie, JWT, session, or similar).
@@ -89,17 +91,20 @@ Install `@socialrobot-io/agent-kit-node`. Defaults:
 
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
+import { agent } from "./generated/agent"; // from compileAgent in predev / CI
 
 const tenantId = "brand-123"; // from your auth layer
 const sessionId = "chat-abc"; // from your chat API
 
-const home = await createTenantHome({ tenantId });
+const home = await createTenantHome({ tenantId, agent });
 const session = await home.openSession(sessionId);
 
 const turn = await session.run([
   { role: "user", content: "Summarize /workspace." },
 ]);
 ```
+
+Plain Node with `agent/` on disk can pass `await loadAgent("./agent")` instead.
 
 ### Common overrides
 
@@ -115,7 +120,7 @@ const home = await createTenantHome({
   model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
   interactiveApproval: true, // chat UI Approve applies writes
   workspaceFiles: { "README.md": "# hi\n" },
-  sandbox: { allowedHosts: ["https://api.example.com"] }, // or sandbox: false
+  sandbox: { allowedHosts: ["api.example.com"] }, // hostnames only; or sandbox: false
   // transcripts: false,
 });
 
@@ -125,9 +130,17 @@ const session = await home.openSession(sessionId, {
 });
 ```
 
-`home.volume`, `home.transcripts`, and `home.bash` stay available for custom
-composition. Low-level APIs (`openTenantVolume`, `openAgentSession`, …) remain
-in their packages when you need to wire differently.
+What `createTenantHome` returns:
+
+| Field | What it is |
+| ----- | ---------- |
+| `home.volume` | The tenant SQLite filesystem (memory, skills, workspace, audit). |
+| `home.transcripts` | Chat history store used by `session_search` and the curator. |
+| `home.bash` | Guarded shell toolkit (`bash`, `readFile`, `writeFile`). |
+| `home.openSession` | Opens one chat with frozen memory for that `sessionId`. |
+
+Most apps only call `openSession`. Use the other fields when you persist
+messages yourself, inspect the volume, or call sandbox tools outside a turn.
 
 A full streaming chat with the same shape lives in
 [`examples/example-app`](../../examples/example-app).
@@ -148,18 +161,34 @@ A full streaming chat with the same shape lives in
 Optional AgentFS [overlay](https://docs.turso.tech/agentfs/guides/overlay) mode
 exists. The default home is the volume itself. Do not mix modes by accident.
 
-## After the chat turn
+## After each turn (curator)
 
-A chat turn does not write durable memory by itself.
+`createTenantHome().openSession` runs the curator after every completed turn
+(Hermes-style). It does not block the user reply. Proposals stage under
+`pending/` when write approval is on.
 
-1. Run the curator (`runBackgroundReview`) on the transcript. It may write
-   proposals under `pending/`.
-2. Show those proposals in your UI or ops tool.
-3. Call `approvePendingWrites` only when a human accepts them.
-4. The **next** session includes approved content. The current session’s
-   memory snapshot does not change while that chat is open.
+Toggle with agent config:
 
-API and example: [Skills & learning](skills-and-learning.md).
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: {
+    curator: false, // or { mode: "memory" | "skills" | "combined" }
+  },
+});
+```
+
+Default is on (`curator: true`, mode `combined`). Your app still must:
+
+1. Show staged proposals in a UI or ops tool.
+2. Call `approvePendingWrites` only when a human accepts them.
+3. Open a **new** session to see approved content (the open chat keeps its
+   frozen memory snapshot).
+
+Bare `openAgentSession` (without `createTenantHome`) does not auto-run the
+curator. Call `runBackgroundReview` yourself in that case.
+
+Details: [Skills & learning](skills-and-learning.md).
 
 ## Next
 

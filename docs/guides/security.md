@@ -72,35 +72,74 @@ Full table: [Skills & learning](skills-and-learning.md).
 
 ## Write approval
 
-On by default in `defineAgent`.
+Memory and skill writes do not become live until a human accepts them. That
+gate is **on by default** (`defineAgent` sets `config.writeApproval` for both
+memory and skills).
 
-| Gate | When |
-| ---- | ---- |
-| Staging (`pending/`) | Background curator, or chat turns without interactive approval |
-| Interactive (AI SDK UI) | Chat UI Approve/Deny before a write runs |
+### What happens when the agent wants to write
 
-```ts
-const home = await createTenantHome({
-  tenantId,
-  interactiveApproval: true,
-});
-const session = await home.openSession(sessionId);
-```
+Without a chat Approve button wired up, the kit **stages** the change under
+`pending/` on the tenant volume. The open chat’s memory snapshot does not
+change. A human reviews later.
 
-Do not pass only `createWriteToolApproval` without `interactiveApproval` (or an
-equivalent `promptInline: async () => true`). UI Approve alone will still stage.
+Typical sources of staged writes:
+
+- The agent calling `memory` / `skill_manage` during a normal turn
+- The background curator after a turn
+
+### Option A: Approve later (default)
+
+1. List items with `session.pending.list("memory")` / `"skills"`.
+2. Show them in your ops UI.
+3. Accept with `approvePendingWrites`, or reject with `session.pending.discard`.
 
 ```ts
 import { approvePendingWrites } from "@socialrobot-io/agent-kit-core";
 
-const applied = await approvePendingWrites({
+// Accept everything currently staged for this tenant session’s stores.
+await approvePendingWrites({
   memory: session.memory,
   skills: session.skills,
   pending: session.pending,
 });
 ```
 
-Full curator + approve flow: [Skills & learning](skills-and-learning.md).
+Full list / accept / reject API: [Skills & learning](skills-and-learning.md).
+
+### Option B: Approve in the chat UI
+
+Turn on interactive approval so the AI SDK UI can show Approve / Deny on the
+write tool call **before** it applies:
+
+```ts
+const home = await createTenantHome({
+  tenantId,
+  agent,
+  interactiveApproval: true, // required for in-chat Approve to apply
+});
+```
+
+`interactiveApproval: true` does two things together:
+
+1. Asks the UI for Approve / Deny on write tools.
+2. Tells the kit that a UI Approve should **apply** the write (not stage again).
+
+If you only attach AI SDK `toolApproval` / `createWriteToolApproval` and skip
+`interactiveApproval` (or an equivalent `promptInline: async () => true`), a
+UI Approve still ends up **staged** under `pending/`. Use the home flag above.
+
+### Turn the gate off
+
+Only when you intentionally want silent applies:
+
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: { writeApproval: { memory: false, skills: false } },
+});
+```
+
+Do not do this for multi-tenant production unless you accept silent self-edits.
 
 ## What stays isolated per tenant
 

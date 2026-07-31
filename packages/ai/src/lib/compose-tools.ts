@@ -29,7 +29,9 @@ export interface ComposeAgentToolsOptions {
   extraAiTools?: ToolSet;
 }
 
+/** Result of {@link composeAgentTools}. */
 export interface ComposedAgentTools {
+  /** Final SessionTool list after add / disable / replace. */
   sessionTools: SessionTool[];
   /** Ready for generateText / streamText. */
   toolSet: ToolSet;
@@ -40,6 +42,8 @@ export interface ComposedAgentTools {
  *
  * Precedence: `tools` (full replace) else builtins + addTools - disableTools,
  * then merge addAiTools into the AI SDK ToolSet.
+ *
+ * @param opts - Builtin tools and override knobs for this turn.
  */
 export function composeAgentTools(opts: ComposeAgentToolsOptions): ComposedAgentTools {
   const addTools = opts.addTools ?? opts.extraTools ?? [];

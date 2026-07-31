@@ -30,6 +30,7 @@ volume, command guardrails, and an append-only audit store.
 | Guardrail patterns | `guardrails.spec.ts` with positive AND negative cases, `docs/guides/sandbox.md` |
 | Sandbox interface usage | `tenant-sandbox.spec.ts`, the CLI demo wiring, `docs/guides/sandbox.md` |
 | Volume open API | `agentfs-open.spec.ts`, `docs/guides/hosting.md`, root README quick start |
+| Runtime flags (`python`, `javascript`, `customCommands`) | `create-toolkit.spec.ts`, `docs/guides/sandbox.md`, `examples/example-app` `/code-runner` |
 
 ## Gotchas
 

@@ -28,25 +28,50 @@ import {
 import { buildToolGuidance, type ToolGuidanceConfig } from "./tool-guidance.js";
 import { submitGatedWrite } from "./gated-write.js";
 
+/** One model tool call (name + JSON-shaped args). */
 export interface SessionToolCall {
+  /** Tool name as registered on the session surface. */
   name: string;
+  /** Arguments object passed to {@link SessionTool.execute}. */
   args: Record<string, unknown>;
 }
 
+/** Host-agnostic tool shape used by the session runtime and AI adapters. */
 export interface SessionTool {
+  /** Stable tool name (e.g. `memory`, `skill_manage`). */
   name: string;
+  /** Description shown to the model. */
   description: string;
+  /** JSON Schema for tool arguments. */
   inputSchema: Record<string, unknown>;
+  /** Run the tool. Returns a JSON-serializable result for the model. */
   execute(args: Record<string, unknown>): Promise<unknown>;
 }
 
+/** Options for {@link AgentSessionRuntime}. */
 export interface SessionRuntimeOptions {
+  /** Stable tenant id for this session. */
   tenantId: string;
+  /** Agent-home filesystem (volume or policy-wrapped FS). */
   fs: AgentFsLike;
+  /** Optional definition for char limits, write-approval flags, tool guidance. */
   definition?: AgentDefinition;
+  /** Directory of SOUL.md / AGENTS.md on the volume. Default `agent`. */
   agentDir?: string;
+  /**
+   * Write origin for the approval gate. Default `"foreground"`.
+   * Background curator passes `"background_review"`.
+   */
   origin?: WriteOrigin;
+  /**
+   * Whether the write-approval gate is on for a subsystem.
+   * Default: read from `definition.config.writeApproval`.
+   */
   writeApprovalEnabled?: (subsystem: ApprovalSubsystem) => boolean;
+  /**
+   * Interactive approve channel. Return `true` to apply now, `false` to
+   * reject, `null` to stage under `pending/`.
+   */
   promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
   /**
    * Extra tool names on the session surface (e.g. session_search, bash) used
@@ -58,9 +83,13 @@ export interface SessionRuntimeOptions {
 }
 
 export class AgentSessionRuntime {
+  /** Stable tenant id for this session. */
   readonly tenantId: string;
+  /** Curated MEMORY.md / USER.md store. */
   readonly memory: MemoryStore;
+  /** Skill library bound to the agent-home filesystem. */
   readonly skills: SkillLibrary;
+  /** Staged writes waiting for human approval. */
   readonly pending: PendingWriteStore;
   private readonly origin: WriteOrigin;
   private readonly writeApprovalEnabled: (s: ApprovalSubsystem) => boolean;

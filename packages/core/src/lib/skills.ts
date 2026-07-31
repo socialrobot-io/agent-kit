@@ -25,19 +25,29 @@ import { firstThreatMessage } from "./threats.js";
 import { scrubSecrets } from "./scrub-secrets.js";
 import { isSkillNameLocked, parseLockFlags } from "./skill-locks.js";
 
+/** Metadata for one skill directory (from SKILL.md frontmatter + lock state). */
 export interface SkillMeta {
+  /** Skill folder name; must match agentskills `name`. */
   name: string;
+  /** Short trigger description from frontmatter (≤60 chars recommended). */
   description: string;
+  /** Optional category label from frontmatter. */
   category?: string;
+  /** Optional semver-like version from frontmatter. */
   version?: string;
+  /** Optional author from frontmatter. */
   author?: string;
+  /** Optional tags from frontmatter. */
   tags?: string[];
   /** Directory holding the skill, relative to the fs root. */
   path: string;
-  /** Provenance: who may edit it. */
+  /** True when the agent (or curator) created this skill at runtime. */
   agentCreated?: boolean;
+  /** True for kit-bundled / framework skills (immutable to the agent). */
   bundled?: boolean;
+  /** True when frontmatter marks the skill pinned. */
   pinned?: boolean;
+  /** True when the skill is locked (frontmatter, `.locked`, or `.locks.json`). */
   locked?: boolean;
 }
 

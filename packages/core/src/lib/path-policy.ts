@@ -23,7 +23,12 @@ export interface PathPolicyOptions {
 }
 
 function normalize(path: string): string {
-  return path.replace(/^\/+/, "").replace(/\/+$/, "");
+  // Strip leading/trailing '/' without regex (avoids js/polynomial-redos).
+  let start = 0;
+  let end = path.length;
+  while (start < end && path.charCodeAt(start) === 47 /* / */) start++;
+  while (end > start && path.charCodeAt(end - 1) === 47) end--;
+  return path.slice(start, end);
 }
 
 function isUnder(path: string, prefix: string): boolean {
@@ -35,6 +40,9 @@ function isUnder(path: string, prefix: string): boolean {
 /**
  * Wrap a volume FS so agent sessions cannot rewrite company identity or
  * locked skill folders. Reads stay allowed.
+ *
+ * @param inner - Privileged tenant volume (or any {@link AgentFsLike}).
+ * @param options - Agent / skills directory names for the seal.
  */
 export function createAgentFs(inner: AgentFsLike, options: PathPolicyOptions = {}): AgentFsLike {
   const agentDir = options.agentDir ?? "agent";

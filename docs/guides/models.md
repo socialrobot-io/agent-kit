@@ -73,35 +73,29 @@ const stream = session.stream(messages, { maxSteps: 12 });
 
 The example app uses this with AI SDK UI `useChat`.
 
-## Run the curator on a live model
+## Curator model (usually automatic)
 
-After a chat, you can ask a (usually cheaper) model to propose memory and
-skill updates. That is the curator.
+`createTenantHome` runs the curator after each turn with `aiCuratorRunner` on
+the session model. Toggle with `defineAgent({ config: { curator } })`.
+
+To use a cheaper model, pass `curatorRunner` into `createTenantHome`:
 
 ```ts
-import type { ModelMessage } from "ai";
-import { runBackgroundReview } from "@socialrobot-io/agent-kit-curator";
 import { aiCuratorRunner } from "@socialrobot-io/agent-kit-ai";
+import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
-const transcript: ModelMessage[] = [
-  { role: "user", content: "Stop being so verbose." },
-  { role: "assistant", content: "Got it. I will be brief." },
-];
-
-await runBackgroundReview(transcript, {
-  memory: session.memory,
-  skills: session.skills,
-  pending: session.pending,
-  writeApprovalEnabled: () => true,
-  mode: "combined",
-  model: aiCuratorRunner("anthropic/claude-haiku-4-5"),
+const home = await createTenantHome({
+  tenantId,
+  agent,
+  curatorRunner: aiCuratorRunner("anthropic/claude-haiku-4-5"),
 });
 ```
 
-Then a human must approve staged writes. See
+Manual `runBackgroundReview` is only needed when you use bare
+`openAgentSession` without `createTenantHome`. See
 [Skills & learning](skills-and-learning.md).
 
-Tests and the offline demo use a mock `LanguageModel`. The call path matches
+Tests use a mock `LanguageModel`. The call path matches
 the live path.
 
 ## Next

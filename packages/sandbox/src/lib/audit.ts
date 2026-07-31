@@ -56,9 +56,11 @@ export interface AuditFs {
   writeFile(path: string, content: string): Promise<void>;
 }
 
+/** Options for {@link FileSandboxAuditStore}. */
 export interface FileSandboxAuditStoreOptions {
+  /** Filesystem that holds the JSONL audit log (usually the tenant volume). */
   fs: AuditFs;
-  /** Default path for events. Default `audit/events.jsonl`. */
+  /** Path for events relative to the FS root. Default `audit/events.jsonl`. */
   path?: string;
 }
 

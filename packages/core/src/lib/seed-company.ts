@@ -19,8 +19,11 @@ export interface SkillSeed {
 
 /** Compiled agent: SOUL, AGENTS, and agent-folder skills. */
 export interface AgentBundle {
+  /** Identity markdown written to `agent/SOUL.md`. */
   soul?: string;
+  /** House rules written to `agent/AGENTS.md`. */
   agentsMd?: string;
+  /** Skills installed under `skills/<name>/`. */
   skills?: SkillSeed[];
 }
 
@@ -29,11 +32,22 @@ export { SKILL_LOCK_MARKER };
 /**
  * Write identity + skills to the privileged volume.
  * Agent-tier skills lock only when marked.
+ *
+ * @param fs - Privileged volume (raw tenant volume, not `createAgentFs`).
+ * @param bundle - Compiled agent from `compileAgent` / `loadAgent`.
+ * @param options.agentDir - Directory for SOUL/AGENTS. Default `agent`.
+ * @param options.skillsDir - Directory for skills. Default `skills`.
+ * @returns Paths written and skill names that were locked.
  */
 export async function installAgent(
   fs: AgentFsLike,
   bundle: AgentBundle,
-  options: { agentDir?: string; skillsDir?: string } = {},
+  options: {
+    /** Directory for SOUL.md / AGENTS.md. Default `agent`. */
+    agentDir?: string;
+    /** Directory for skill folders. Default `skills`. */
+    skillsDir?: string;
+  } = {},
 ): Promise<{ written: string[]; locked: string[] }> {
   const agentDir = options.agentDir ?? "agent";
   const skillsDir = options.skillsDir ?? "skills";

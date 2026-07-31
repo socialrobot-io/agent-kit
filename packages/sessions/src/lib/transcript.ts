@@ -11,27 +11,45 @@
 
 export type SessionSource = "generic" | "mcp" | "composer" | string;
 
+/** One persisted chat message in a transcript. */
 export interface SessionMessage {
+  /** Stable message id (idempotent append key). */
   id: string;
+  /** Chat session this message belongs to. */
   sessionId: string;
+  /** Message role. */
   role: "user" | "assistant" | "system" | "tool";
+  /** Plain-text content stored for search and curator review. */
   content: string;
+  /** Optional tool-call payload (host-defined shape). */
   toolCalls?: unknown;
+  /** Unix timestamp (seconds). */
   createdAt: number;
 }
 
+/** One chat conversation owned by a tenant. */
 export interface Session {
+  /** Chat session id. */
   id: string;
+  /** Owning tenant. Search never returns hits across tenants. */
   tenantId: string;
+  /** How the session was created (e.g. `api`, `composer`). */
   source: SessionSource;
+  /** Unix timestamp (seconds) when the session was created. */
   createdAt: number;
 }
 
+/** One hit from {@link TranscriptStore.search}. */
 export interface SearchHit {
+  /** Session containing the match. */
   sessionId: string;
+  /** Message that matched. */
   messageId: string;
+  /** Role of the matched message. */
   role: string;
+  /** Snippet of matching content. */
   snippet: string;
+  /** Unix timestamp (seconds) of the matched message. */
   createdAt: number;
 }
 
@@ -128,19 +146,31 @@ export class InMemoryTranscriptStore implements TranscriptStore {
   }
 }
 
+/** Result shape returned by {@link sessionSearch}. */
 export interface SessionSearchResult {
+  /** False when the call failed (see `error`). */
   success: boolean;
+  /** Which search mode ran. */
   mode?: "discovery" | "scroll" | "browse";
+  /** Discovery hits when `query` was set. */
   hits?: SearchHit[];
+  /** Scroll window when `session_id` was set. */
   messages?: SessionMessage[];
+  /** Browse list when no query / session_id was set. */
   sessions?: Session[];
+  /** Failure message when `success` is false. */
   error?: string;
 }
 
+/** Arguments for the `session_search` tool / {@link sessionSearch}. */
 export interface SessionSearchArgs {
+  /** Substring query for discovery across past sessions. */
   query?: string;
+  /** Session to scroll when reading one conversation. */
   session_id?: string;
+  /** Message offset for scroll (oldest-first). */
   offset?: number;
+  /** Max hits / messages / sessions to return. Default 20. */
   limit?: number;
   /** When true, include the active chat in discovery / allow scrolling it. */
   include_current?: boolean;
