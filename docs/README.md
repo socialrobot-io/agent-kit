@@ -9,7 +9,7 @@ and human-gated learning.
 | Concept | Guide |
 | ------- | ----- |
 | Company envelope + skill tiers | [Skills](guides/skills-and-learning.md) · [Security](guides/security.md) · [CONTEXT.md](../CONTEXT.md) |
-| Per-tenant volume + auth → `createTenantHome` | [Hosting](guides/hosting.md) |
+| Per-tenant volume + auth → `createTenantHome` | [Hosting](guides/hosting.md) (includes [Next.js App Router](guides/hosting.md#nextjs-app-router)) |
 | Agents as files (`SOUL.md`, `AGENTS.md`, skills) | [Getting started](guides/getting-started.md) |
 | Frozen memory snapshot | [Memory](guides/memory.md) |
 | Skills, curator, approve | [Skills & learning](guides/skills-and-learning.md) |

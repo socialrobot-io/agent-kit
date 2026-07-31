@@ -2,6 +2,13 @@
 
 Convention host wiring for agent-kit.
 
+```bash
+npm i @socialrobot-io/agent-kit-node ai
+```
+
+`ai` (Vercel AI SDK `^7.0.0`) is a peer of this package and of
+`@socialrobot-io/agent-kit-ai`. Install it next to the kit.
+
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 import { agent } from "./generated/agent";

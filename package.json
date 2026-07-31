@@ -31,5 +31,8 @@
   "workspaces": [
     "packages/*",
     "examples/*"
+  ],
+  "trustedDependencies": [
+    "@mongodb-js/zstd"
   ]
 }

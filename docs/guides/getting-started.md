@@ -9,10 +9,12 @@ sandbox, transcripts), use [Host an agent in your app](hosting.md).
 Happy path:
 
 ```bash
-npm i @socialrobot-io/agent-kit-node
+npm i @socialrobot-io/agent-kit-node ai
 ```
 
-That pulls core, ai, sessions, sandbox, and curator.
+That pulls core, agent-kit-ai, sessions, sandbox, and curator. Install `ai`
+(the Vercel AI SDK) next to the kit: it is a peer of `agent-kit-ai` and
+`agent-kit-node`.
 
 | Package | Job |
 | ------- | --- |
@@ -22,6 +24,33 @@ That pulls core, ai, sessions, sandbox, and curator.
 | `agent-kit-sessions` | Transcripts + `session_search` |
 | `agent-kit-sandbox` | Per-tenant volume and guarded shell |
 | `agent-kit-curator` | Background review (wired by `agent-kit-node`) |
+
+### Package manager notes
+
+- **Bun**: Bun blocks lifecycle scripts by default. Trust `@mongodb-js/zstd`
+  (optional `just-bash` helper) so `prebuild-install` can fetch its binary:
+
+  ```json
+  {
+    "trustedDependencies": ["@mongodb-js/zstd"]
+  }
+  ```
+
+  Then install again, or run `bun pm trust @mongodb-js/zstd`. Without that
+  binary, archive commands that need zstd can fail when the agent calls them.
+
+  `node-liblzma` (xz) is different: its install script compiles from source
+  with `node-gyp`. Trust it only when the host has `pkg-config` and system
+  `liblzma`. If the trusted install fails, Bun can delete the optional
+  package and leave a broken symlink under `just-bash`. Leave it untrusted
+  unless you need xz and can build it.
+- **npm**: if `AgentFS.open` fails with `Cannot find native binding` outside a
+  bundler, the platform optional dependency is missing. This is a known npm
+  bug with optional dependencies
+  ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). Remove
+  `node_modules` and `package-lock.json`, then install again.
+- **Next.js / Turbopack**: native packages must stay outside the bundle. See
+  [Next.js (App Router)](hosting.md#nextjs-app-router).
 
 ## 2. Author the agent as files
 
