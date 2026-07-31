@@ -25,6 +25,9 @@
       "path": "./examples/example-app"
     },
     {
+      "path": "./examples/code-runner"
+    },
+    {
       "path": "./packages/node"
     }
   ]

@@ -65,10 +65,11 @@ Skill locking (see [Skills & learning](skills-and-learning.md)):
 1. Author `agent/` and run `compileAgent` in CI / predev
 2. Mark company-owned skills with frontmatter or `.locked`
 3. Pass sandbox `secrets` / `allowedHosts` at home creation
-4. Add product tools with `addTools`
-5. Do not give the agent the raw volume write handle for tools
+4. Enable `javascript` / `python` on `sandbox` if the agent should run `js-exec` / `python3`
+5. Add product tools with `addTools` (see [Tools](tools.md))
+6. Do not give the agent the raw volume write handle for tools
 
-See also: [Security](security.md) · [Company envelope PRD](../roadmap/company-envelope-prd.md).
+See also: [Sandbox](sandbox.md) · [Security](security.md) · [Company envelope PRD](../roadmap/company-envelope-prd.md).
 ## What your app must do
 
 1. Authenticate the user (cookie, JWT, session, or similar).

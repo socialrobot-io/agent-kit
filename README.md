@@ -93,8 +93,13 @@ and the approval gate.
 
 ## Try it
 
-Clone the example app for a streaming Next.js chat with sandbox tools, or jump
-to [Install](#install) to wire the package into your own app.
+Clone an example, or jump to [Install](#install) to wire the package into your
+own app.
+
+| Example | What it shows |
+| ------- | ------------- |
+| [`examples/example-app`](examples/example-app) | Streaming Next.js chat with sandbox + approval UI |
+| [`examples/code-runner`](examples/code-runner) | Agent that runs sandboxed JavaScript via `js-exec` |
 
 ```bash
 git clone https://github.com/socialrobot-io/agent-kit.git
@@ -104,7 +109,13 @@ cp .env.sample .env.local   # set DEEPSEEK_API_KEY or AI_GATEWAY_API_KEY
 npx nx dev example          # http://localhost:3000
 ```
 
-Details: [`examples/example-app`](examples/example-app).
+For a one-shot scripted turn with `js-exec`:
+
+```bash
+cd examples/code-runner
+cp .env.sample .env
+bun src/main.ts
+```
 
 ---
 
@@ -337,11 +348,11 @@ Read in this order when you integrate:
 | [Getting started](docs/guides/getting-started.md) | Install, `agent/` files, first turn |
 | [Hosting](docs/guides/hosting.md) | Auth, volume, session, approve in your app |
 | [Security](docs/guides/security.md) | Scans, approval, isolation |
-| [Tools](docs/guides/tools.md) | Defaults and how to add your own |
+| [Tools](docs/guides/tools.md) | Host tools vs sandbox vs skills |
+| [Sandbox](docs/guides/sandbox.md) | Curl, `js-exec`, `python3`, custom bash cmds |
 | [Models](docs/guides/models.md) | Pick a model, run or stream a turn |
 | [Memory](docs/guides/memory.md) | What is remembered across chats |
 | [Skills & learning](docs/guides/skills-and-learning.md) | Skills, curator, human approve |
-| [Sandbox](docs/guides/sandbox.md) | Guarded shell and workspace |
 | [Publishing](docs/guides/publishing.md) | npm release (maintainers) |
 
 Not ready yet: [Multi-machine](docs/roadmap/multi-machine.md).

@@ -7,6 +7,20 @@ bash, call your API, and so on).
 tools in code. The runtime does **not** load tools from an `agent/tools/`
 directory.
 
+## Three ways to give the agent powers
+
+| Approach | When to use | How |
+| -------- | ----------- | --- |
+| Host `SessionTool` | Product APIs (CRM, billing, your backend) | `addTools` on `openSession` / `run` / `stream` |
+| Sandbox shell | Files, Unix utils, curl, JS/Python, custom bash cmds | `createTenantHome({ sandbox: { … } })` |
+| Skills | Written procedures the model reads | `agent/skills/` (markdown), not executable code |
+
+Prefer a host tool when the work should hit your systems with your auth.
+Prefer the sandbox when the agent should explore files or run sandboxed code.
+Skills teach *how*; they do not register new function calls.
+
+Sandbox details (curl, `js-exec`, `python3`, `defineCommand`): [Sandbox](sandbox.md).
+
 ## Default tools
 
 | Tool | Included when |
@@ -21,7 +35,7 @@ Happy path:
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 
-const home = await createTenantHome({ tenantId });
+const home = await createTenantHome({ tenantId, agent });
 const session = await home.openSession(sessionId, {
   addTools: [weather],
   disableTools: ["skill_manage"],
@@ -117,5 +131,7 @@ Prefer `addTools` on `session.run` / `home.openSession` over the older
 
 ## Next
 
+- Curl, JS/Python, custom bash commands: [Sandbox](sandbox.md)
 - Pick a model or stream replies: [Models](models.md)
 - Production volume wiring: [Hosting](hosting.md)
+- Runnable JS-in-sandbox demo: [`examples/code-runner`](../../examples/code-runner)

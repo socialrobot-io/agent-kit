@@ -1,0 +1,11 @@
+.env
+.env.local
+.agentfs/
+data/
+*.db
+*.db-wal
+*.db-shm
+node_modules/
+dist/
+out-tsc/
+test-output/

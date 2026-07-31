@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { defineCommand } from "just-bash";
 import {
   createTenantBashToolkit,
   resolveDefenseInDepth,
@@ -84,6 +85,110 @@ describe("createTenantBashToolkit", () => {
     const res = await toolkit.bash.exec("curl -s https://example.com");
     expect(res.exitCode).not.toBe(0);
     expect(`${res.stdout}${res.stderr}`).toMatch(/command not found|not found|curl/i);
+  });
+
+  it("leaves js-exec and python3 unavailable by default", async () => {
+    const toolkit = await createTenantBashToolkit({
+      tenantId: "t1",
+      defenseInDepth: false,
+    });
+    const js = await toolkit.bash.exec('js-exec -c "console.log(1)"');
+    expect(js.exitCode).not.toBe(0);
+    expect(`${js.stdout}${js.stderr}`).toMatch(/command not found|not found|js-exec/i);
+
+    const py = await toolkit.bash.exec('python3 -c "print(1)"');
+    expect(py.exitCode).not.toBe(0);
+    expect(`${py.stdout}${py.stderr}`).toMatch(/command not found|not found|python/i);
+  });
+
+  it("runs js-exec when javascript is enabled", async () => {
+    const toolkit = await createTenantBashToolkit({
+      tenantId: "t1",
+      defenseInDepth: false,
+      javascript: true,
+    });
+    const res = await toolkit.bash.exec('js-exec -c "console.log(1 + 2)"');
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout).toContain("3");
+  });
+
+  it("runs js-exec on a persisted AgentFS volume when javascript is enabled", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const { AgentFS } = await import("agentfs-sdk");
+
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-sandbox-js-"));
+    const volumePath = join(dir, "tenant.db");
+    try {
+      const afs = await AgentFS.open({ path: volumePath });
+      const toolkit = await createTenantBashToolkit({
+        tenantId: "t1",
+        agentFs: afs,
+        defenseInDepth: false,
+        javascript: true,
+      });
+      const res = await toolkit.bash.exec('js-exec -c "console.log(1 + 2)"');
+      expect(res.exitCode).toBe(0);
+      expect(res.stdout).toContain("3");
+    } finally {
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    }
+  });
+
+  it("runs python3 when python is enabled", async () => {
+    const toolkit = await createTenantBashToolkit({
+      tenantId: "t1",
+      defenseInDepth: false,
+      python: true,
+    });
+    const res = await toolkit.bash.exec('python3 -c "print(1 + 2)"');
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout).toContain("3");
+  });
+
+  it("registers customCommands from defineCommand", async () => {
+    const hello = defineCommand("hello", async (args) => ({
+      stdout: `Hello, ${args[0] || "world"}!\n`,
+      stderr: "",
+      exitCode: 0,
+    }));
+    const toolkit = await createTenantBashToolkit({
+      tenantId: "t1",
+      defenseInDepth: false,
+      customCommands: [hello],
+    });
+    const res = await toolkit.bash.exec("hello Alice");
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout).toContain("Hello, Alice!");
+  });
+
+  it("registers customCommands on a persisted AgentFS volume", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const { AgentFS } = await import("agentfs-sdk");
+    const hello = defineCommand("hello", async (args) => ({
+      stdout: `Hello, ${args[0] || "world"}!\n`,
+      stderr: "",
+      exitCode: 0,
+    }));
+
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-sandbox-cmd-"));
+    try {
+      const afs = await AgentFS.open({ path: join(dir, "tenant.db") });
+      const toolkit = await createTenantBashToolkit({
+        tenantId: "t1",
+        agentFs: afs,
+        defenseInDepth: false,
+        customCommands: [hello],
+      });
+      const res = await toolkit.bash.exec("hello Alice");
+      expect(res.exitCode).toBe(0);
+      expect(res.stdout).toContain("Hello, Alice!");
+    } finally {
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    }
   });
 
   it("persists workspace files into an AgentFS volume when agentFs is set", async () => {
