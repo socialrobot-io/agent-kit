@@ -134,4 +134,4 @@ Prefer `addTools` on `session.run` / `home.openSession` over the older
 - Curl, JS/Python, custom bash commands: [Sandbox](sandbox.md)
 - Pick a model or stream replies: [Models](models.md)
 - Production volume wiring: [Hosting](hosting.md)
-- Runnable JS-in-sandbox demo: [`examples/code-runner`](../../examples/code-runner)
+- Runnable JS-in-sandbox demo: [`examples/example-app`](../../examples/example-app) `/code-runner`

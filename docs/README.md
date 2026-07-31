@@ -21,8 +21,7 @@ and human-gated learning.
 
 | Example | Shows |
 | ------- | ----- |
-| [`examples/example-app`](../examples/example-app) | Streaming Next.js chat with sandbox + approval UI |
-| [`examples/code-runner`](../examples/code-runner) | Agent that runs `js-exec` in the sandbox |
+| [`examples/example-app`](../examples/example-app) | Streaming Next.js chat + `/code-runner` (`js-exec`) |
 
 ## Read in order (new integrators)
 

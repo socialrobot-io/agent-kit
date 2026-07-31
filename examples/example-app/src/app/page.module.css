@@ -21,6 +21,37 @@
   flex-wrap: wrap;
 }
 
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.navLink:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--panel-solid) 80%, transparent);
+}
+
+.navActive {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--line) 80%, transparent);
+  background: var(--panel-solid);
+}
+
 .brand {
   display: flex;
   align-items: center;

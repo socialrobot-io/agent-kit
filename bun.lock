@@ -29,16 +29,6 @@
         "vitest": "^4.1.10",
       },
     },
-    "examples/code-runner": {
-      "name": "@socialrobot-io/agent-kit-code-runner",
-      "version": "0.1.0",
-      "dependencies": {
-        "@socialrobot-io/agent-kit-core": "workspace:*",
-        "@socialrobot-io/agent-kit-node": "workspace:*",
-        "@socialrobot-io/agent-kit-sandbox": "workspace:*",
-        "ai": "^7.0.41",
-      },
-    },
     "examples/example-app": {
       "name": "@socialrobot-io/agent-kit-example",
       "version": "0.1.0",
@@ -704,8 +694,6 @@
     "@socialrobot-io/agent-kit-ai": ["@socialrobot-io/agent-kit-ai@workspace:packages/ai"],
 
     "@socialrobot-io/agent-kit-cli": ["@socialrobot-io/agent-kit-cli@workspace:packages/cli"],
-
-    "@socialrobot-io/agent-kit-code-runner": ["@socialrobot-io/agent-kit-code-runner@workspace:examples/code-runner"],
 
     "@socialrobot-io/agent-kit-core": ["@socialrobot-io/agent-kit-core@workspace:packages/core"],
 

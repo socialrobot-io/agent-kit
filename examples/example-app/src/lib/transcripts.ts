@@ -4,7 +4,6 @@
 
 import type { UIMessage } from "ai";
 import type { TranscriptStore } from "@socialrobot-io/agent-kit-sessions";
-import { TENANT_ID } from "./agent";
 
 function textFromUiMessage(message: UIMessage): string {
   const parts = message.parts ?? [];
@@ -29,10 +28,11 @@ export async function persistUiMessages(
   transcripts: TranscriptStore,
   sessionId: string,
   messages: UIMessage[],
+  tenantId: string,
 ): Promise<void> {
   await transcripts.createSession({
     id: sessionId,
-    tenantId: TENANT_ID,
+    tenantId,
     source: "composer",
     createdAt: Date.now() / 1000,
   });

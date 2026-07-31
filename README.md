@@ -98,8 +98,7 @@ own app.
 
 | Example | What it shows |
 | ------- | ------------- |
-| [`examples/example-app`](examples/example-app) | Streaming Next.js chat with sandbox + approval UI |
-| [`examples/code-runner`](examples/code-runner) | Agent that runs sandboxed JavaScript via `js-exec` |
+| [`examples/example-app`](examples/example-app) | Streaming Next.js chat + `/code-runner` page with `js-exec` |
 
 ```bash
 git clone https://github.com/socialrobot-io/agent-kit.git
@@ -107,14 +106,7 @@ cd agent-kit && bun install
 cd examples/example-app
 cp .env.sample .env.local   # set DEEPSEEK_API_KEY or AI_GATEWAY_API_KEY
 npx nx dev example          # http://localhost:3000
-```
-
-For a one-shot scripted turn with `js-exec`:
-
-```bash
-cd examples/code-runner
-cp .env.sample .env
-bun src/main.ts
+# Code runner (js-exec): http://localhost:3000/code-runner
 ```
 
 ---
