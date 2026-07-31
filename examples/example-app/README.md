@@ -1,11 +1,11 @@
 # Example app (Next.js)
 
 Streaming chat over agent-kit via AI SDK UI (`useChat` and UI message stream).
-Two demos share the same Next app:
+Two demos share the same Next app; each has its own folder under `agents/`:
 
 | Route | Agent | Volume | Sandbox |
 | ----- | ----- | ------ | ------- |
-| `/` | `agent/` | `.agentfs/example.db` | bash / readFile / writeFile |
+| `/` | `agents/chat/` | `.agentfs/example.db` | bash / readFile / writeFile |
 | `/code-runner` | `agents/code-runner/` | `.agentfs/code-runner.db` | same + `js-exec` (`javascript: true`) |
 
 ## Setup
@@ -30,7 +30,7 @@ npx nx dev example
 
 ## Layout
 
-- `agent/` — main chat SOUL / AGENTS / skills
+- `agents/chat/` — main chat SOUL / AGENTS / skills
 - `agents/code-runner/` — js-exec-focused SOUL / AGENTS
 - `src/lib/agent.ts` — main `createTenantHome` + sessions
 - `src/lib/code-runner-agent.ts` — second home with `sandbox: { javascript: true }`
@@ -41,7 +41,7 @@ npx nx dev example
 
 ```bash
 npx nx run example:compile-agent
-# → src/generated/agent.ts
+# → src/generated/agent.ts          (from agents/chat)
 # → src/generated/code-runner-agent.ts
 ```
 

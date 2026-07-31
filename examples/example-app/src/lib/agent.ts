@@ -10,7 +10,7 @@ import { createTenantHome, type TenantHome } from "@socialrobot-io/agent-kit-nod
 import type { TranscriptStore } from "@socialrobot-io/agent-kit-sessions";
 import type { LanguageModel, ToolSet } from "ai";
 import type { TenantBashToolkit } from "@socialrobot-io/agent-kit-sandbox";
-import { examplePackageRoot, seedAgentHome } from "./seed";
+import { CHAT_AGENT_DIR, examplePackageRoot, seedAgentHome } from "./seed";
 import { resolveLiveModel, type LiveModel } from "./env";
 import { join } from "node:path";
 import { agent } from "../generated/agent";
@@ -133,7 +133,7 @@ export async function getSessionAgent(sessionId: string): Promise<AgentHandle> {
     session = undefined;
   }
   if (!session) {
-    await seedAgentHome(shared.home.volume);
+    await seedAgentHome(shared.home.volume, CHAT_AGENT_DIR);
     session = await shared.home.openSession(sessionId, {
       model: shared.live.model,
       interactiveApproval,

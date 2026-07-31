@@ -1,6 +1,6 @@
 /**
- * Compile agent trees → importable bundles.
- * Run before next build/dev so the app does not need a runtime agent/ tree.
+ * Compile agents/* → importable bundles.
+ * Run before next build/dev so the app does not need a runtime agents/ tree.
  */
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(here, "..");
 
 const jobs = [
-  { dir: join(appRoot, "agent"), outFile: join(appRoot, "src/generated/agent.ts") },
+  {
+    dir: join(appRoot, "agents/chat"),
+    outFile: join(appRoot, "src/generated/agent.ts"),
+  },
   {
     dir: join(appRoot, "agents/code-runner"),
     outFile: join(appRoot, "src/generated/code-runner-agent.ts"),

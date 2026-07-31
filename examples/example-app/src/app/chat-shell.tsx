@@ -102,10 +102,15 @@ function ToolPart({
   }
 
   let body = "";
-  if (state === "output-available" || state === "result") {
-    body = JSON.stringify(output ?? input ?? {}, null, 2);
-  } else if (state === "output-denied") {
+  if (state === "output-denied") {
     body = "Denied - write was not applied.";
+  } else if (state === "output-available" || state === "result") {
+    // Keep the call args (e.g. bash `command`) visible alongside the result.
+    body = JSON.stringify(
+      input != null ? { input, output: output ?? null } : (output ?? {}),
+      null,
+      2,
+    );
   } else if (input != null) {
     body = JSON.stringify(input, null, 2);
   } else {
