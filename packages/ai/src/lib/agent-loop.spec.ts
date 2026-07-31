@@ -90,9 +90,13 @@ describe("runAgentTurn", () => {
     });
 
     expect(result.text).toContain("terse");
-    expect(result.toolCalls).toEqual([
-      { name: "memory", args: { action: "add", target: "user", content: "User wants terse answers" } },
-    ]);
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls[0]?.toolName).toBe("memory");
+    expect((result.toolCalls[0] as { input?: unknown }).input).toEqual({
+      action: "add",
+      target: "user",
+      content: "User wants terse answers",
+    });
     // The tool actually ran against the live memory store.
     expect(runtime.memory.getEntries("user")).toContain("User wants terse answers");
   });

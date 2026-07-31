@@ -3,7 +3,7 @@
  * plus any host tools) into an AI SDK `ToolSet` for `generateText`/`streamText`.
  */
 
-import { jsonSchema, type ToolSet, type JSONSchema7 } from "ai";
+import { jsonSchema, tool, type ToolSet, type JSONSchema7 } from "ai";
 import type { SessionTool } from "@socialrobot-io/agent-kit-core";
 
 /** A JSON Schema object for a tool with untyped (passthrough) args. */
@@ -21,11 +21,11 @@ function toJsonSchema(schema: Record<string, unknown> | undefined): JSONSchema7 
 export function toAiTools(tools: SessionTool[]): ToolSet {
   const set: ToolSet = {};
   for (const t of tools) {
-    set[t.name] = {
+    set[t.name] = tool({
       description: t.description,
       inputSchema: jsonSchema(toJsonSchema(t.inputSchema)),
       execute: async (args: unknown) => t.execute((args ?? {}) as Record<string, unknown>),
-    } as ToolSet[string];
+    });
   }
   return set;
 }

@@ -22,6 +22,9 @@ import {
   runAgentTurn,
   streamAgentTurn,
   type AgentLoopResult,
+  type AgentRunOptions,
+  type AgentStreamOptions,
+  type AgentStreamResult,
 } from "./agent-loop.js";
 import { resolveModel, type ModelInput, type ResolveModelOptions } from "./models.js";
 import {
@@ -33,20 +36,32 @@ type ComposeOverrides = Omit<ComposeAgentToolsOptions, "builtins" | "extraTools"
   addAiTools?: ToolSet;
 };
 
-/** Per-turn overrides for {@link AgentSession.run} / {@link AgentSession.stream}. */
-export type SessionTurnOptions = ComposeOverrides &
-  ResolveModelOptions & {
-    /** Override the model resolved at open time. */
-    model?: ModelInput;
-    /** Max model steps (tool-call rounds). Default 8. */
-    maxSteps?: number;
-    /** Retry transient provider failures. Default 2. */
-    maxRetries?: number;
-    /** Called when the turn finishes (persist transcripts, kick curator, …). */
-    onFinish?: (event: { text: string }) => void | Promise<void>;
-    /** Override session-level toolApproval for this turn. */
-    toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>;
-  };
+/** Bound by {@link openAgentSession}; not set again on each turn. */
+type SessionBoundKitKeys =
+  | "runtime"
+  | "definition"
+  | "builtinTools"
+  | "toolSet"
+  | "extraTools"
+  | "extraAiTools";
+
+/**
+ * Per-turn options for {@link AgentSession.run}.
+ * AI SDK `generateText` options (minus kit-filled keys) plus tool compose knobs.
+ */
+export type SessionRunOptions = Omit<AgentRunOptions, SessionBoundKitKeys>;
+
+/**
+ * Per-turn options for {@link AgentSession.stream}.
+ * AI SDK `streamText` options (minus kit-filled keys) plus tool compose knobs.
+ */
+export type SessionStreamOptions = Omit<AgentStreamOptions, SessionBoundKitKeys>;
+
+/**
+ * @deprecated Prefer {@link SessionRunOptions} / {@link SessionStreamOptions}.
+ * Alias of stream options (wider AI SDK surface).
+ */
+export type SessionTurnOptions = SessionStreamOptions;
 
 /** Options for {@link openAgentSession}. */
 export interface OpenAgentSessionOptions extends ResolveModelOptions {
@@ -126,13 +141,10 @@ export interface AgentSession {
    * Resolve tools for a turn. Prefer `run` / `stream`, which call this for you.
    */
   composeTools: (overrides?: ComposeOverrides) => ReturnType<typeof composeAgentTools>;
-  /** Run one turn to completion. */
-  run: (messages: ModelMessage[], opts?: SessionTurnOptions) => Promise<AgentLoopResult>;
-  /** Stream one turn (AI SDK UI / useChat). */
-  stream: (
-    messages: ModelMessage[],
-    opts?: SessionTurnOptions,
-  ) => ReturnType<typeof streamAgentTurn>;
+  /** Run one turn to completion. Returns the AI SDK `generateText` result. */
+  run: (messages: ModelMessage[], opts?: SessionRunOptions) => Promise<AgentLoopResult>;
+  /** Stream one turn (AI SDK UI / useChat). Returns the AI SDK `streamText` result. */
+  stream: (messages: ModelMessage[], opts?: SessionStreamOptions) => AgentStreamResult;
 }
 
 /**
@@ -203,19 +215,28 @@ export async function openAgentSession(
       },
     });
 
-  const toLoopOpts = (turnOpts: SessionTurnOptions = {}) => {
+  const bindRun = (turnOpts: SessionRunOptions = {}): AgentRunOptions => {
     const {
       model: modelOverride,
       maxSteps,
-      maxRetries,
-      onFinish,
-      toolApproval,
       gateway,
       apiKey,
       baseURL,
-      ...compose
+      addTools,
+      disableTools,
+      tools,
+      addAiTools,
+      toolApproval,
+      ...call
     } = turnOpts;
-    const { toolSet } = composeTools(compose);
+
+    const { toolSet } = composeTools({
+      addTools,
+      disableTools,
+      tools,
+      addAiTools,
+    });
+
     return {
       runtime,
       model: modelOverride
@@ -223,8 +244,41 @@ export async function openAgentSession(
         : sessionModel(),
       toolSet,
       maxSteps,
-      maxRetries,
-      onFinish,
+      ...call,
+      toolApproval: toolApproval ?? writeToolApproval,
+    };
+  };
+
+  const bindStream = (turnOpts: SessionStreamOptions = {}): AgentStreamOptions => {
+    const {
+      model: modelOverride,
+      maxSteps,
+      gateway,
+      apiKey,
+      baseURL,
+      addTools,
+      disableTools,
+      tools,
+      addAiTools,
+      toolApproval,
+      ...call
+    } = turnOpts;
+
+    const { toolSet } = composeTools({
+      addTools,
+      disableTools,
+      tools,
+      addAiTools,
+    });
+
+    return {
+      runtime,
+      model: modelOverride
+        ? resolveModel(modelOverride, { gateway, apiKey, baseURL, ...resolveOpts })
+        : sessionModel(),
+      toolSet,
+      maxSteps,
+      ...call,
       toolApproval: toolApproval ?? writeToolApproval,
     };
   };
@@ -249,7 +303,7 @@ export async function openAgentSession(
     sandboxTools: opts.sandboxTools,
     writeToolApproval,
     composeTools,
-    run: (messages, turnOpts) => runAgentTurn(messages, toLoopOpts(turnOpts)),
-    stream: (messages, turnOpts) => streamAgentTurn(messages, toLoopOpts(turnOpts)),
+    run: (messages, turnOpts) => runAgentTurn(messages, bindRun(turnOpts)),
+    stream: (messages, turnOpts) => streamAgentTurn(messages, bindStream(turnOpts)),
   };
 }

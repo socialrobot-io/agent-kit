@@ -94,7 +94,7 @@ describe("openAgentSession.run", () => {
       ],
     });
 
-    expect(turn.toolCalls.map((c) => c.name)).toContain("ping");
+    expect(turn.toolCalls.map((c) => c.toolName)).toContain("ping");
     expect(turn.text).toBe("pong");
   });
 });

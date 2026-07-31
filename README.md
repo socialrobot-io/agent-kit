@@ -54,7 +54,7 @@ shapes most of the live API (`ModelMessage`, `session.run` / `session.stream`,
 | Layer | Library | What you feel in the API |
 | ----- | ------- | ------------------------ |
 | Model loop | [`ai`](https://www.npmjs.com/package/ai) (Vercel AI SDK) | Messages, `run` / `stream`, tools, UI approval |
-| Model routing | [`@ai-sdk/gateway`](https://www.npmjs.com/package/@ai-sdk/gateway) | String model ids (e.g. `anthropic/claude-sonnet-4-5`) |
+| Model providers | [AI SDK providers](https://sdk.vercel.ai/providers) or [`@ai-sdk/gateway`](https://www.npmjs.com/package/@ai-sdk/gateway) | Pass a `LanguageModel`, or a string id via the Gateway |
 | Tenant volume | [AgentFS](https://www.agentfs.ai/) | One SQLite filesystem per tenant |
 | Sandbox shell | [bash-tool](https://github.com/vercel-labs/bash-tool) + [just-bash](https://github.com/vercel-labs/just-bash) | `bash` / `readFile` / `writeFile` behind guardrails |
 
@@ -65,29 +65,31 @@ skills, and sandbox around that loop.
 
 ## How it works
 
-Read this once before you install. Setup makes more sense with the loop in mind.
+Install and wiring make more sense once you see the loop.
 
 <div align="center">
-<img src="docs/assets/architecture.svg" alt="Production agent stack: secure, sandboxed, self-improving" width="100%"/>
+<img src="docs/assets/architecture.svg" alt="The agent loop: open, guard, curate, approve, recall on a per-tenant AgentFS volume" width="100%"/>
 </div>
 
 <br/>
 
-1. **Author** the agent as markdown files: who it is (`SOUL.md`), house rules
-   (`AGENTS.md`), optional skills and memories.
-2. **Open a session** for one tenant. Pass the compiled or loaded agent bundle
-   so identity lands on the volume. The system prompt is built once from those
-   files plus a memory snapshot that does not change mid-chat.
-3. **Guard** writes and shell commands. Bad content is scanned before it can
-   enter a future prompt. Dangerous commands are blocked before they run.
-4. **Curate** after each turn. `createTenantHome` runs a background pass that
-   may propose lasting memory or skills (disable with `config.curator: false`).
-5. **Approve.** Proposals sit under `pending/` until a human accepts them.
-6. **Recall.** The next chat sees approved memory. Past chats for that tenant
-   are searchable; other tenants are not.
+Write the agent once as files: identity (`SOUL.md`), rules (`AGENTS.md`), and
+optional skills or memories. Then the session loop is:
 
-Your app owns auth and `tenantId`. The kit owns isolation, scanning, sandbox,
-and the approval gate.
+1. **Open.** Start a session for one tenant. Load or compile the agent so those
+   files seed the tenant volume. The runtime builds the system prompt once from
+   identity, rules, skills, and a frozen memory snapshot. Memory does not change
+   mid-chat.
+2. **Guard.** Scan content before it can enter memory or skills. Block dangerous
+   shell commands before they run.
+3. **Curate.** After each turn, `createTenantHome` can propose durable memory or
+   skills in the background. Set `config.curator: false` to turn this off.
+4. **Approve.** Proposals stay under `pending/` until a human accepts them.
+5. **Recall.** The next chat includes approved memory. Past chats for that
+   tenant are searchable. Other tenants stay isolated.
+
+Your app owns auth and `tenantId`. The kit owns isolation, scanning, the
+sandbox, and the approval gate.
 
 ---
 
@@ -119,13 +121,22 @@ npx nx dev example          # http://localhost:3000
 - Durable local disk for per-tenant SQLite volumes (one machine today)
 - A model provider for live turns
 
-String model ids (for example `anthropic/claude-sonnet-4-5`) use the
-[Vercel AI Gateway](https://vercel.com/ai-gateway). Set a key before the first
-turn:
+Pass a ready `LanguageModel` from any [AI SDK provider](https://sdk.vercel.ai/providers)
+(`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/deepseek`, …). That is the
+usual path.
 
-```bash
-export AI_GATEWAY_API_KEY=...   # or pass a ready LanguageModel via `model`
+```ts
+import { anthropic } from "@ai-sdk/anthropic";
+
+const home = await createTenantHome({
+  tenantId: "brand-123",
+  agent,
+  model: anthropic("claude-sonnet-4-5"),
+});
 ```
+
+Or pass a `"provider/model"` string and set `AI_GATEWAY_API_KEY` so the
+[Vercel AI Gateway](https://vercel.com/ai-gateway) resolves it.
 
 Happy path package (volume + transcripts + sandbox + live loop):
 
@@ -202,8 +213,8 @@ import { agent } from "./generated/agent"; // output of compileAgent
 const tenantId = "brand-123"; // from your auth layer — never from the client body alone
 const sessionId = "chat-abc";
 
-// Default: ./data/tenants/${tenantId}.db + transcripts + sandbox
-// + model anthropic/claude-sonnet-4-5 via AI Gateway.
+// Default: ./data/tenants/${tenantId}.db + transcripts + sandbox.
+// Pass model: a LanguageModel from any AI SDK provider (recommended).
 const home = await createTenantHome({ tenantId, agent });
 
 // Memory freezes when openSession returns. Reuse that AgentSession for the
@@ -222,11 +233,13 @@ Plain Node scripts that can read `./agent` at runtime may use
 ### 3. Override only what you need
 
 ```ts
+import { anthropic } from "@ai-sdk/anthropic";
+
 const home = await createTenantHome({
   tenantId,
   agent,
   dataDir: "/var/lib/agents",           // or volumePath: "/data/acme.db"
-  model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
+  model: anthropic("claude-sonnet-4-5"), // or "provider/model" + AI_GATEWAY_API_KEY
   interactiveApproval: true,            // UI Approve applies writes
   workspaceFiles: { "README.md": "# hi\n" },
   sandbox: {

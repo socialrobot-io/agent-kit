@@ -1,4 +1,9 @@
-import { convertToModelMessages, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
 import { NextResponse } from "next/server";
 import { assertTenantSession } from "@socialrobot-io/agent-kit-sessions";
 import { getSessionAgent, getSharedAgent, getTranscripts, TENANT_ID } from "@/lib/agent";
@@ -58,8 +63,6 @@ export async function POST(req: Request) {
     const modelMessages = await convertToModelMessages(messages);
     const result = agent.session.stream(modelMessages, {
       maxSteps: 12,
-      // Keep session-level toolApproval (interactiveApproval) unless overridden.
-      toolApproval: agent.session.writeToolApproval,
       onFinish: async ({ text }) => {
         const assistantId = `asst_${sessionId}_${Date.now()}`;
         await agent.transcripts.appendMessage({
@@ -72,9 +75,9 @@ export async function POST(req: Request) {
       },
     });
 
-    // Prefer StreamTextResult.toUIMessageStreamResponse so approval-requested
-    // tool parts reach the chat UI (Approve / Deny).
-    return result.toUIMessageStreamResponse({
+    // Standalone helpers keep approval-requested tool parts on the UI stream.
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({ stream: result.stream }),
       headers: {
         "x-agent-kit-model": agent.label,
         "x-agent-kit-provider": agent.provider,
