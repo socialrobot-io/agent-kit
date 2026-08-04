@@ -45,7 +45,7 @@
     "ai": "^7.0.0"
   },
   "devDependencies": {
-    "ai": "^7.0.41"
+    "ai": "^7.0.48"
   },
   "description": "Host composition: createTenantHome wires volume, transcripts, sandbox, sessions, and curator",
   "license": "MIT",
