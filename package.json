@@ -10,10 +10,10 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@nx/js": "23.1.0",
-    "@nx/next": "23.1.0",
-    "@nx/vite": "^23.1.0",
-    "@nx/vitest": "23.1.0",
+    "@nx/js": "23.1.1",
+    "@nx/next": "23.1.1",
+    "@nx/vite": "^23.1.1",
+    "@nx/vitest": "23.1.1",
     "@swc/cli": "~0.8.1",
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
@@ -21,7 +21,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitest/coverage-v8": "~4.1.0",
-    "nx": "23.1.0",
+    "nx": "23.1.1",
     "prettier": "~3.9.6",
     "tslib": "^2.3.0",
     "typescript": "~6.0.3",
