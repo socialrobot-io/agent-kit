@@ -15,7 +15,7 @@
     "@nx/vite": "^23.1.0",
     "@nx/vitest": "23.1.0",
     "@swc/cli": "~0.8.1",
-    "@swc/core": "~1.15.5",
+    "@swc/core": "~1.15.47",
     "@swc/helpers": "~0.5.18",
     "@types/node": "^26.1.2",
     "@types/react": "^19.0.0",
