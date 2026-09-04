@@ -42,7 +42,7 @@
     "ai": "^7.0.0"
   },
   "devDependencies": {
-    "ai": "^7.0.41"
+    "ai": "^7.0.48"
   },
   "description": "Vercel AI SDK integration: model resolution, agent loop, and write-approval tools",
   "license": "MIT",

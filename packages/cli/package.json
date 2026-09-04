@@ -40,7 +40,7 @@
     "@socialrobot-io/agent-kit-sessions": "workspace:*",
     "@socialrobot-io/agent-kit-curator": "workspace:*",
     "@socialrobot-io/agent-kit-ai": "workspace:*",
-    "ai": "^7.0.41"
+    "ai": "^7.0.48"
   },
   "description": "Internal CLI helpers for agent-kit",
   "license": "MIT",
