@@ -73,7 +73,7 @@
     ],
     "projectsRelationship": "fixed",
     "version": {
-      "preVersionCommand": "bunx nx run-many -t build",
+      "preVersionCommand": "bunx nx run-many -t build --projects=core,ai,sessions,sandbox,curator,cli,node,next",
       "conventionalCommits": false
     },
     "changelog": {

@@ -94,7 +94,7 @@ jobs:
           if [ "${{ inputs.first_release }}" = "true" ]; then
             FLAGS+=(--first-release)
           fi
-          bunx nx release "${{ inputs.specifier }}" "${FLAGS[@]}"
+          bunx nx release "${{ inputs.specifier }}" "${FLAGS[@]}" --verbose
 
       # Keep workspace:* in git (bun installs). Rewrite only for the npm tarball.
       - name: Rewrite workspace deps for npm
