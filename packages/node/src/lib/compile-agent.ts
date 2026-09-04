@@ -1,18 +1,54 @@
 /**
- * Load and compile the host agent directory (convention: ./agent).
+ * Load and compile host agent directories.
  *
- * Layout:
- *   agent/
+ * Layout (one folder per agent):
+ *   agents/chat/
  *     SOUL.md
  *     AGENTS.md
  *     skills/<name>/...
  */
 
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, join, relative, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, sep } from "node:path";
 import type { AgentBundle, SkillSeed } from "@socialrobot-io/agent-kit-core";
 
-const DEFAULT_AGENT_DIR = "./agent";
+/** Env key set by `withAgentKit` so runtime names match Next tracing. */
+export const AGENT_KIT_AGENTS_DIR_ENV = "AGENT_KIT_AGENTS_DIR";
+
+/** Default agents root under the app (`agents/<name>`). */
+export const DEFAULT_AGENTS_DIR = "agents";
+
+/** Legacy single-agent folder for {@link compileAgent} when `dir` is omitted. */
+const DEFAULT_COMPILE_AGENT_DIR = "agent";
+
+function normalizeAgentsDir(dir: string): string {
+  return dir.trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+}
+
+/** Agents root relative to cwd (`AGENT_KIT_AGENTS_DIR` or `agents`). */
+export function resolveAgentsDir(): string {
+  const fromEnv = process.env[AGENT_KIT_AGENTS_DIR_ENV];
+  return normalizeAgentsDir(fromEnv && fromEnv.trim() ? fromEnv : DEFAULT_AGENTS_DIR);
+}
+
+/**
+ * Resolve a `loadAgent` argument to an absolute path.
+ *
+ * - Bare name (`"chat"`) → `{agentsDir}/chat` (see {@link resolveAgentsDir})
+ * - Relative path (`"agents/chat"`, `"src/agents/chat"`) → under cwd
+ * - Absolute path → unchanged
+ */
+export function resolveAgentPath(nameOrPath: string): string {
+  if (!nameOrPath?.trim()) {
+    throw new Error('loadAgent requires an agent name (e.g. "chat") or a directory path');
+  }
+  if (isAbsolute(nameOrPath)) return nameOrPath;
+  const normalized = nameOrPath.replaceAll("\\", "/").replace(/^\.\//, "");
+  if (normalized.includes("/")) {
+    return join(process.cwd(), normalized);
+  }
+  return join(process.cwd(), resolveAgentsDir(), normalized);
+}
 
 async function readOptional(path: string): Promise<string | undefined> {
   try {
@@ -66,34 +102,50 @@ async function listSkillDirs(skillsRoot: string): Promise<string[]> {
   return entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name);
 }
 
-/**
- * Read `agent/` into an {@link AgentBundle}.
- *
- * @param dir - Agent authoring directory. Default `./agent`.
- * @returns Bundle suitable for {@link createTenantHome} / {@link installAgent}.
- */
-export async function loadAgent(dir: string = DEFAULT_AGENT_DIR): Promise<AgentBundle> {
-  const soul = await readOptional(join(dir, "SOUL.md"));
-  const agentsMd = await readOptional(join(dir, "AGENTS.md"));
+async function loadAgentAt(root: string): Promise<AgentBundle> {
+  const soul = await readOptional(join(root, "SOUL.md"));
+  const agentsMd = await readOptional(join(root, "AGENTS.md"));
   const skills: SkillSeed[] = [];
 
-  for (const name of await listSkillDirs(join(dir, "skills"))) {
-    const files = await loadSkillFolder(join(dir, "skills", name));
+  for (const name of await listSkillDirs(join(root, "skills"))) {
+    const files = await loadSkillFolder(join(root, "skills", name));
     if (!files["SKILL.md"] && !Object.keys(files).some((k) => k.endsWith("/SKILL.md"))) {
-      throw new Error(`skill '${name}' has no SKILL.md under ${join(dir, "skills", name)}`);
+      throw new Error(`skill '${name}' has no SKILL.md under ${join(root, "skills", name)}`);
     }
     skills.push({ name, files, tier: "agent" });
   }
 
   if (!soul && !agentsMd && skills.length === 0) {
-    throw new Error(`loadAgent found nothing under '${dir}'`);
+    throw new Error(`loadAgent found nothing under '${root}'`);
   }
 
   return { soul, agentsMd, skills };
 }
 
+/**
+ * Load an agent folder into an {@link AgentBundle}.
+ *
+ * Prefer a bare agent name. The folder is `{agentsDir}/{name}` where
+ * `agentsDir` defaults to `agents`, or `AGENT_KIT_AGENTS_DIR` when set
+ * (Next: `withAgentKit` sets this to match file tracing).
+ *
+ * ```ts
+ * const chat = await loadAgent("chat");
+ * const runner = await loadAgent("code-runner");
+ * ```
+ *
+ * Paths still work: `"agents/chat"`, `"src/agents/chat"`, or an absolute path
+ * (tests / custom layouts).
+ *
+ * @param nameOrPath - Agent name under `agents/`, or a directory path.
+ * @returns Bundle for {@link createTenantHome} / {@link installAgent}.
+ */
+export async function loadAgent(nameOrPath: string): Promise<AgentBundle> {
+  return loadAgentAt(resolveAgentPath(nameOrPath));
+}
+
 export interface CompileAgentOptions {
-  /** Agent authoring directory. Default `./agent`. */
+  /** Agent authoring directory (path). Default `agent` under the app root. */
   dir?: string;
   /**
    * Output path. `.ts` / `.js` → module exporting `agent`.
@@ -113,19 +165,18 @@ function emitTypeScript(bundle: AgentBundle): string {
 }
 
 /**
- * Compile `agent/` to an importable module for any bundler/runtime.
+ * Write an agent folder to an importable module (advanced / no `agents/` on disk).
  *
- * ```ts
- * await compileAgent({ outFile: "./src/generated/agent.ts" });
- * // createTenantHome({ tenantId, agent })
- * ```
+ * Prefer {@link loadAgent} for normal apps.
  *
  * @param opts - Source directory and output module path.
  * @returns The compiled {@link AgentBundle} (also written to `outFile`).
  */
 export async function compileAgent(opts: CompileAgentOptions): Promise<AgentBundle> {
   if (!opts.outFile?.trim()) throw new Error("compileAgent requires outFile");
-  const bundle = await loadAgent(opts.dir ?? DEFAULT_AGENT_DIR);
+  const dir = opts.dir ?? DEFAULT_COMPILE_AGENT_DIR;
+  const root = isAbsolute(dir) ? dir : join(process.cwd(), dir.replace(/^\.\//, ""));
+  const bundle = await loadAgentAt(root);
   const ext = extname(opts.outFile).toLowerCase();
   let contents: string;
   if (ext === ".json") {

@@ -16,10 +16,6 @@ export type LiveModel = {
   provider: "deepseek" | "gateway";
 };
 
-export function hasApiKey(): boolean {
-  return Boolean(process.env.DEEPSEEK_API_KEY || process.env.AI_GATEWAY_API_KEY);
-}
-
 export function resolveLiveModel(): LiveModel {
   if (process.env.DEEPSEEK_API_KEY) {
     const raw = process.env.MODEL ?? DEFAULT_DEEPSEEK_MODEL;

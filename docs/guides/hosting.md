@@ -90,12 +90,40 @@ Defaults:
 - model `anthropic/claude-sonnet-4-5`
 - process cache so the same volume path reuses one home
 
+Most apps want `createAgentKit`: one object that opens a tenant home (cached
+per process, bounded by the number of tenants) and a chat session on demand.
+**Stateless by default** — each `kit.session(tenantId, sessionId)` call opens
+a fresh session from disk; state lives in the volume + transcripts, not in
+memory. Set `maxSessions` to opt into a per-chat LRU cache for the perf win.
+
+```ts
+// lib/kit.ts
+import { createAgentKit, loadAgent } from "@socialrobot-io/agent-kit-node";
+
+export const kit = createAgentKit({
+  agent: await loadAgent("chat"),
+  // model defaults to anthropic/claude-sonnet-4-5
+});
+
+// in a route (stateless — fresh session each call):
+const session = await kit.session(tenantId, sessionId);
+const turn = await session.run([{ role: "user", content: "Summarize /workspace." }]);
+```
+
+Load agents with `await loadAgent("chat")`. That opens
+`<app-root>/agents/chat` by default. Under Next.js, wrap the config with
+`withAgentKit` from `@socialrobot-io/agent-kit-next` (see below): it sets the
+agents folder once for both file tracing and `loadAgent`.
+
+### Advanced: `createTenantHome`
+
+When you need the pieces (custom volume path, transcript store, sandbox
+secrets inspected outside a turn), drop down to `createTenantHome`. The kit
+uses it internally.
+
 ```ts
 import { createTenantHome } from "@socialrobot-io/agent-kit-node";
-import { agent } from "./generated/agent"; // from compileAgent in predev / CI
-
-const tenantId = "brand-123"; // from your auth layer
-const sessionId = "chat-abc"; // from your chat API
+import { agent } from "./generated/agent";
 
 const home = await createTenantHome({ tenantId, agent });
 const session = await home.openSession(sessionId);
@@ -105,18 +133,14 @@ const turn = await session.run([
 ]);
 ```
 
-Plain Node with `agent/` on disk can pass `await loadAgent("./agent")` instead.
-
 ### Common overrides
 
-Override only what you need. The rest stays on convention.
+Override only what you need. The rest stays on convention. Both `createAgentKit`
+and `createTenantHome` accept these.
 
 ```ts
-import { agent } from "./generated/agent";
-
-const home = await createTenantHome({
-  tenantId,
-  agent,
+const kit = createAgentKit({
+  agent: await loadAgent("chat"),
   dataDir: "/var/lib/agents", // or volumePath: "/data/acme.db"
   model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
   interactiveApproval: true, // chat UI Approve applies writes
@@ -125,13 +149,14 @@ const home = await createTenantHome({
   // transcripts: false,
 });
 
-const session = await home.openSession(sessionId, {
+// per-chat overrides via the third argument:
+const session = await kit.session(tenantId, sessionId, {
   addTools: [myTool],
   disableTools: ["skill_manage"],
 });
 ```
 
-What `createTenantHome` returns:
+What `kit.home(tenantId)` / `createTenantHome` returns:
 
 | Field | What it is |
 | ----- | ---------- |
@@ -160,15 +185,27 @@ agent-kit loads at runtime:
 Keep these packages outside the bundle. When they are bundled, the route
 fails at module evaluation with `Error: Cannot find native binding`.
 
-```js
-// next.config.js
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  serverExternalPackages: ["agentfs-sdk", "just-bash", "bash-tool"],
-};
+Use `@socialrobot-io/agent-kit-next` so you do not hand-tune tracing:
 
-module.exports = nextConfig;
+```ts
+// next.config.ts
+import type { NextConfig } from "next";
+import { withAgentKit } from "@socialrobot-io/agent-kit-next";
+
+const nextConfig: NextConfig = {};
+
+// Default: agents/ next to app/
+export default withAgentKit(nextConfig);
+
+// Custom folder — still loadAgent("chat"):
+// withAgentKit(nextConfig, { agentsDir: "src/agents" })
 ```
+
+`withAgentKit` merges:
+
+- `serverExternalPackages`: `agentfs-sdk`, `just-bash`, `bash-tool`
+- `outputFileTracingIncludes["/*"]`: `./{agentsDir}/**/*`
+- `env.AGENT_KIT_AGENTS_DIR`: same `agentsDir` (so `loadAgent("chat")` matches tracing)
 
 Rules:
 
@@ -178,16 +215,14 @@ Rules:
    you install them from npm. They ship plain JavaScript and bundle safely.
    `examples/example-app` lists them under `transpilePackages` because the
    monorepo maps them to TypeScript source. That setting is workspace-only.
-3. If the error names a different native package, add that package to
-   `serverExternalPackages`. Known extras: `@tursodatabase/database`,
-   `@mongodb-js/zstd`, `node-liblzma`, `better-sqlite3`.
+3. If the error names a different native package, pass it through
+   `withAgentKit(config, { serverExternalPackages: ["better-sqlite3"] })`.
 
 The same `Cannot find native binding` error in plain Node (no bundler) means
 the platform package is missing from `node_modules`. See the npm note in
 [Getting started](getting-started.md#package-manager-notes).
 
-Reference wiring: [`examples/example-app`](../../examples/example-app) (route
-handler, session cache, approval UI, working `serverExternalPackages`).
+Reference wiring: [`examples/example-app`](../../examples/example-app).
 
 ## Rules you must keep
 

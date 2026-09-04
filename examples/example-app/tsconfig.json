@@ -53,6 +53,9 @@
       "path": "../../packages/sessions"
     },
     {
+      "path": "../../packages/node"
+    },
+    {
       "path": "../../packages/curator"
     },
     {
@@ -62,7 +65,7 @@
       "path": "../../packages/ai"
     },
     {
-      "path": "../../packages/node"
+      "path": "../../packages/next"
     }
   ]
 }

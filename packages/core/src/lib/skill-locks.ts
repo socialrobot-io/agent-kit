@@ -81,19 +81,39 @@ export function parseLockFlags(data: Record<string, string>): {
   };
 }
 
-/** Minimal frontmatter parse for lock flags only (no skills.ts cycle). */
+/** Strip one surrounding quote pair without regex (CodeQL ReDoS-safe). */
+function stripOuterQuotes(value: string): string {
+  if (value.length < 2) return value;
+  const a = value[0];
+  const b = value[value.length - 1];
+  if ((a === '"' || a === "'") && a === b) return value.slice(1, -1);
+  return value;
+}
+
+/**
+ * Minimal frontmatter parse for lock flags only (no skills.ts cycle).
+ * Linear scans only — avoid nested `\s*` regexes CodeQL flags as ReDoS.
+ */
 function lockFlagsFromSkillMd(content: string): {
   locked?: boolean;
   pinned?: boolean;
   bundled?: boolean;
 } {
-  const text = content.replace(/^\uFEFF/, "");
-  const m = /^---\s*\n([\s\S]*?)\n---\s*\n?/.exec(text);
-  if (!m) return {};
+  let text = content;
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  if (!text.startsWith("---")) return {};
+  const afterOpen = text.indexOf("\n", 3);
+  if (afterOpen < 0) return {};
+  const close = text.indexOf("\n---", afterOpen + 1);
+  if (close < 0) return {};
+  const body = text.slice(afterOpen + 1, close);
   const data: Record<string, string> = {};
-  for (const line of m[1].split("\n")) {
-    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
-    if (kv) data[kv[1]] = kv[2].trim().replace(/^['"]|['"]$/g, "");
+  for (const line of body.split("\n")) {
+    const colon = line.indexOf(":");
+    if (colon <= 0) continue;
+    const key = line.slice(0, colon).trim();
+    if (!key || !/^[A-Za-z_][\w-]*$/.test(key)) continue;
+    data[key] = stripOuterQuotes(line.slice(colon + 1).trim());
   }
   return parseLockFlags(data);
 }

@@ -19,6 +19,7 @@ That pulls core, agent-kit-ai, sessions, sandbox, and curator. Install `ai`
 | Package | Job |
 | ------- | --- |
 | `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session + curator) |
+| `agent-kit-next` | `withAgentKit` Next.js config helper (optional) |
 | `agent-kit-core` | Definition, memory, skills, approval |
 | `agent-kit-ai` | Live model loop (`session.run` / `session.stream`) |
 | `agent-kit-sessions` | Transcripts + `session_search` |
@@ -116,8 +117,12 @@ const turn = await session.run([
 console.log(turn.text);
 ```
 
-Plain Node with `agent/` on disk can use `loadAgent("./agent")` instead of
-compile + import.
+Plain Node with agent folders on disk can use `loadAgent("chat")` (opens
+`agents/chat` under the app root). Set `AGENT_KIT_AGENTS_DIR` if the folder
+is not `agents/`.
+
+For a real app, prefer `createAgentKit` (one object, cached homes + sessions):
+see [Hosting](hosting.md#happy-path).
 
 For a throwaway in-memory filesystem (no SQLite), use `openAgentSession` with
 `InMemoryFs` from `@socialrobot-io/agent-kit-core`. Do not use that path for

@@ -25,6 +25,7 @@
         "prettier": "~3.9.6",
         "tslib": "^2.3.0",
         "typescript": "~6.0.3",
+        "verdaccio": "^6.3.2",
         "vite": "^8.0.0",
         "vitest": "^4.1.10",
       },
@@ -38,6 +39,7 @@
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@socialrobot-io/agent-kit-curator": "workspace:*",
+        "@socialrobot-io/agent-kit-next": "workspace:*",
         "@socialrobot-io/agent-kit-node": "workspace:*",
         "@socialrobot-io/agent-kit-sandbox": "workspace:*",
         "@socialrobot-io/agent-kit-sessions": "workspace:*",
@@ -54,7 +56,7 @@
     },
     "packages/ai": {
       "name": "@socialrobot-io/agent-kit-ai",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.31",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -69,7 +71,7 @@
     },
     "packages/cli": {
       "name": "@socialrobot-io/agent-kit-cli",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -82,22 +84,35 @@
     },
     "packages/core": {
       "name": "@socialrobot-io/agent-kit-core",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@socialrobot-io/agent-kit-curator",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
       },
     },
+    "packages/next": {
+      "name": "@socialrobot-io/agent-kit-next",
+      "version": "0.2.5",
+      "dependencies": {
+        "@swc/helpers": "~0.5.18",
+      },
+      "peerDependencies": {
+        "next": ">=15.0.0",
+      },
+      "optionalPeers": [
+        "next",
+      ],
+    },
     "packages/node": {
       "name": "@socialrobot-io/agent-kit-node",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -115,7 +130,7 @@
     },
     "packages/sandbox": {
       "name": "@socialrobot-io/agent-kit-sandbox",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -125,7 +140,7 @@
     },
     "packages/sessions": {
       "name": "@socialrobot-io/agent-kit-sessions",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
@@ -714,6 +729,8 @@
     "@socialrobot-io/agent-kit-curator": ["@socialrobot-io/agent-kit-curator@workspace:packages/curator"],
 
     "@socialrobot-io/agent-kit-example": ["@socialrobot-io/agent-kit-example@workspace:examples/example-app"],
+
+    "@socialrobot-io/agent-kit-next": ["@socialrobot-io/agent-kit-next@workspace:packages/next"],
 
     "@socialrobot-io/agent-kit-node": ["@socialrobot-io/agent-kit-node@workspace:packages/node"],
 
@@ -2021,7 +2038,7 @@
 
     "picomatch": ["picomatch@4.0.4", "", {}, "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A=="],
 
-    "pify": ["pify@4.0.1", "", {}, "sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g=="],
+    "pify": ["pify@3.0.0", "", {}, "sha512-C3FsVNH1udSEX48gGX1xfvwTWfsYWj5U+8/uK15BGzIGrKoUpghX8hWZwa/OFnakBiiVNmBvemTJR5mcy7iPcg=="],
 
     "pino": ["pino@9.14.0", "", { "dependencies": { "@pinojs/redact": "^0.4.0", "atomic-sleep": "^1.0.0", "on-exit-leak-free": "^2.1.0", "pino-abstract-transport": "^2.0.0", "pino-std-serializers": "^7.0.0", "process-warning": "^5.0.0", "quick-format-unescaped": "^4.0.3", "real-require": "^0.2.0", "safe-stable-stringify": "^2.3.1", "sonic-boom": "^4.0.1", "thread-stream": "^3.0.0" }, "bin": { "pino": "bin.js" } }, "sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w=="],
 
@@ -2793,8 +2810,6 @@
 
     "less/source-map": ["source-map@0.6.1", "", {}, "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g=="],
 
-    "lowdb/pify": ["pify@3.0.0", "", {}, "sha512-C3FsVNH1udSEX48gGX1xfvwTWfsYWj5U+8/uK15BGzIGrKoUpghX8hWZwa/OFnakBiiVNmBvemTJR5mcy7iPcg=="],
-
     "make-asynchronous/type-fest": ["type-fest@4.41.0", "", {}, "sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA=="],
 
     "mdast-util-find-and-replace/escape-string-regexp": ["escape-string-regexp@5.0.0", "", {}, "sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw=="],
@@ -2954,6 +2969,8 @@
     "jest-util/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "jest-worker/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+
+    "less/make-dir/pify": ["pify@4.0.1", "", {}, "sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g=="],
 
     "less/make-dir/semver": ["semver@5.7.2", "", { "bin": { "semver": "bin/semver" } }, "sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g=="],
 
