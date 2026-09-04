@@ -24,5 +24,6 @@ pure; this package may depend on sibling packages (including curator).
 | Change | Also update |
 | ------ | ----------- |
 | `createTenantHome` options / defaults | `tenant-home.spec.ts`, README quick start, `docs/guides/hosting.md` |
-| `compileAgent` / `agent` on home | `compile-agent.spec.ts`, `tenant-home.spec.ts`, hosting guide, CONTEXT.md |
+| `compileAgent` / `loadAgent` | `compile-agent.spec.ts`, `tenant-home.spec.ts`, README set up, hosting guide |
+| `createAgentKit` / `AgentKit` | `agent-kit.spec.ts`, README set up, hosting guide |
 | Curator wiring / `config.curator` | `session-curator.ts`, `tenant-home.spec.ts`, skills-and-learning + hosting guides |

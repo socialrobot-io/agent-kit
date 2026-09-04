@@ -61,9 +61,19 @@
     }
   },
   "release": {
-    "projects": ["core", "ai", "sessions", "sandbox", "curator", "cli", "node"],
+    "projects": [
+      "core",
+      "ai",
+      "sessions",
+      "sandbox",
+      "curator",
+      "cli",
+      "node",
+      "next"
+    ],
     "projectsRelationship": "fixed",
     "version": {
+      "preVersionCommand": "bunx nx run-many -t build",
       "conventionalCommits": false
     },
     "changelog": {

@@ -25,6 +25,7 @@
     "prettier": "~3.9.6",
     "tslib": "^2.3.0",
     "typescript": "~6.0.3",
+    "verdaccio": "^6.3.2",
     "vite": "^8.0.0",
     "vitest": "^4.1.10"
   },
@@ -34,5 +35,18 @@
   ],
   "trustedDependencies": [
     "@mongodb-js/zstd"
-  ]
+  ],
+  "nx": {
+    "includedScripts": [],
+    "targets": {
+      "local-registry": {
+        "executor": "@nx/js:verdaccio",
+        "options": {
+          "port": 4873,
+          "config": ".verdaccio/config.yml",
+          "storage": "tmp/local-registry/storage"
+        }
+      }
+    }
+  }
 }

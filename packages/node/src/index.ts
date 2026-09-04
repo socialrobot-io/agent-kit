@@ -5,7 +5,21 @@ export {
   type OpenHomeSessionOptions,
   type TenantHome,
 } from "./lib/tenant-home.js";
-export { compileAgent, loadAgent, type CompileAgentOptions } from "./lib/compile-agent.js";
+export {
+  compileAgent,
+  loadAgent,
+  resolveAgentPath,
+  resolveAgentsDir,
+  AGENT_KIT_AGENTS_DIR_ENV,
+  DEFAULT_AGENTS_DIR,
+  type CompileAgentOptions,
+} from "./lib/compile-agent.js";
+export {
+  createAgentKit,
+  type AgentKit,
+  type CreateAgentKitOptions,
+  type KitSessionOptions,
+} from "./lib/agent-kit.js";
 export {
   attachSessionCurator,
   waitForSessionCurators,

@@ -41,4 +41,6 @@ Maintainers: [Publishing](guides/publishing.md).
 - [Company envelope PRD](roadmap/company-envelope-prd.md): sealed company identity and policy, free agents inside
 - [Multi-machine](roadmap/multi-machine.md): not ready yet
 
-Product pitch: [root README](../README.md).
+Product pitch and setup: [root README](../README.md).
+
+Install notes, loop, demo, security, contributor commands: [More](more.md).

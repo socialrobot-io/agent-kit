@@ -1,0 +1,61 @@
+{
+  "name": "@socialrobot-io/agent-kit-next",
+  "version": "0.2.5",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@socialrobot-io/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "name": "next",
+    "sourceRoot": "packages/next/src",
+    "tags": ["type:package"],
+    "targets": {
+      "build": {
+        "executor": "@nx/js:swc",
+        "outputs": ["{options.outputPath}"],
+        "options": {
+          "outputPath": "packages/next/dist",
+          "main": "packages/next/src/index.ts",
+          "tsConfig": "packages/next/tsconfig.lib.json",
+          "skipTypeCheck": true,
+          "stripLeadingPaths": true
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@swc/helpers": "~0.5.18"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "description": "Next.js config helper: withAgentKit for native packages and agents/ tracing",
+  "license": "MIT",
+  "files": ["dist", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socialrobot-io/agent-kit.git",
+    "directory": "packages/next"
+  },
+  "bugs": {
+    "url": "https://github.com/socialrobot-io/agent-kit/issues"
+  },
+  "homepage": "https://github.com/socialrobot-io/agent-kit/tree/main/packages/next#readme"
+}

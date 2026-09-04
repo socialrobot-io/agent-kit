@@ -36,10 +36,16 @@ npx nx dev example
 
 - `agents/chat/` — main chat SOUL / AGENTS / skills
 - `agents/code-runner/` — js-exec-focused SOUL / AGENTS
-- `src/lib/agent.ts` — main `createTenantHome` + sessions
-- `src/lib/code-runner-agent.ts` — second home with `sandbox: { javascript: true }`
+- `src/lib/kit.ts` — `createAgentKit` for the chat demo (stateless by default)
+- `src/lib/code-runner-kit.ts` — second kit with `sandbox: { javascript: true }`
 - `src/app/api/chat` · `src/app/api/code-runner/chat` — stream routes
 - `src/app/chat-shell.tsx` — shared chat UI
+
+Both demos use the same `createAgentKit` happy path from the root
+[README](../../README.md#set-up). The kit is **stateless by default**: each
+request opens a fresh session from disk (volume + transcripts persist; the
+live handle is not retained). Set `maxSessions` to opt into a per-chat LRU
+cache for the perf win.
 
 ## Deploy: compile agents into the bundle
 

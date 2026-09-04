@@ -2,24 +2,11 @@
 
 import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
-import {
-  DefaultChatTransport,
-  lastAssistantMessageIsCompleteWithApprovalResponses,
-  type UIMessage,
-} from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { WriteApprovalCard } from "./write-approval-card";
 import styles from "./page.module.css";
-
-type Status = {
-  ok: boolean;
-  model?: string;
-  provider?: string;
-  error?: string;
-  savedSessions?: { id: string; createdAt: number; messageCount: number }[];
-};
 
 export type ChatShellProps = {
   api: string;
@@ -37,19 +24,7 @@ function newSessionId(): string {
   return crypto.randomUUID();
 }
 
-function toolNameFromPartType(type: string): string {
-  return type.startsWith("tool-") ? type.slice(5) : type;
-}
-
-function MarkdownText({
-  text,
-  streaming,
-  showCaret,
-}: {
-  text: string;
-  streaming: boolean;
-  showCaret: boolean;
-}) {
+function MarkdownText({ text, streaming, showCaret }: { text: string; streaming: boolean; showCaret: boolean }) {
   return (
     <div className={styles.prose}>
       <ReactMarkdown
@@ -61,13 +36,12 @@ function MarkdownText({
             </a>
           ),
           pre: ({ children }) => <pre className={styles.codeBlock}>{children}</pre>,
-          code: ({ className, children }) => {
-            const isBlock = Boolean(className);
-            if (isBlock) {
-              return <code className={className}>{children}</code>;
-            }
-            return <code className={styles.inlineCode}>{children}</code>;
-          },
+          code: ({ className, children }) =>
+            className ? (
+              <code className={className}>{children}</code>
+            ) : (
+              <code className={styles.inlineCode}>{children}</code>
+            ),
         }}
       >
         {text}
@@ -77,44 +51,17 @@ function MarkdownText({
   );
 }
 
-function ToolPart({
-  part,
-  onApprove,
-}: {
-  part: { type: string; [key: string]: unknown };
-  onApprove?: (id: string, approved: boolean) => void;
-}) {
-  const name = toolNameFromPartType(part.type);
+function ToolPart({ part }: { part: { type: string; [key: string]: unknown } }) {
+  const name = part.type.startsWith("tool-") ? part.type.slice(5) : part.type;
   const state = typeof part.state === "string" ? part.state : "running";
   const input = part.input ?? part.args;
   const output = part.output ?? part.result;
-  const approval = part.approval as { id?: string; isAutomatic?: boolean } | undefined;
 
-  if (state === "approval-requested" && approval?.id && !approval.isAutomatic && onApprove) {
-    return (
-      <WriteApprovalCard
-        toolName={name}
-        input={input}
-        onApprove={() => onApprove(approval.id!, true)}
-        onDeny={() => onApprove(approval.id!, false)}
-      />
-    );
-  }
-
-  let body = "";
-  if (state === "output-denied") {
-    body = "Denied - write was not applied.";
-  } else if (state === "output-available" || state === "result") {
-    // Keep the call args (e.g. bash `command`) visible alongside the result.
-    body = JSON.stringify(
-      input != null ? { input, output: output ?? null } : (output ?? {}),
-      null,
-      2,
-    );
+  let body = "…";
+  if (state === "output-available" || state === "result") {
+    body = JSON.stringify(input != null ? { input, output: output ?? null } : (output ?? {}), null, 2);
   } else if (input != null) {
     body = JSON.stringify(input, null, 2);
-  } else {
-    body = "…";
   }
 
   return (
@@ -128,15 +75,7 @@ function ToolPart({
   );
 }
 
-function MessageBubble({
-  message,
-  streaming,
-  onApprove,
-}: {
-  message: UIMessage;
-  streaming: boolean;
-  onApprove?: (id: string, approved: boolean) => void;
-}) {
+function MessageBubble({ message, streaming }: { message: UIMessage; streaming: boolean }) {
   const parts = message.parts ?? [];
   return (
     <article className={`${styles.bubble} ${styles[message.role === "user" ? "user" : "assistant"]}`}>
@@ -155,13 +94,7 @@ function MessageBubble({
             );
           }
           if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-            return (
-              <ToolPart
-                key={`${message.id}-tool-${i}`}
-                part={part as { type: string }}
-                onApprove={onApprove}
-              />
-            );
+            return <ToolPart key={`${message.id}-tool-${i}`} part={part as { type: string }} />;
           }
           return null;
         })}
@@ -183,7 +116,6 @@ export function ChatShell({
   activeNav,
 }: ChatShellProps) {
   const [input, setInput] = useState("");
-  const [modelStatus, setModelStatus] = useState<Status | null>(null);
   const [sessionId, setSessionId] = useState("");
   const [sessionReady, setSessionReady] = useState(false);
   const threadRef = useRef<HTMLElement | null>(null);
@@ -192,20 +124,16 @@ export function ChatShell({
     () =>
       new DefaultChatTransport({
         api,
-        prepareSendMessagesRequest: ({ id, messages }) => ({
-          body: { id, messages },
-        }),
+        prepareSendMessagesRequest: ({ id, messages }) => ({ body: { id, messages } }),
       }),
     [api],
   );
 
-  const { messages, sendMessage, status, stop, error, clearError, setMessages, addToolApprovalResponse } =
-    useChat({
-      id: sessionId || "pending",
-      transport,
-      throttle: 40,
-      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
-    });
+  const { messages, sendMessage, status, stop, error, clearError, setMessages } = useChat({
+    id: sessionId || "pending",
+    transport,
+    throttle: 40,
+  });
 
   const busy = status === "submitted" || status === "streaming";
 
@@ -217,43 +145,12 @@ export function ChatShell({
   }, [storageKey]);
 
   useEffect(() => {
-    if (!sessionReady || !sessionId) return;
-    window.localStorage.setItem(storageKey, sessionId);
+    if (sessionReady && sessionId) window.localStorage.setItem(storageKey, sessionId);
   }, [sessionReady, sessionId, storageKey]);
 
   useEffect(() => {
-    if (!sessionReady || !sessionId) return;
-    let cancelled = false;
-    void fetch(`${api}?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(async (r) => (await r.json()) as { ok?: boolean; messages?: UIMessage[] })
-      .then((data) => {
-        if (cancelled || !data.messages?.length) return;
-        setMessages(data.messages);
-      })
-      .catch(() => {
-        // History restore is best-effort.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionReady, sessionId, setMessages, api]);
-
-  useEffect(() => {
-    void fetch(api)
-      .then(async (r) => (await r.json()) as Status)
-      .then(setModelStatus)
-      .catch((err: unknown) =>
-        setModelStatus({
-          ok: false,
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
-  }, [api]);
-
-  useEffect(() => {
     const thread = threadRef.current;
-    if (!thread) return;
-    thread.scrollTop = thread.scrollHeight;
+    if (thread) thread.scrollTop = thread.scrollHeight;
   }, [messages, status]);
 
   async function onSend(text: string) {
@@ -278,33 +175,19 @@ export function ChatShell({
       <header className={styles.header}>
         <div className={styles.brandRow}>
           <div className={styles.brand}>
-            <img
-              src="/brand-icon.png"
-              alt="SocialRobot"
-              width={40}
-              height={40}
-              className={styles.logo}
-            />
+            <img src="/brand-icon.png" alt="SocialRobot" width={40} height={40} className={styles.logo} />
             <div className={styles.brandText}>
               <div className={styles.titleRow}>
                 <h1>{title}</h1>
                 <span className={styles.badge}>{badge}</span>
               </div>
-              <a
-                className={styles.byline}
-                href="https://socialrobot.io"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className={styles.byline} href="https://socialrobot.io" target="_blank" rel="noreferrer">
                 By <strong>SocialRobot</strong>
               </a>
             </div>
           </div>
           <nav className={styles.nav} aria-label="Demo pages">
-            <Link
-              href="/"
-              className={`${styles.navLink} ${activeNav === "chat" ? styles.navActive : ""}`}
-            >
+            <Link href="/" className={`${styles.navLink} ${activeNav === "chat" ? styles.navActive : ""}`}>
               Chat
             </Link>
             <Link
@@ -317,22 +200,8 @@ export function ChatShell({
         </div>
         <p>{blurb}</p>
         <div className={styles.meta}>
-          <span
-            className={`${styles.dot} ${
-              busy ? styles.busy : modelStatus?.ok ? styles.ok : styles.bad
-            }`}
-            aria-hidden
-          />
-          {busy
-            ? status === "streaming"
-              ? "streaming"
-              : "thinking"
-            : modelStatus?.ok
-              ? `${modelStatus.provider} / ${modelStatus.model}` +
-                (modelStatus.savedSessions
-                  ? ` · ${modelStatus.savedSessions.length} saved chat${modelStatus.savedSessions.length === 1 ? "" : "s"}`
-                  : "")
-              : modelStatus?.error || "checking model…"}
+          <span className={`${styles.dot} ${busy ? styles.busy : styles.ok}`} aria-hidden />
+          {busy ? (status === "streaming" ? "streaming" : "thinking") : "ready"}
           <button type="button" className={styles.ghostLink} onClick={onNewChat} disabled={busy}>
             New chat
           </button>
@@ -363,14 +232,7 @@ export function ChatShell({
             <MessageBubble
               key={message.id}
               message={message}
-              streaming={
-                busy &&
-                message.role === "assistant" &&
-                index === messages.length - 1
-              }
-              onApprove={(id, approved) => {
-                void addToolApprovalResponse({ id, approved });
-              }}
+              streaming={busy && message.role === "assistant" && index === messages.length - 1}
             />
           ))
         )}
