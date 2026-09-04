@@ -24,6 +24,7 @@ import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 | Package | Project |
 | ------- | ------- |
 | `@socialrobot-io/agent-kit-node` | `node` |
+| `@socialrobot-io/agent-kit-next` | `next` |
 | `@socialrobot-io/agent-kit-core` | `core` |
 | `@socialrobot-io/agent-kit-ai` | `ai` |
 | `@socialrobot-io/agent-kit-sessions` | `sessions` |
@@ -31,7 +32,7 @@ import { createTenantHome } from "@socialrobot-io/agent-kit-node";
 | `@socialrobot-io/agent-kit-curator` | `curator` |
 | `@socialrobot-io/agent-kit-cli` | `cli` |
 
-All seven share one version. A bump updates every package.
+All eight share one version. A bump updates every package.
 
 ## One-time setup
 
