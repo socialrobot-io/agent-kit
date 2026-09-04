@@ -10,8 +10,8 @@
     ".": {
       "@socialrobot-io/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "import": "./with-agent-kit.mjs",
+      "default": "./with-agent-kit.mjs"
     }
   },
   "nx": {
@@ -45,7 +45,7 @@
   },
   "description": "Next.js config helper: withAgentKit for native packages and agents/ tracing",
   "license": "MIT",
-  "files": ["dist", "README.md"],
+  "files": ["dist", "with-agent-kit.mjs", "README.md"],
   "publishConfig": {
     "access": "public"
   },

@@ -20,4 +20,4 @@ Thin Next.js config wrapper. No runtime session or volume logic.
 
 | Change | Also update |
 | ------ | ----------- |
-| Default externals / agentsDir | `with-agent-kit.spec.ts`, package README, root README Set up, hosting guide |
+| Default externals / agentsDir / withAgentKit behavior | `src/lib/with-agent-kit.ts`, root `with-agent-kit.mjs` (must stay in sync — Node loads the `.mjs` before `dist/` exists), `with-agent-kit.spec.ts`, package README, root README Set up, hosting guide |
