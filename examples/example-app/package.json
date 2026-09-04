@@ -39,7 +39,7 @@
     "@socialrobot-io/agent-kit-node": "workspace:*",
     "@socialrobot-io/agent-kit-sessions": "workspace:*",
     "@ai-sdk/deepseek": "^3.0.15",
-    "@ai-sdk/react": "^4.0.43",
+    "@ai-sdk/react": "^4.0.51",
     "agentfs-sdk": "^0.6.4",
     "ai": "^7.0.41",
     "next": "16.2.12",
