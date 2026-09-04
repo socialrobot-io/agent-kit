@@ -1,3 +1,15 @@
+## 0.3.0 (2026-09-04)
+
+### 🚀 Features
+
+- add curator.autoApprove for non-reviewer end users ([#18](https://github.com/socialrobot-io/agent-kit/pull/18))
+- createAgentKit, agent-kit-next, and simpler happy path ([#24](https://github.com/socialrobot-io/agent-kit/pull/24))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 ## 0.2.5 (2026-07-31)
 
 This was a version bump only, there were no code changes.

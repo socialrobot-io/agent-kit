@@ -1,6 +1,6 @@
 {
   "name": "@socialrobot-io/agent-kit-next",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -17,11 +17,15 @@
   "nx": {
     "name": "next",
     "sourceRoot": "packages/next/src",
-    "tags": ["type:package"],
+    "tags": [
+      "type:package"
+    ],
     "targets": {
       "build": {
         "executor": "@nx/js:swc",
-        "outputs": ["{options.outputPath}"],
+        "outputs": [
+          "{options.outputPath}"
+        ],
         "options": {
           "outputPath": "packages/next/dist",
           "main": "packages/next/src/index.ts",
@@ -45,7 +49,11 @@
   },
   "description": "Next.js config helper: withAgentKit for native packages and agents/ tracing",
   "license": "MIT",
-  "files": ["dist", "with-agent-kit.mjs", "README.md"],
+  "files": [
+    "dist",
+    "with-agent-kit.mjs",
+    "README.md"
+  ],
   "publishConfig": {
     "access": "public"
   },
