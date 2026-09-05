@@ -65,6 +65,39 @@ describe("AgentSessionRuntime", () => {
     expect(runtime.tools().map((t) => t.name)).toEqual(["memory", "skills_list", "skill_view", "skill_manage"]);
   });
 
+  it("omits pending-approval copy when writeApproval is off", async () => {
+    const silent = new AgentSessionRuntime({
+      tenantId: "t1",
+      fs,
+      definition: defineAgent({
+        model: "openai/gpt-5",
+        config: { writeApproval: { memory: false, skills: false } },
+      }),
+    });
+    await silent.init();
+    const prompt = silent.systemPrompt();
+    expect(prompt).toContain("# Memory");
+    expect(prompt).not.toMatch(/staged:true/i);
+    expect(prompt).not.toMatch(/pending approval/i);
+    const mem = silent.tools().find((t) => t.name === "memory")!;
+    expect(mem.description).not.toMatch(/staged:true/i);
+    expect(mem.description).not.toMatch(/pending approval/i);
+  });
+
+  it("keeps pending-approval copy when writeApproval is on", async () => {
+    const gated = new AgentSessionRuntime({
+      tenantId: "t1",
+      fs,
+      definition: defineAgent({
+        model: "openai/gpt-5",
+        config: { writeApproval: { memory: true, skills: true } },
+      }),
+    });
+    await gated.init();
+    expect(gated.systemPrompt()).toMatch(/staged:true/i);
+    expect(gated.tools().find((t) => t.name === "memory")!.description).toMatch(/pending approval/i);
+  });
+
   it("wires real JSON schemas onto tools (not empty objects)", () => {
     const mem = runtime.tools().find((t) => t.name === "memory")!;
     expect(mem.inputSchema.type).toBe("object");

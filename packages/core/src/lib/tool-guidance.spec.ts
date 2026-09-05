@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   buildToolGuidance,
   MEMORY_GUIDANCE,
+  MEMORY_GUIDANCE_BASE,
+  MEMORY_WRITE_APPROVAL_GUIDANCE,
   SKILLS_GUIDANCE,
+  SKILLS_GUIDANCE_BASE,
+  SKILLS_WRITE_APPROVAL_GUIDANCE,
   SESSION_SEARCH_GUIDANCE,
   SANDBOX_GUIDANCE,
 } from "./tool-guidance.js";
@@ -35,9 +39,35 @@ describe("buildToolGuidance", () => {
     expect(SESSION_SEARCH_GUIDANCE).toMatch(/Do not invent/i);
   });
 
-  it("memory guidance forbids claiming staged writes as saved", () => {
+  it("memory guidance forbids claiming staged writes as saved when the gate is on", () => {
     expect(MEMORY_GUIDANCE).toMatch(/staged:true/i);
     expect(MEMORY_GUIDANCE).toMatch(/pending approval/i);
+    expect(MEMORY_GUIDANCE).toContain(MEMORY_WRITE_APPROVAL_GUIDANCE);
+    expect(SKILLS_GUIDANCE).toContain(SKILLS_WRITE_APPROVAL_GUIDANCE);
+  });
+
+  it("drops pending-approval copy when writeApproval is off", () => {
+    const text = buildToolGuidance(
+      ["memory", "skills_list", "skill_view", "skill_manage"],
+      true,
+      { memory: false, skills: false },
+    );
+    expect(text).toContain(MEMORY_GUIDANCE_BASE);
+    expect(text).toContain(SKILLS_GUIDANCE_BASE);
+    expect(text).not.toMatch(/staged:true/i);
+    expect(text).not.toMatch(/pending approval/i);
+    expect(text).not.toContain(MEMORY_WRITE_APPROVAL_GUIDANCE);
+    expect(text).not.toContain(SKILLS_WRITE_APPROVAL_GUIDANCE);
+  });
+
+  it("can drop pending copy for one subsystem only", () => {
+    const text = buildToolGuidance(["memory", "skill_manage"], true, {
+      memory: false,
+      skills: true,
+    });
+    expect(text).toContain(MEMORY_GUIDANCE_BASE);
+    expect(text).not.toContain(MEMORY_WRITE_APPROVAL_GUIDANCE);
+    expect(text).toContain(SKILLS_WRITE_APPROVAL_GUIDANCE);
   });
 
   it("returns empty when fully disabled", () => {

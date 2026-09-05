@@ -15,6 +15,7 @@ import {
   InMemoryFs,
   MEMORY_SCHEMA,
   MEMORY_GUIDANCE,
+  memoryToolDescription,
   SESSION_SEARCH_GUIDANCE,
 } from "@socialrobot-io/agent-kit-core";
 import { openAgentSession } from "./open-session.js";
@@ -281,6 +282,13 @@ describe("tool schema copy regression", () => {
     expect(MEMORY_SCHEMA.description).toMatch(/staged:true/i);
     expect(MEMORY_SCHEMA.description).toMatch(/pending approval/i);
     expect(MEMORY_GUIDANCE).toMatch(/staged:true/i);
+  });
+
+  it("memory tool description drops pending copy when the gate is off", () => {
+    const off = memoryToolDescription(false);
+    expect(off).not.toMatch(/staged:true/i);
+    expect(off).not.toMatch(/pending approval/i);
+    expect(off).toMatch(/TARGETS/i);
   });
 
   it("session_search guidance forbids inventing prior chats and scrolling current", () => {

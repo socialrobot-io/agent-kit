@@ -21,6 +21,7 @@ import type { AgentFsLike, AgentDefinition } from "./agent.js";
 import { loadAgentFiles, buildBaseSystemPrompt } from "./agent.js";
 import {
   MEMORY_SCHEMA,
+  memoryToolDescription,
   SKILLS_LIST_SCHEMA,
   SKILL_VIEW_SCHEMA,
   SKILL_MANAGE_SCHEMA,
@@ -155,7 +156,10 @@ export class AgentSessionRuntime {
     if (!this.ready) throw new Error("call init() first");
     const mem = this.memory.formatAllForSystemPrompt();
     const toolNames = [...this.tools().map((t) => t.name), ...this.extraToolNames];
-    const guidance = buildToolGuidance(toolNames, this.toolGuidance);
+    const guidance = buildToolGuidance(toolNames, this.toolGuidance, {
+      memory: this.writeApprovalEnabled("memory"),
+      skills: this.writeApprovalEnabled("skills"),
+    });
     return [this.basePrompt, mem, guidance].filter(Boolean).join("\n\n");
   }
 
@@ -171,7 +175,7 @@ export class AgentSessionRuntime {
   private memoryTool(): SessionTool {
     return {
       name: MEMORY_SCHEMA.name,
-      description: MEMORY_SCHEMA.description,
+      description: memoryToolDescription(this.writeApprovalEnabled("memory")),
       inputSchema: { ...MEMORY_SCHEMA.inputSchema },
       execute: async (args) => {
         const action = args.action as string | undefined;

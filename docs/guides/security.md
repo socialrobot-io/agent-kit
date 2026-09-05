@@ -162,6 +162,10 @@ defineAgent({
 Do not do this for multi-tenant production unless you accept silent self-edits.
 Prefer Option C when only curator suggestions should skip human review.
 
+When the gate is off, system-prompt tool guidance and the `memory` tool
+description drop the pending-approval / `staged:true` copy so the model does
+not tell end users to run `/memory pending`.
+
 ## What stays isolated per tenant
 
 | Data | Where |

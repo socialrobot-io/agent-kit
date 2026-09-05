@@ -153,7 +153,7 @@ defineAgent({
 | ------- | ------ | ----------- |
 | Human review (default) | `writeApproval` on; curator without `autoApprove` | Operator or admin UI via `approvePendingWrites` |
 | Trust curator | `curator: { autoApprove: true }` | Host at deploy time |
-| Silent everything | `writeApproval: { memory: false, skills: false }` | Host; agent tool writes also apply immediately |
+| Silent everything | `writeApproval: { memory: false, skills: false }` | Host; agent tool writes also apply immediately. Guidance and the `memory` tool description omit pending-approval copy. |
 
 Skill locks, path locks, and threat scanning still apply when `autoApprove` is
 on. See [Security](security.md).

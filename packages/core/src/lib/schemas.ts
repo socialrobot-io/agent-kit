@@ -4,31 +4,44 @@
  * Handlers live in `tools.ts`; these are just the JSON schemas.
  */
 
+export const MEMORY_WRITE_APPROVAL_NOTE =
+  "APPROVAL: when write approval is on and there is no interactive Approve in the UI, " +
+  "mutating calls return staged:true and are pending approval — tell the user it is " +
+  "not saved yet. Never claim a staged write is already saved.";
+
+const MEMORY_SCHEMA_LEAD =
+  "Save durable facts to persistent memory that survive across sessions. At " +
+  "session start, MEMORY.md and USER.md are injected into the system prompt as a " +
+  "FROZEN snapshot and never change mid-session — that preserves the LLM prefix " +
+  "cache. Writes still persist to disk immediately; they appear in the prompt on " +
+  "the NEXT session. Tool responses always reflect live disk state.\n\n" +
+  "Answer 'who am I' / 'what do you remember' from the USER PROFILE / MEMORY blocks " +
+  "in the system prompt. Do NOT add entries that say you don't know the user.\n\n" +
+  "ACTIONS: add, replace, remove (mutate). Optional list = read live entries without " +
+  "changing the frozen prompt. Prefer an 'operations' array for multiple writes: " +
+  "each item is {action, content?, old_text?}; batches apply atomically and the char " +
+  "limit is checked only on the FINAL result.\n\n" +
+  "WHEN TO WRITE: the user states a preference, correction, or personal detail, or you " +
+  "learn a stable environment/convention fact. Priority: user preferences & corrections > " +
+  "environment facts > procedures.\n\n" +
+  "IF FULL: an add is rejected with current_entries shown. Reissue as ONE batch that " +
+  "removes or shortens enough stale entries and adds the new one together.\n\n" +
+  "TARGETS: 'user' = who the user is. 'memory' = your notes (environment, conventions).";
+
+const MEMORY_SCHEMA_SKIP =
+  "SKIP: trivial/obvious info, easily re-discovered facts, raw dumps, task progress, " +
+  "temporary TODO state. Reusable procedures belong in a skill.";
+
+/** Tool description when the write gate is off (no pending-approval copy). */
+export function memoryToolDescription(writeApproval = true): string {
+  return writeApproval
+    ? `${MEMORY_SCHEMA_LEAD}\n\n${MEMORY_WRITE_APPROVAL_NOTE}\n\n${MEMORY_SCHEMA_SKIP}`
+    : `${MEMORY_SCHEMA_LEAD}\n\n${MEMORY_SCHEMA_SKIP}`;
+}
+
 export const MEMORY_SCHEMA = {
   name: "memory",
-  description:
-    "Save durable facts to persistent memory that survive across sessions. At " +
-    "session start, MEMORY.md and USER.md are injected into the system prompt as a " +
-    "FROZEN snapshot and never change mid-session — that preserves the LLM prefix " +
-    "cache. Writes still persist to disk immediately; they appear in the prompt on " +
-    "the NEXT session. Tool responses always reflect live disk state.\n\n" +
-    "Answer 'who am I' / 'what do you remember' from the USER PROFILE / MEMORY blocks " +
-    "in the system prompt. Do NOT add entries that say you don't know the user.\n\n" +
-    "ACTIONS: add, replace, remove (mutate). Optional list = read live entries without " +
-    "changing the frozen prompt. Prefer an 'operations' array for multiple writes: " +
-    "each item is {action, content?, old_text?}; batches apply atomically and the char " +
-    "limit is checked only on the FINAL result.\n\n" +
-    "WHEN TO WRITE: the user states a preference, correction, or personal detail, or you " +
-    "learn a stable environment/convention fact. Priority: user preferences & corrections > " +
-    "environment facts > procedures.\n\n" +
-    "IF FULL: an add is rejected with current_entries shown. Reissue as ONE batch that " +
-    "removes or shortens enough stale entries and adds the new one together.\n\n" +
-    "TARGETS: 'user' = who the user is. 'memory' = your notes (environment, conventions).\n\n" +
-    "APPROVAL: when write approval is on and there is no interactive Approve in the UI, " +
-    "mutating calls return staged:true and are pending approval — tell the user it is " +
-    "not saved yet. Never claim a staged write is already saved.\n\n" +
-    "SKIP: trivial/obvious info, easily re-discovered facts, raw dumps, task progress, " +
-    "temporary TODO state. Reusable procedures belong in a skill.",
+  description: memoryToolDescription(true),
   inputSchema: {
     type: "object",
     properties: {
