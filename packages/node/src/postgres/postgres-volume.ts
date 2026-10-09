@@ -145,11 +145,12 @@ export class PostgresVolume {
     );
   }
 
+  /** Direct children of `dir`, in byte order (the same on every server collation). */
   async list(dir: string): Promise<string[]> {
     const d = normalizeVolumePath(dir);
     const prefix = d ? `${d}/` : "";
     const rows = await this.runner().query<{ name: string }>(
-      `SELECT DISTINCT split_part(substr(path, $3::int4), '/', 1) AS name
+      `SELECT DISTINCT split_part(substr(path, $3::int4), '/', 1) COLLATE "C" AS name
        FROM ${this.tables.files}
        WHERE tenant_id = $1::text AND starts_with(path, $2::text)
        ORDER BY name`,
