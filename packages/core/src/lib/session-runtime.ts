@@ -27,6 +27,7 @@ import {
   SKILL_MANAGE_SCHEMA,
 } from "./schemas.js";
 import { buildToolGuidance, type ToolGuidanceConfig } from "./tool-guidance.js";
+import { buildSkillIndex, SKILL_INDEX_LIMIT } from "./skill-index.js";
 import { submitGatedWrite } from "./gated-write.js";
 
 /** One model tool call (name + JSON-shaped args). */
@@ -105,6 +106,7 @@ export class AgentSessionRuntime {
   private readonly disabledToolNames: Set<string>;
   private readonly toolGuidance: ToolGuidanceConfig;
   private basePrompt = "";
+  private skillIndex = "";
   private ready = false;
 
   constructor(private readonly opts: SessionRuntimeOptions) {
@@ -131,12 +133,21 @@ export class AgentSessionRuntime {
     return { writeApprovalEnabled: this.writeApprovalEnabled, origin: this.origin, promptInline: this.promptInline };
   }
 
-  /** Load agent files + memory, then build the frozen system prompt. */
+  /** Load agent files, memory, and the skill index, then build the frozen system prompt. */
   async init(): Promise<void> {
     const files = await loadAgentFiles(this.opts.fs, this.opts.agentDir ?? "agent");
     this.basePrompt = buildBaseSystemPrompt(files);
     await this.memory.loadFromDisk();
+    this.skillIndex = await this.loadSkillIndex();
     this.ready = true;
+  }
+
+  /** Skill index for the frozen prompt, when `config.skillIndex` is on and `skill_view` is available. */
+  private async loadSkillIndex(): Promise<string> {
+    const cfg = this.opts.definition?.config?.skillIndex;
+    if (!cfg || this.disabledToolNames.has(SKILL_VIEW_SCHEMA.name)) return "";
+    const limit = typeof cfg === "object" ? (cfg.limit ?? SKILL_INDEX_LIMIT) : SKILL_INDEX_LIMIT;
+    return buildSkillIndex(await this.skills.list(), limit);
   }
 
   /**
@@ -149,17 +160,18 @@ export class AgentSessionRuntime {
   }
 
   /**
-   * Reload SOUL/AGENTS + memory snapshot from the agent home.
+   * Reload SOUL/AGENTS, the memory snapshot, and the skill index from the agent home.
    * Needed when seed files change under a long-lived process singleton.
    */
   async reload(): Promise<void> {
     const files = await loadAgentFiles(this.opts.fs, this.opts.agentDir ?? "agent");
     this.basePrompt = buildBaseSystemPrompt(files);
     await this.memory.refreshSnapshot();
+    this.skillIndex = await this.loadSkillIndex();
     this.ready = true;
   }
 
-  /** The frozen system prompt for this session (base + memory snapshot + tool guidance). */
+  /** The frozen system prompt for this session (base, memory snapshot, skill index, tool guidance). */
   systemPrompt(): string {
     if (!this.ready) throw new Error("call init() first");
     const mem = this.memory.formatAllForSystemPrompt();
@@ -170,7 +182,7 @@ export class AgentSessionRuntime {
       memory: this.writeApprovalEnabled("memory"),
       skills: this.writeApprovalEnabled("skills"),
     });
-    return [this.basePrompt, mem, guidance].filter(Boolean).join("\n\n");
+    return [this.basePrompt, mem, this.skillIndex, guidance].filter(Boolean).join("\n\n");
   }
 
   /** Built-in tool surface for the model loop. */

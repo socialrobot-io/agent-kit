@@ -142,7 +142,8 @@ export function parseCuratorJob(input: unknown): CuratorJob {
   return { v: 1, tenantId: job.tenantId, sessionId: job.sessionId, conversation, createdAt };
 }
 
-function scheduleCurator(task: Promise<unknown>): void {
+/** Track a background curator task so tests can await it. Never rejects. */
+export function scheduleCurator(task: Promise<unknown>): void {
   const tracked = task.finally(() => {
     pendingCurators.delete(tracked);
   });

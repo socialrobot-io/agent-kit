@@ -44,8 +44,10 @@ import { FRAMEWORK_SKILLS } from "./framework-skills.js";
 import {
   attachSessionCurator,
   parseCuratorJob,
+  resolveCuratorConfig,
   resolveCuratorRunner,
   reviewConversation,
+  scheduleCurator,
   type CuratorJob,
   type CuratorQueue,
 } from "./session-curator.js";
@@ -170,7 +172,41 @@ export type OpenHomeSessionOptions = Omit<
   sessionSearch?: boolean;
   /** Include sandbox tools. Default true when bash was created. */
   sandbox?: boolean;
+  /**
+   * Run the curator after each `run` or `stream` turn. Default true (when the
+   * curator is on). Set `false` when you call {@link TenantHome.recordTurn},
+   * which hands the curator the text you saved instead.
+   */
+  autoReview?: boolean;
 };
+
+/** One chat message as plain text, for transcripts and curator review. */
+export interface TurnMessage {
+  /** Stable message id. Saving the same id twice does nothing. */
+  id: string;
+  /** Message role. */
+  role: "user" | "assistant";
+  /** Text to save and review. Include what the user should be able to find later. */
+  content: string;
+}
+
+/** Input for {@link TenantHome.recordTurn}. */
+export interface RecordTurnInput {
+  /** New messages from this turn, oldest first. Saved to the transcript store. */
+  messages: TurnMessage[];
+  /** Earlier messages that the curator also reads. They are not saved again. */
+  context?: Pick<TurnMessage, "role" | "content">[];
+  /** Hand the turn to the curator. Default true. Ignored when the curator is off. */
+  review?: boolean;
+}
+
+/** What {@link TenantHome.recordTurn} did. */
+export interface RecordTurnResult {
+  /** Messages sent to the transcript store (0 when transcripts are off). */
+  recorded: number;
+  /** `queued`: given to `curatorQueue`. `started`: running in this process. `skipped`: no review. */
+  review: "queued" | "started" | "skipped";
+}
 
 /** Memory, skills, and pending writes for host code (settings pages, review UIs). */
 export interface HomeStores {
@@ -226,6 +262,17 @@ export interface TenantHome {
    * @returns The review outcome, or `null` when the curator is disabled.
    */
   review: (job: CuratorJob) => Promise<CuratorOutcome | null>;
+  /**
+   * Save one completed turn as plain text, then hand it to the curator.
+   * `session_search` finds the saved messages in later chats, and the curator
+   * reads the same text. Use it with `openSession(id, { autoReview: false })`.
+   * With `curatorQueue`, the job is queued before this resolves. Otherwise the
+   * review runs in the background.
+   *
+   * @param sessionId - Chat id. Must belong to this tenant.
+   * @param input - The turn's messages, optional earlier context, and the review switch.
+   */
+  recordTurn: (sessionId: string, input: RecordTurnInput) => Promise<RecordTurnResult>;
 }
 
 function legacyStorage(opts: CreateTenantHomeOptions): StorageAdapter {
@@ -338,6 +385,7 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
       definition: sessionDefinition,
       sessionSearch: _searchFlag,
       sandbox: _sandboxFlag,
+      autoReview,
       model: sessionModel,
       interactiveApproval,
       ...rest
@@ -365,6 +413,7 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
       ...rest,
     });
 
+    if (autoReview === false) return session;
     return attachSessionCurator(session, {
       definition: activeDefinition,
       resolveOpts,
@@ -407,6 +456,55 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
     });
   };
 
+  const recordTurn = async (
+    sessionId: string,
+    input: RecordTurnInput,
+  ): Promise<RecordTurnResult> => {
+    if (!sessionId.trim()) throw new Error("recordTurn requires sessionId");
+    const messages = input.messages.filter((m) => m.content.trim());
+
+    let recorded = 0;
+    if (transcripts && messages.length > 0) {
+      await transcripts.createSession({
+        id: sessionId,
+        tenantId,
+        source: "chat",
+        createdAt: Date.now() / 1000,
+      });
+      await assertTenantSession(transcripts, tenantId, sessionId);
+      const now = Date.now() / 1000;
+      for (const [index, message] of messages.entries()) {
+        await transcripts.appendMessage({
+          id: message.id,
+          sessionId,
+          role: message.role,
+          content: message.content,
+          // Keep the turn's order when messages land in the same second.
+          createdAt: now + index / 1000,
+        });
+        recorded++;
+      }
+    }
+
+    const conversation = [...(input.context ?? []), ...messages]
+      .filter((m) => m.content.trim())
+      .map(({ role, content }) => ({ role, content }));
+    if (input.review === false || !resolveCuratorConfig(definition) || conversation.length === 0) {
+      return { recorded, review: "skipped" };
+    }
+    const job: CuratorJob = { v: 1, tenantId, sessionId, conversation, createdAt: Date.now() / 1000 };
+    if (opts.curatorQueue) {
+      await opts.curatorQueue(job);
+      return { recorded, review: "queued" };
+    }
+    scheduleCurator(
+      review(job).catch((err: unknown) => {
+        console.error("[agent-kit] curator failed:", err instanceof Error ? err.message : String(err));
+      }),
+    );
+    return { recorded, review: "started" };
+  };
+
   return {
     tenantId,
     location,
@@ -419,6 +517,7 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
     openSession,
     stores,
     review,
+    recordTurn,
   };
 }
 

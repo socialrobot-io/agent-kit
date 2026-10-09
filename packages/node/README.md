@@ -39,6 +39,7 @@ await session.run([{ role: "user", content: "Hello" }]);
 | `home.openSession` | Open one chat (frozen memory; curator after each turn) |
 | `home.stores()` | Memory, skills, and pending stores for host pages |
 | `home.review(job)` | Run one curator review now (queue workers) |
+| `home.recordTurn(sessionId, input)` | Save one turn for `session_search` and hand it to the curator |
 
 Curator default is on (`defineAgent` `config.curator`). Disable with
 `config.curator: false`. Apply curator proposals immediately (no pending UI)
@@ -63,6 +64,7 @@ createTenantHome({
 home.openSession(sessionId, {
   addTools: [myTool],
   disableTools: ["skill_manage"],
+  // autoReview: false, // you call home.recordTurn, which reviews the turn
 });
 ```
 

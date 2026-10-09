@@ -42,6 +42,12 @@ const session = await home.openSession(sessionId, {
 });
 ```
 
+To check saved tool calls (for example chat history in your database), use
+the schemas that `@socialrobot-io/agent-kit-node` exports: `MEMORY_SCHEMA`,
+`SKILLS_LIST_SCHEMA`, `SKILL_VIEW_SCHEMA`, `SKILL_MANAGE_SCHEMA`, and
+`SESSION_SEARCH_TOOL_SCHEMA`. Each has the tool `name`, `description`, and
+JSON Schema `inputSchema`.
+
 Tools that you disable when you open a session also leave the tool guidance
 in the frozen prompt. With `skill_manage` disabled, the agent reads skills
 but is not told to write them. `disableTools` on one `run` or `stream` call

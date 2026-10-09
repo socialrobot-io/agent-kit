@@ -24,6 +24,37 @@ export interface CreateSessionSearchToolOptions {
 }
 
 /**
+ * Name, description, and JSON Schema of the `session_search` tool. Hosts can
+ * use it to validate saved tool calls without a transcript store.
+ */
+export const SESSION_SEARCH_TOOL_SCHEMA = {
+  name: "session_search",
+  description:
+    "Search past conversation sessions. Returns messages from the transcript store — " +
+    "no summarization.\n\n" +
+    "BROWSE (no args): list past sessions for this tenant (newest first). The current " +
+    "chat is skipped by default — it is already in context.\n" +
+    "DISCOVERY (query): find matching messages across past sessions.\n" +
+    "SCROLL (session_id): read a window within one past session. Do not scroll the " +
+    "current session_id unless the user explicitly needs it (include_current=true).",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Search query for discovery mode." },
+      session_id: { type: "string", description: "Session to scroll/browse." },
+      offset: { type: "number", description: "Message offset for scroll mode." },
+      limit: { type: "number", description: "Max messages/sessions to return (default 20)." },
+      include_current: {
+        type: "boolean",
+        description:
+          "Include the current chat in browse/discovery, or allow scrolling it. Default false.",
+      },
+    },
+    required: [] as string[],
+  },
+} as const;
+
+/**
  * Build the `session_search` SessionTool for one tenant.
  *
  * @param store - Transcript store scoped to the tenant volume.
@@ -36,29 +67,12 @@ export function createSessionSearchTool(
   opts: CreateSessionSearchToolOptions = {},
 ): SessionSearchTool {
   return {
-    name: "session_search",
-    description:
-      "Search past conversation sessions. Returns messages from the transcript store — " +
-      "no summarization.\n\n" +
-      "BROWSE (no args): list past sessions for this tenant (newest first). The current " +
-      "chat is skipped by default — it is already in context.\n" +
-      "DISCOVERY (query): find matching messages across past sessions.\n" +
-      "SCROLL (session_id): read a window within one past session. Do not scroll the " +
-      "current session_id unless the user explicitly needs it (include_current=true).",
+    name: SESSION_SEARCH_TOOL_SCHEMA.name,
+    description: SESSION_SEARCH_TOOL_SCHEMA.description,
     inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search query for discovery mode." },
-        session_id: { type: "string", description: "Session to scroll/browse." },
-        offset: { type: "number", description: "Message offset for scroll mode." },
-        limit: { type: "number", description: "Max messages/sessions to return (default 20)." },
-        include_current: {
-          type: "boolean",
-          description:
-            "Include the current chat in browse/discovery, or allow scrolling it. Default false.",
-        },
-      },
-      required: [] as string[],
+      ...SESSION_SEARCH_TOOL_SCHEMA.inputSchema,
+      properties: { ...SESSION_SEARCH_TOOL_SCHEMA.inputSchema.properties },
+      required: [],
     },
     execute: async (args) =>
       sessionSearch(

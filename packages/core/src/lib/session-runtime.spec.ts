@@ -155,6 +155,61 @@ describe("AgentSessionRuntime", () => {
     expect(res.skills.map((s) => s.name)).toContain("research");
   });
 
+  describe("skill index", () => {
+    const withIndex = (skillIndex: boolean | { limit?: number }, disabledToolNames?: string[]) =>
+      new AgentSessionRuntime({
+        tenantId: "t1",
+        fs,
+        definition: defineAgent({
+          model: "openai/gpt-5",
+          config: { skillIndex, writeApproval: { memory: false, skills: false } },
+        }),
+        disabledToolNames,
+      });
+
+    beforeEach(async () => {
+      await runtime.tools().find((t) => t.name === "skill_manage")!.execute({
+        action: "create",
+        name: "launch-posts",
+        content: "---\nname: launch-posts\ndescription: Write launch posts.\n---\n\nSteps.\n",
+      });
+    });
+
+    it("is not in the prompt by default", async () => {
+      const next = new AgentSessionRuntime({ tenantId: "t1", fs });
+      await next.init();
+      expect(next.systemPrompt()).not.toContain("<available_skills>");
+    });
+
+    it("lists skills in the frozen prompt when config.skillIndex is on", async () => {
+      const next = withIndex(true);
+      await next.init();
+      const prompt = next.systemPrompt();
+      expect(prompt).toContain("<available_skills>\n- launch-posts: Write launch posts.\n</available_skills>");
+      // Frozen: a skill created mid-session shows up on the next init, not now.
+      await next.tools().find((t) => t.name === "skill_manage")!.execute({
+        action: "create",
+        name: "threads",
+        content: "---\nname: threads\ndescription: Write threads.\n---\n\nSteps.\n",
+      });
+      expect(next.systemPrompt()).not.toContain("- threads");
+      await next.reload();
+      expect(next.systemPrompt()).toContain("- threads: Write threads.");
+    });
+
+    it("is left out when skill_view is disabled", async () => {
+      const next = withIndex(true, ["skill_view"]);
+      await next.init();
+      expect(next.systemPrompt()).not.toContain("<available_skills>");
+    });
+
+    it("honors the limit", async () => {
+      const next = withIndex({ limit: 0 });
+      await next.init();
+      expect(next.systemPrompt()).toContain("(1 more. Use `skills_list` to see them.)");
+    });
+  });
+
   it("stages memory writes when write_approval is on", async () => {
     const gated = new AgentSessionRuntime({
       tenantId: "t1",

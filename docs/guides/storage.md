@@ -175,10 +175,10 @@ first. Search reads the messages of one tenant, which is fast for thousands
 of messages per tenant. For more, add an index that suits your queries and
 your own `TranscriptStore`.
 
-The kit does not save chat messages for you. Call
-`home.transcripts.appendMessage` after each turn (for example in `onFinish`)
-with the user message and the reply. Use stable message ids: appends are
-idempotent by id.
+The kit does not save chat messages for you. Call `kit.recordTurn` after each
+turn with the user message and the reply. It also hands the turn to the
+curator. Use stable message ids: a second save of the same id does nothing.
+See [Hosting](hosting.md#save-turns-for-search-and-review).
 
 ### Retention and deletion
 
