@@ -73,6 +73,14 @@ export type AgentLoopKitOptions = {
    * Ignored when `stopWhen` is set. Default 8.
    */
   maxSteps?: number;
+  /**
+   * Per-turn system text placed after the frozen session prompt. Use it for
+   * request context such as the date, the locale, page state, or retrieved
+   * data. The frozen prefix stays the same, so provider prompt caching still
+   * covers it. Fence untrusted text (user content, retrieved documents) so
+   * the model reads it as data.
+   */
+  systemContext?: string;
 };
 
 /** AI SDK `generateText` options the host may set (kit-filled keys omitted). */
@@ -113,6 +121,7 @@ function peelKitOptions<T extends AgentLoopKitOptions & ResolveModelOptions>(opt
     extraAiTools,
     toolSet,
     maxSteps,
+    systemContext,
     gateway,
     apiKey,
     baseURL,
@@ -132,6 +141,7 @@ function peelKitOptions<T extends AgentLoopKitOptions & ResolveModelOptions>(opt
     extraAiTools,
     toolSet,
     maxSteps,
+    systemContext,
     gateway,
     apiKey,
     baseURL,
@@ -151,6 +161,13 @@ function resolveToolSet(kit: AgentLoopKitOptions): ToolSet {
     extraTools: kit.extraTools,
     extraAiTools: kit.extraAiTools,
   }).toolSet;
+}
+
+/** Frozen session prompt first, then per-turn context, so the cached prefix never moves. */
+function turnSystem(kit: AgentLoopKitOptions): string {
+  const base = kit.runtime.systemPrompt();
+  const extra = kit.systemContext?.trim();
+  return extra ? `${base}\n\n${extra}` : base;
 }
 
 function resolveTurnModel(kit: AgentLoopKitOptions & ResolveModelOptions) {
@@ -179,7 +196,7 @@ export async function runAgentTurn(
   return generateText({
     ...sdk,
     model: resolveTurnModel(kit),
-    system: kit.runtime.systemPrompt(),
+    system: turnSystem(kit),
     messages,
     tools: resolveToolSet(kit),
     stopWhen: stopWhen ?? stepCountIs(kit.maxSteps ?? 8),
@@ -200,7 +217,7 @@ export function streamAgentTurn(
   return streamText({
     ...sdk,
     model: resolveTurnModel(kit),
-    system: kit.runtime.systemPrompt(),
+    system: turnSystem(kit),
     messages,
     tools: resolveToolSet(kit),
     stopWhen: stopWhen ?? stepCountIs(kit.maxSteps ?? 8),

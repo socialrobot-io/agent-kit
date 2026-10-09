@@ -115,6 +115,27 @@ describe("runAgentTurn", () => {
     const { runtime } = await makeRuntime();
     await expect(runAgentTurn([{ role: "user", content: "hi" }], { runtime })).rejects.toThrow(/model/);
   });
+
+  it("appends systemContext after the frozen session prompt", async () => {
+    const { runtime } = await makeRuntime();
+    const prompts: unknown[] = [];
+    const model = mockModel([textStep("ok")]);
+    const doGenerate = (model as unknown as { doGenerate: (o: unknown) => Promise<unknown> }).doGenerate;
+    (model as unknown as { doGenerate: (o: { prompt: unknown }) => Promise<unknown> }).doGenerate = (o) => {
+      prompts.push(o.prompt);
+      return doGenerate(o);
+    };
+
+    await runAgentTurn([{ role: "user", content: "hi" }], {
+      runtime,
+      model,
+      systemContext: "Today is 2026-10-09.",
+    });
+
+    const system = (prompts[0] as { role: string; content: string }[]).find((m) => m.role === "system");
+    expect(system?.content).toBe(`${runtime.systemPrompt()}\n\nToday is 2026-10-09.`);
+    expect(system?.content.startsWith(runtime.systemPrompt())).toBe(true);
+  });
 });
 
 describe("aiCuratorRunner", () => {
