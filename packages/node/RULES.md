@@ -11,10 +11,12 @@ defaults. Leaves stay pure; this package may depend on sibling packages
    The host passes a stable `tenantId`.
 2. **Composable.** Expose `volume`, `transcripts`, `bash` so hosts can replace
    pieces. `openSession` accepts the same overrides as `openAgentSession`.
-3. **One home per storage key per process.** Cache by
-   `StorageAdapter.key(tenantId)` (the volume path for AgentFS). Throw when a
-   second tenant uses a key that is already open; never hand tenant A's home
-   to tenant B.
+3. **One open storage per key per process.** Cache the opened storage (and
+   its file transcript store) by `StorageAdapter.key(tenantId)` (the volume
+   path for AgentFS). Each kit builds its own home on it (`openTenantHome`);
+   `createTenantHome` also caches one home per key. Throw when a second
+   tenant uses a key that is already open; never hand tenant A's home or
+   storage to tenant B.
 4. **Curator is baked into `openSession`.** After each turn, when
    `definition.config.curator` is not `false`, schedule `runBackgroundReview`
    without blocking the reply. Toggle only via `defineAgent` config (or

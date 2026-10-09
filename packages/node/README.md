@@ -26,7 +26,7 @@ await session.run([{ role: "user", content: "Hello" }]);
 | Model | `anthropic/claude-sonnet-4-5` |
 | Transcripts | on (`session_search` wired) |
 | Sandbox | on (`bash`, `readFile`, `writeFile`) |
-| Cache | one home per storage key per process |
+| Cache | storage opens once per key per process; each kit keeps its own home |
 
 ## Home fields
 

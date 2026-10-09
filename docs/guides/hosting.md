@@ -89,7 +89,9 @@ Defaults:
 - transcripts + `session_search`
 - sandbox tools (`bash`, `readFile`, `writeFile`)
 - model `anthropic/claude-sonnet-4-5`
-- process cache so the same storage key (for AgentFS, the volume path) reuses one home
+- process cache: each storage key (for AgentFS, the volume path) opens once per
+  process. Every kit on that key shares the opened storage and keeps its own
+  options
 
 Most apps want `createAgentKit`: one object that opens a tenant home (cached
 per process, bounded by the number of tenants) and a chat session on demand.
