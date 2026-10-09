@@ -48,6 +48,38 @@ const home = await createTenantHome({ tenantId, agent });
 
 The durable copy lives on the tenant volume after install (AgentFS by
 default, or your [storage](storage.md) adapter).
+
+### Bundle updates
+
+The home installs the bundle each time a process boots a tenant. The
+install writes `SOUL.md`, `AGENTS.md` and every bundled skill file again,
+so a change in the bundle reaches each tenant on its next boot. An
+unlocked agent-folder skill gets its bundle version back, and the edits
+the curator made to it are lost. Lock the skills that you own.
+
+The home also removes what you took out of the bundle:
+
+- A skill you removed is deleted, and its name leaves `skills/.locks.json`.
+- A file you removed or renamed inside a skill is deleted.
+- `SOUL.md` or `AGENTS.md` is deleted when the bundle no longer has it.
+
+To do this, the home keeps the list of files it installed in
+`agent/.bundle.json`. Agents cannot write under `agent/`. Files that the
+bundle never wrote stay, for example learned skills, files the curator
+added to an unlocked skill, and memory.
+
+Limits:
+
+- A process that opens the home without `agent` installs nothing and
+  removes nothing.
+- The first boot on 0.3.3 or later records the list but removes nothing.
+  Delete the skills you removed before that once, by hand.
+- During a rolling deploy, an old process that boots a tenant installs
+  the old bundle again. It stays until a process with the new bundle
+  boots that tenant again.
+
+To install a bundle yourself, call `installAgent(volume, bundle, { prune: true })`.
+Use one pruning bundle per volume: two different bundles delete each other's files.
 ## Skill layout
 
 ```text

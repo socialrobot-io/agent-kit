@@ -55,6 +55,17 @@ export async function addSkillLocks(
   await saveSkillLocks(fs, current);
 }
 
+/** Drop names from the registry, for example when the host removed those skills. */
+export async function removeSkillLocks(
+  fs: Pick<SkillsFs, "readFile" | "writeFile">,
+  names: readonly string[],
+): Promise<void> {
+  const current = await loadSkillLocks(fs);
+  let changed = false;
+  for (const n of names) changed = current.delete(normalizeName(n)) || changed;
+  if (changed) await saveSkillLocks(fs, current);
+}
+
 /** Frontmatter / meta flags that lock a skill for mutation. */
 export function metaMarksLocked(meta: {
   locked?: boolean;
