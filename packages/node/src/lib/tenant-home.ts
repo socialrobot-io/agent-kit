@@ -60,8 +60,42 @@ import {
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4-5";
 const DEFAULT_DATA_DIR = "./data";
 
-/** Process-local cache: one home per storage key (volume path for AgentFS). */
-const homes = new Map<string, { tenantId: string; home: Promise<TenantHome> }>();
+/** Storage opened once per key in this process, with its file transcript store. */
+interface SharedStorage {
+  opened: TenantStorage;
+  /** FileTranscriptStore on the volume, when the storage has no transcript store. */
+  fileTranscripts?: FileTranscriptStore;
+}
+
+/**
+ * Process-local storage cache, one entry per storage key (the volume path for
+ * AgentFS). Every home on a key shares it: AgentFS allows one open per file,
+ * and file transcripts keep an index in memory.
+ */
+const storages = new Map<string, { tenantId: string; shared: Promise<SharedStorage> }>();
+
+/** Process-local cache for createTenantHome: one home per storage key. */
+const homes = new Map<string, Promise<TenantHome>>();
+
+/** Open (or reuse) the storage for a tenant. Throws when another tenant holds the key. */
+function openSharedStorage(storage: StorageAdapter, tenantId: string): Promise<SharedStorage> {
+  const key = storage.key(tenantId);
+  const existing = storages.get(key);
+  if (existing) {
+    // Tenant isolation: one storage key (for AgentFS, one file) per tenant.
+    if (existing.tenantId !== tenantId) {
+      throw new Error(
+        `Storage '${key}' is already open for tenant '${existing.tenantId}'. ` +
+          "Each tenant needs its own volume.",
+      );
+    }
+    return existing.shared;
+  }
+  const shared = storage.open(tenantId).then((opened) => ({ opened }) as SharedStorage);
+  storages.set(key, { tenantId, shared });
+  shared.catch(() => storages.delete(key));
+  return shared;
+}
 
 export type CreateTenantHomeOptions = ResolveModelOptions & {
   /** Stable tenant id from your auth layer. Never from the client body alone. */
@@ -239,7 +273,8 @@ async function installEnvelope(volume: AgentFsLike, agent?: AgentBundle): Promis
 
 async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter): Promise<TenantHome> {
   const tenantId = opts.tenantId;
-  const opened = await storage.open(tenantId);
+  const shared = await openSharedStorage(storage, tenantId);
+  const { opened } = shared;
   const { volume, location } = opened;
   const definition = resolveDefinition(opts);
   const agentFs = createAgentFs(volume);
@@ -248,7 +283,7 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
 
   const wantTranscripts = opts.transcripts !== false;
   const transcripts = wantTranscripts
-    ? (opened.transcripts ?? new FileTranscriptStore({ fs: volume }))
+    ? (opened.transcripts ?? (shared.fileTranscripts ??= new FileTranscriptStore({ fs: volume })))
     : undefined;
 
   const sandboxOpt = opts.sandbox;
@@ -388,7 +423,21 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
 }
 
 /**
- * Open (or reuse) the process-local home for one tenant.
+ * Build a home for one tenant with exactly these options. Storage is shared
+ * per process (see createTenantHome); the home itself is not cached. Kits use
+ * it so two kits in one process (for example a chat kit and a review kit with
+ * another model) keep their own options on the same storage.
+ */
+export function openTenantHome(opts: CreateTenantHomeOptions): Promise<TenantHome> {
+  const tenantId = opts.tenantId;
+  if (!tenantId?.trim()) return Promise.reject(new Error("createTenantHome requires tenantId"));
+  return bootHome(opts, resolveStorage(opts));
+}
+
+/**
+ * Open (or reuse) the process-local home for one tenant. The first call for
+ * a storage key decides the home's options; later calls get the same home.
+ * Use createAgentKit for several configurations in one process.
  *
  * ```ts
  * import { agent } from "./generated/agent";
@@ -407,18 +456,19 @@ export async function createTenantHome(opts: CreateTenantHomeOptions): Promise<T
   const key = storage.key(tenantId);
   const existing = homes.get(key);
   if (existing) {
-    // Tenant isolation: one storage key (for AgentFS, one file) per tenant.
-    if (existing.tenantId !== tenantId) {
+    // Same guard as the storage cache, before handing out a cached home.
+    const holder = storages.get(key);
+    if (holder && holder.tenantId !== tenantId) {
       throw new Error(
-        `Storage '${key}' is already open for tenant '${existing.tenantId}'. ` +
+        `Storage '${key}' is already open for tenant '${holder.tenantId}'. ` +
           "Each tenant needs its own volume.",
       );
     }
-    return existing.home;
+    return existing;
   }
 
   const boot = bootHome(opts, storage);
-  homes.set(key, { tenantId, home: boot });
+  homes.set(key, boot);
   try {
     return await boot;
   } catch (err) {
@@ -427,7 +477,8 @@ export async function createTenantHome(opts: CreateTenantHomeOptions): Promise<T
   }
 }
 
-/** Clear the home cache (tests only). Does not close volumes. */
+/** Clear the home and storage caches (tests only). Does not close volumes. */
 export function resetTenantHomeCache(): void {
   homes.clear();
+  storages.clear();
 }

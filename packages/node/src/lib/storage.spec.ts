@@ -288,6 +288,67 @@ describe("home.review and kit.review", () => {
   });
 });
 
+describe("several kits in one process", () => {
+  const job = (tenantId: string): CuratorJob => ({
+    v: 1,
+    tenantId,
+    sessionId: "chat-1",
+    conversation: [{ role: "user", content: "Hi" }],
+    createdAt: 1,
+  });
+
+  it("keep their own options on shared storage", async () => {
+    const storage = memoryStorage();
+    const chat = createAgentKit({
+      storage,
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("from chat kit"),
+    });
+    const worker = createAgentKit({
+      storage,
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("from worker kit"),
+    });
+    await chat.home("t1");
+    await worker.review(job("t1"));
+    expect((await (await chat.home("t1")).stores()).memory.getEntries("user")).toEqual([
+      "from worker kit",
+    ]);
+    expect(storage.opened.size).toBe(1);
+  });
+
+  it("share one file transcript store per AgentFS volume", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-kits-"));
+    try {
+      const a = createAgentKit({ dataDir: dir, model: mockModel(), sandbox: false });
+      const b = createAgentKit({ dataDir: dir, model: mockModel(), sandbox: false });
+      const [homeA, homeB] = [await a.home("t1"), await b.home("t1")];
+      expect(homeA).not.toBe(homeB);
+      expect(homeA.transcripts).toBe(homeB.transcripts);
+      expect(homeA.volume).toBe(homeB.volume);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("still refuse a second tenant on one volumePath", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-kits-"));
+    try {
+      const kit = createAgentKit({
+        volumePath: join(dir, "one.db"),
+        model: mockModel(),
+        sandbox: false,
+      });
+      await kit.home("a");
+      await expect(kit.home("b")).rejects.toThrow(/already open for tenant 'a'/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("parseCuratorJob", () => {
   it("rejects bad shapes from a queue", () => {
     expect(() => parseCuratorJob(null)).toThrow(/not an object/);

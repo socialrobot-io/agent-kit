@@ -14,7 +14,7 @@ import type { AgentSession } from "@socialrobot-io/agent-kit-ai";
 import type { CuratorOutcome } from "@socialrobot-io/agent-kit-curator";
 import { parseCuratorJob, type CuratorJob } from "./session-curator.js";
 import {
-  createTenantHome,
+  openTenantHome,
   resetTenantHomeCache,
   type CreateTenantHomeOptions,
   type OpenHomeSessionOptions,
@@ -114,7 +114,8 @@ export function createAgentKit(opts: CreateAgentKitOptions = {}): AgentKit {
   const home = (tenantId: string): Promise<TenantHome> => {
     const existing = homes.get(tenantId);
     if (existing) return existing;
-    const boot = createTenantHome({ ...opts, tenantId });
+    // Own home per kit (its options), shared storage per process.
+    const boot = openTenantHome({ ...opts, tenantId });
     homes.set(tenantId, boot);
     boot.catch(() => homes.delete(tenantId));
     return boot;
