@@ -22,20 +22,23 @@ await session.run([{ role: "user", content: "Hello" }]);
 
 | Piece | Default |
 | ----- | ------- |
-| Volume | `./data/tenants/${tenantId}.db` |
+| Storage | AgentFS file at `./data/tenants/${tenantId}.db` |
 | Model | `anthropic/claude-sonnet-4-5` |
 | Transcripts | on (`session_search` wired) |
 | Sandbox | on (`bash`, `readFile`, `writeFile`) |
-| Cache | one home per volume path per process |
+| Cache | one home per storage key per process |
 
 ## Home fields
 
 | Field | What it is |
 | ----- | ---------- |
-| `home.volume` | Tenant SQLite filesystem |
+| `home.volume` | Privileged tenant filesystem (host code only) |
+| `home.location` | File path or backend label |
 | `home.transcripts` | Chat history for search |
 | `home.bash` | Guarded shell toolkit |
 | `home.openSession` | Open one chat (frozen memory; curator after each turn) |
+| `home.stores()` | Memory, skills, and pending stores for host pages |
+| `home.review(job)` | Run one curator review now (queue workers) |
 
 Curator default is on (`defineAgent` `config.curator`). Disable with
 `config.curator: false`. Apply curator proposals immediately (no pending UI)
@@ -48,7 +51,9 @@ createTenantHome({
   tenantId,
   agent,
   dataDir: "/var/lib/agents",
-  // volumePath: "/data/acme.db",
+  // storage: postgresStorage({ db }), // many processes (see below)
+  // curatorQueue: (job) => queue.add("curator", job), // review in a worker
+  // curatorModel: "anthropic/claude-haiku-4-5",
   model: "anthropic/claude-sonnet-4-5",
   interactiveApproval: true,
   workspaceFiles: { "README.md": "# hi\n" },
@@ -61,4 +66,18 @@ home.openSession(sessionId, {
 });
 ```
 
-Docs: [Hosting](../../docs/guides/hosting.md).
+## Postgres storage
+
+Import from the `./postgres` subpath. It has no driver dependency: wrap the
+client of the driver that you use.
+
+```ts
+import pg from "pg";
+import { createAgentKit } from "@socialrobot-io/agent-kit-node";
+import { fromPg, postgresStorage } from "@socialrobot-io/agent-kit-node/postgres";
+
+const db = fromPg(new pg.Pool({ connectionString: process.env.DATABASE_URL }));
+export const kit = createAgentKit({ agent, storage: postgresStorage({ db }), sandbox: false });
+```
+
+Docs: [Hosting](../../docs/guides/hosting.md) · [Storage](../../docs/guides/storage.md).
