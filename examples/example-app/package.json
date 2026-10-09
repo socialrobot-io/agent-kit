@@ -42,7 +42,7 @@
     "@ai-sdk/react": "^4.0.43",
     "agentfs-sdk": "^0.6.4",
     "ai": "^7.0.41",
-    "next": "16.2.12",
+    "next": "16.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

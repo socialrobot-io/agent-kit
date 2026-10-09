@@ -5,7 +5,7 @@
   "scripts": {},
   "private": true,
   "dependencies": {
-    "next": "16.2.12",
+    "next": "16.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -48,5 +48,11 @@
         }
       }
     }
+  },
+  "overrides": {
+    "proxy-addr": "^2.0.8",
+    "@xhmikosr/decompress": "^11.1.4",
+    "piscina": "^4.9.4",
+    "handlebars": "^4.7.10"
   }
 }
