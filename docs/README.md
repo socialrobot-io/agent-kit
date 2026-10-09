@@ -23,6 +23,7 @@ and human-gated learning.
 | Example | Shows |
 | ------- | ----- |
 | [`examples/example-app`](../examples/example-app) | Streaming Next.js chat + `/code-runner` (`js-exec`) |
+| [`examples/postgres-worker`](../examples/postgres-worker) | Postgres storage, a curator worker fed by a queue, approval, `systemContext` (offline test on PGlite) |
 
 ## Read in order (new integrators)
 

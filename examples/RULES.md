@@ -7,8 +7,9 @@ hosts how to compose it. Every example follows the same contract.
 
 1. **Offline test, always.** Each example ships a vitest smoke test that runs
    with no API key and no network: mock `LanguageModel` (v4 spec, stringified
-   tool-call `input`) plus `InMemoryFs`. Live AgentFS volumes and real model
-   calls never appear in tests.
+   tool-call `input`) plus `InMemoryFs`, or an in-process PGlite for examples
+   about database storage. Live AgentFS volumes, database servers, and real
+   model calls never appear in tests.
 2. **Live paths are env-driven and fail helpfully.** Config comes from
    `.env.sample`-documented variables (`AI_GATEWAY_API_KEY`, `MODEL`). When a
    required var is missing, print setup instructions and exit 1; never throw a

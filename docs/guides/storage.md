@@ -239,6 +239,9 @@ describes the event and pass it to `kit.review`.
 `curatorQueue` needs shared storage. With AgentFS the worker cannot open the
 volume while the web process holds it.
 
+[`examples/postgres-worker`](../../examples/postgres-worker) runs this loop end
+to end: a web kit, a JSON queue, a worker kit, approval, and a second chat.
+
 ## Write your own adapter
 
 A storage adapter has two methods:

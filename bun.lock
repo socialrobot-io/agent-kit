@@ -54,9 +54,24 @@
         "remark-gfm": "^4.0.1",
       },
     },
+    "examples/postgres-worker": {
+      "name": "@socialrobot-io/agent-kit-example-postgres-worker",
+      "version": "0.1.0",
+      "dependencies": {
+        "@electric-sql/pglite": "^0.5.8",
+        "@socialrobot-io/agent-kit-ai": "workspace:*",
+        "@socialrobot-io/agent-kit-core": "workspace:*",
+        "@socialrobot-io/agent-kit-node": "workspace:*",
+        "ai": "^7.0.41",
+        "pg": "^8.23.1",
+      },
+      "devDependencies": {
+        "@types/pg": "^8.23.1",
+      },
+    },
     "packages/ai": {
       "name": "@socialrobot-io/agent-kit-ai",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.31",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -71,7 +86,7 @@
     },
     "packages/cli": {
       "name": "@socialrobot-io/agent-kit-cli",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -84,14 +99,14 @@
     },
     "packages/core": {
       "name": "@socialrobot-io/agent-kit-core",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
     },
     "packages/curator": {
       "name": "@socialrobot-io/agent-kit-curator",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-core": "workspace:*",
         "@swc/helpers": "~0.5.18",
@@ -99,7 +114,7 @@
     },
     "packages/next": {
       "name": "@socialrobot-io/agent-kit-next",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
@@ -112,7 +127,7 @@
     },
     "packages/node": {
       "name": "@socialrobot-io/agent-kit-node",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@socialrobot-io/agent-kit-ai": "workspace:*",
         "@socialrobot-io/agent-kit-core": "workspace:*",
@@ -133,7 +148,7 @@
     },
     "packages/sandbox": {
       "name": "@socialrobot-io/agent-kit-sandbox",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
         "agentfs-sdk": "^0.6.4",
@@ -143,7 +158,7 @@
     },
     "packages/sessions": {
       "name": "@socialrobot-io/agent-kit-sessions",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@swc/helpers": "~0.5.18",
       },
@@ -742,6 +757,8 @@
     "@socialrobot-io/agent-kit-curator": ["@socialrobot-io/agent-kit-curator@workspace:packages/curator"],
 
     "@socialrobot-io/agent-kit-example": ["@socialrobot-io/agent-kit-example@workspace:examples/example-app"],
+
+    "@socialrobot-io/agent-kit-example-postgres-worker": ["@socialrobot-io/agent-kit-example-postgres-worker@workspace:examples/postgres-worker"],
 
     "@socialrobot-io/agent-kit-next": ["@socialrobot-io/agent-kit-next@workspace:packages/next"],
 

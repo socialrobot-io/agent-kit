@@ -47,11 +47,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Test packages
-        run: bunx nx run-many -t test --projects=core,sessions,ai,sandbox,curator,node --parallel=3
+      - name: Test packages and offline examples
+        run: bunx nx run-many -t test --projects=core,sessions,ai,sandbox,curator,node,example-postgres-worker --parallel=3
 
       - name: Build packages
         run: bunx nx run-many -t build --projects=core,sessions,ai,sandbox,curator,cli,node --parallel=3
 
       - name: Typecheck (packages with clean declaration emit)
-        run: bunx nx run-many -t typecheck --projects=core,sessions,ai,curator,node --parallel=3
+        run: bunx nx run-many -t typecheck --projects=core,sessions,ai,curator,node,example-postgres-worker --parallel=3
