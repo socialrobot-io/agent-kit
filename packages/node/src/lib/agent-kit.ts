@@ -18,6 +18,8 @@ import {
   resetTenantHomeCache,
   type CreateTenantHomeOptions,
   type OpenHomeSessionOptions,
+  type RecordTurnInput,
+  type RecordTurnResult,
   type TenantHome,
 } from "./tenant-home.js";
 
@@ -73,6 +75,19 @@ export interface AgentKit {
    * @returns The review outcome, or `null` when the curator is disabled.
    */
   review: (job: CuratorJob) => Promise<CuratorOutcome | null>;
+  /**
+   * Save one completed turn as plain text and hand it to the curator.
+   * See {@link TenantHome.recordTurn}.
+   *
+   * @param tenantId - Stable id from your auth layer.
+   * @param sessionId - Chat id.
+   * @param input - The turn's messages, optional earlier context, and the review switch.
+   */
+  recordTurn: (
+    tenantId: string,
+    sessionId: string,
+    input: RecordTurnInput,
+  ) => Promise<RecordTurnResult>;
   /** Session ids currently cached for a tenant (observability / debug UI). */
   openSessions: (tenantId: string) => string[];
   /** Drop the cached session for one chat (no-op in stateless mode). */
@@ -184,6 +199,12 @@ export function createAgentKit(opts: CreateAgentKitOptions = {}): AgentKit {
     return (await home(job.tenantId)).review(job);
   };
 
+  const recordTurn = async (
+    tenantId: string,
+    sessionId: string,
+    input: RecordTurnInput,
+  ): Promise<RecordTurnResult> => (await home(tenantId)).recordTurn(sessionId, input);
+
   const reset = (): void => {
     sessions.clear();
     homes.clear();
@@ -195,6 +216,7 @@ export function createAgentKit(opts: CreateAgentKitOptions = {}): AgentKit {
     session,
     home,
     review,
+    recordTurn,
     openSessions,
     closeSession,
     reset,

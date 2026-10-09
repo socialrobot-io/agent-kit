@@ -215,6 +215,144 @@ describe("curator queue", () => {
   });
 });
 
+describe("recordTurn", () => {
+  it("saves the turn and queues one review from the same text", async () => {
+    const jobs: CuratorJob[] = [];
+    const storage = memoryStorage();
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage,
+      definition: autoApprove,
+      model: mockModel("Here is your draft."),
+      sandbox: false,
+      curatorQueue: (job) => {
+        jobs.push(job);
+      },
+    });
+    const session = await home.openSession("chat-1", { autoReview: false });
+    await session.run([{ role: "user", content: "Write a launch post." }]);
+    await waitForSessionCurators();
+    expect(jobs).toHaveLength(0);
+
+    const result = await home.recordTurn("chat-1", {
+      context: [{ role: "user", content: "We sell tea." }],
+      messages: [
+        { id: "m1", role: "user", content: "Write a launch post." },
+        { id: "m2", role: "assistant", content: "Draft: Our new tea is here." },
+        { id: "m3", role: "assistant", content: "  " },
+      ],
+    });
+
+    expect(result).toEqual({ recorded: 2, review: "queued" });
+    expect((await home.transcripts!.scroll("chat-1")).map((m) => m.content)).toEqual([
+      "Write a launch post.",
+      "Draft: Our new tea is here.",
+    ]);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      tenantId: "t1",
+      sessionId: "chat-1",
+      conversation: [
+        { role: "user", content: "We sell tea." },
+        { role: "user", content: "Write a launch post." },
+        { role: "assistant", content: "Draft: Our new tea is here." },
+      ],
+    });
+  });
+
+  it("does not save a message id twice", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+    });
+    const turn = { messages: [{ id: "m1", role: "user" as const, content: "Hi" }], review: false };
+    expect(await home.recordTurn("chat-1", turn)).toEqual({ recorded: 1, review: "skipped" });
+    await home.recordTurn("chat-1", turn);
+    expect(await home.transcripts!.scroll("chat-1")).toHaveLength(1);
+  });
+
+  it("reviews in process when there is no queue", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("Sells tea"),
+    });
+    const result = await home.recordTurn("chat-1", {
+      messages: [{ id: "m1", role: "user", content: "We sell tea." }],
+    });
+    expect(result.review).toBe("started");
+    await waitForSessionCurators();
+    expect((await home.stores()).memory.getEntries("user")).toEqual(["Sells tea"]);
+  });
+
+  it("skips the review when the turn has no new text", async () => {
+    const jobs: CuratorJob[] = [];
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorQueue: (job) => {
+        jobs.push(job);
+      },
+    });
+    const result = await home.recordTurn("chat-1", {
+      context: [{ role: "user", content: "Earlier" }],
+      messages: [{ id: "m1", role: "assistant", content: " " }],
+    });
+    expect(result).toEqual({ recorded: 0, review: "skipped" });
+    expect(jobs).toHaveLength(0);
+  });
+
+  it("skips the review when the curator is off", async () => {
+    const jobs: CuratorJob[] = [];
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: defineAgent({ model: "mock/model", config: { curator: false } }),
+      sandbox: false,
+      curatorQueue: (job) => {
+        jobs.push(job);
+      },
+    });
+    const result = await home.recordTurn("chat-1", {
+      messages: [{ id: "m1", role: "user", content: "Hi" }],
+    });
+    expect(result).toEqual({ recorded: 1, review: "skipped" });
+    expect(jobs).toHaveLength(0);
+  });
+
+  it("rejects when the queue throws, so the host can report it", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorQueue: () => {
+        throw new Error("redis down");
+      },
+    });
+    await expect(
+      home.recordTurn("chat-1", { messages: [{ id: "m1", role: "user", content: "Hi" }] }),
+    ).rejects.toThrow(/redis down/);
+  });
+
+  it("kit.recordTurn saves to the tenant's own transcripts", async () => {
+    const storage = memoryStorage();
+    const kit = createAgentKit({ storage, definition: autoApprove, sandbox: false });
+    await kit.recordTurn("t2", "chat-1", {
+      messages: [{ id: "m1", role: "user", content: "Hi" }],
+      review: false,
+    });
+    expect(await storage.opened.get("t2")?.transcripts?.scroll("chat-1")).toHaveLength(1);
+    expect(storage.opened.has("t1")).toBe(false);
+  });
+});
+
 describe("home.review and kit.review", () => {
   const job = (tenantId: string): CuratorJob => ({
     v: 1,

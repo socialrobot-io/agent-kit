@@ -173,12 +173,36 @@ What `kit.home(tenantId)` / `createTenantHome` returns:
 | `home.openSession` | Opens one chat with frozen memory for that `sessionId`. |
 | `home.stores()` | Fresh memory, skill, and pending stores for host pages (for example "what the agent remembers"). |
 | `home.review(job)` | Runs one curator review now (queue workers, host events). |
+| `home.recordTurn(sessionId, input)` | Saves one turn as plain text and hands the same text to the curator. `kit.recordTurn(tenantId, sessionId, input)` does the same. |
 
 Most apps only call `openSession`. Use the other fields when you persist
 messages yourself, inspect the volume, or call sandbox tools outside a turn.
-The kit does not save chat messages to `home.transcripts` for you. Append the
-user message and the reply after each turn when you want `session_search` to
-find them.
+
+### Save turns for search and review
+
+The kit does not save chat messages to `home.transcripts` for you. When you
+want `session_search` to find them, call `recordTurn` after each turn:
+
+```ts
+const session = await kit.session(tenantId, sessionId, { autoReview: false });
+// ... stream the reply ...
+await kit.recordTurn(tenantId, sessionId, {
+  messages: [
+    { id: userMessageId, role: "user", content: userText },
+    { id: replyId, role: "assistant", content: replyText },
+  ],
+  context: earlierMessages, // optional: the curator also reads these
+});
+```
+
+You decide what `content` holds. Put in the text that a person must be able
+to find later. For example, if your agent sends results through a tool, put
+the tool output in the reply text. Message ids make the call safe to repeat.
+
+`recordTurn` also hands the same text to the curator, so set
+`autoReview: false` on the session. Without it, the curator reviews the turn
+two times. The automatic review reads only the text parts of the model
+messages and the final reply text. It does not read tool calls.
 
 A full streaming chat with the same shape lives in
 [`examples/example-app`](../../examples/example-app).
@@ -296,6 +320,10 @@ To run reviews in a worker instead of the web process, pass `curatorQueue`.
 The kit hands a JSON `CuratorJob` to it after each turn. The worker calls
 `kit.review(job)` with the same agent and storage. See
 [Storage](storage.md#run-the-curator-in-a-worker).
+
+To review the text that you save instead of the raw model messages, open the
+session with `autoReview: false` and call `recordTurn`. See
+[Save turns for search and review](#save-turns-for-search-and-review).
 
 Bare `openAgentSession` (without `createTenantHome`) does not auto-run the
 curator. Call `runBackgroundReview` yourself in that case.

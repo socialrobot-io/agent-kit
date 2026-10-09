@@ -170,6 +170,10 @@ export const SKILL_MANAGE_SCHEMA = {
   },
 } as const;
 
+/**
+ * @deprecated The live tool takes more arguments. Use
+ * `SESSION_SEARCH_TOOL_SCHEMA` from `@socialrobot-io/agent-kit-sessions`.
+ */
 export const SESSION_SEARCH_SCHEMA = {
   name: "session_search",
   description:

@@ -4,7 +4,10 @@ export {
   type CreateTenantHomeOptions,
   type HomeStores,
   type OpenHomeSessionOptions,
+  type RecordTurnInput,
+  type RecordTurnResult,
   type TenantHome,
+  type TurnMessage,
 } from "./lib/tenant-home.js";
 export {
   agentFsStorage,
@@ -47,8 +50,13 @@ export {
   createAgentFs,
   installAgent,
   PathPolicyError,
+  MEMORY_SCHEMA,
+  SKILLS_LIST_SCHEMA,
+  SKILL_VIEW_SCHEMA,
+  SKILL_MANAGE_SCHEMA,
   type AgentBundle,
 } from "@socialrobot-io/agent-kit-core";
+export { SESSION_SEARCH_TOOL_SCHEMA } from "@socialrobot-io/agent-kit-sessions";
 export { openAgentSession, type AgentSession } from "@socialrobot-io/agent-kit-ai";
 // Type only: the sandbox package loads lazily (see openTenantVolume in storage.ts).
 export type { TenantVolume } from "@socialrobot-io/agent-kit-sandbox";

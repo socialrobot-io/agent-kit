@@ -50,6 +50,13 @@ export interface AgentDefinition {
      */
     toolGuidance?: boolean | Partial<Record<"memory" | "skills" | "session_search" | "sandbox", boolean>>;
     /**
+     * List the tenant's skills (name and description) in the frozen system
+     * prompt, so the model sees what exists without a `skills_list` call.
+     * Off by default. Pass an object to cap how many skills are listed
+     * (default 50). Needs `skill_view` on the session surface.
+     */
+    skillIndex?: boolean | { limit?: number };
+    /**
      * After each completed turn, run the background curator
      * (`createTenantHome` wires this). Default `true` in {@link defineAgent}.
      * Pass `false` to disable, or an object to set `mode` and/or

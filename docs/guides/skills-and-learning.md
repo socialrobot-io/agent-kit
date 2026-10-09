@@ -85,6 +85,27 @@ How the model loads a skill (progressive disclosure):
 2. `skill_view`: full `SKILL.md` plus a `linked_files` map and `skill_dir`
 3. `skill_view` with `file_path`: one linked file, only when needed
 
+### Skill index in the prompt
+
+Models often do not call `skills_list` to look for skills that they cannot
+see. Set `config.skillIndex` to list each skill (name and description) in the
+frozen system prompt:
+
+```ts
+defineAgent({
+  model: "anthropic/claude-sonnet-4-5",
+  config: {
+    skillIndex: true, // or { limit: 20 }; the default limit is 50
+  },
+});
+```
+
+The index is off by default. It is frozen with the rest of the prompt: a
+skill that is saved during a chat shows in the next session. The index lists
+the first skills by name up to the limit, and gives a count of the rest. The
+kit removes `<` and `>` from descriptions and cuts them at 200 characters.
+When `skill_view` is disabled, the index is not added.
+
 ## Locked skills
 
 When a skill is locked, the whole folder is immutable to the agent, curator,
