@@ -104,7 +104,9 @@ schema creation takes a lock.
 
 The tables use plain columns, composite primary keys, and btree indexes. No
 extension is needed, so ORMs can model them. Model them in your ORM schema:
-a migration tool that does not know the tables can try to drop them. Prisma:
+a migration tool that does not know the tables can try to drop them. This
+Prisma model matches the DDL exactly (`prisma migrate diff` reports no
+changes):
 
 ```prisma
 model AgentKitFile {
@@ -138,7 +140,7 @@ model AgentKitMessage {
   content   String
   toolCalls Json?           @map("tool_calls")
   createdAt DateTime        @map("created_at") @db.Timestamptz(6)
-  session   AgentKitSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
+  session   AgentKitSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([tenantId, sessionId, id])
   @@index([tenantId, sessionId, seq], map: "agent_kit_messages_scroll_idx")
