@@ -66,8 +66,15 @@ export interface InstallAgentResult {
   removed: string[];
 }
 
+/** `dir` with trailing slashes removed, without a regex (js/polynomial-redos). */
+function dirPrefix(dir: string): string {
+  let end = dir.length;
+  while (end > 0 && dir.charCodeAt(end - 1) === 47 /* / */) end--;
+  return `${dir.slice(0, end)}/`;
+}
+
 function isUnderDir(path: string, dir: string): boolean {
-  return path.startsWith(`${dir.replace(/\/+$/, "")}/`);
+  return path.startsWith(dirPrefix(dir));
 }
 
 async function readManifest(fs: AgentFsLike, path: string): Promise<string[]> {
@@ -179,7 +186,7 @@ async function pruneBundle(
   }
 
   const bundled = new Set((bundle.skills ?? []).map((s) => s.name.trim().toLowerCase()));
-  const skillPrefix = `${skillsDir.replace(/\/+$/, "")}/`;
+  const skillPrefix = dirPrefix(skillsDir);
   const gone = removed
     .filter((path) => isUnderDir(path, skillsDir) && path.endsWith("/SKILL.md"))
     .map((path) => path.slice(skillPrefix.length).split("/")[0]!)
