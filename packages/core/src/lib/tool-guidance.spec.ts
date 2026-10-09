@@ -6,12 +6,19 @@ import {
   MEMORY_WRITE_APPROVAL_GUIDANCE,
   SKILLS_GUIDANCE,
   SKILLS_GUIDANCE_BASE,
+  SKILLS_READ_GUIDANCE,
   SKILLS_WRITE_APPROVAL_GUIDANCE,
   SESSION_SEARCH_GUIDANCE,
   SANDBOX_GUIDANCE,
 } from "./tool-guidance.js";
 
 describe("buildToolGuidance", () => {
+  it("uses read-only skills guidance when skill_manage is not on the surface", () => {
+    const text = buildToolGuidance(["skills_list", "skill_view"]);
+    expect(text).toContain(SKILLS_READ_GUIDANCE);
+    expect(text).not.toContain("skill_manage");
+  });
+
   it("includes memory + skills for the default runtime surface", () => {
     const text = buildToolGuidance(["memory", "skills_list", "skill_view", "skill_manage"]);
     expect(text).toContain(MEMORY_GUIDANCE);

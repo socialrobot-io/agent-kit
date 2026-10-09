@@ -79,6 +79,12 @@ export interface SessionRuntimeOptions {
    * only for pairing system-prompt guidance.
    */
   extraToolNames?: string[];
+  /**
+   * Tool names the host removed from the session surface (`disableTools`).
+   * Guidance in the frozen prompt skips them, so the model is not told to use
+   * a tool it does not have.
+   */
+  disabledToolNames?: string[];
   /** Host secrets scrubbed before memory/skill writes. */
   secrets?: string[];
 }
@@ -96,6 +102,7 @@ export class AgentSessionRuntime {
   private readonly writeApprovalEnabled: (s: ApprovalSubsystem) => boolean;
   private readonly promptInline?: (summary: string, detail: string) => Promise<boolean | null>;
   private readonly extraToolNames: string[];
+  private readonly disabledToolNames: Set<string>;
   private readonly toolGuidance: ToolGuidanceConfig;
   private basePrompt = "";
   private ready = false;
@@ -116,6 +123,7 @@ export class AgentSessionRuntime {
       opts.writeApprovalEnabled ?? ((s) => (s === "memory" ? !!cfg?.memory : !!cfg?.skills));
     this.promptInline = opts.promptInline;
     this.extraToolNames = opts.extraToolNames ?? [];
+    this.disabledToolNames = new Set(opts.disabledToolNames ?? []);
     this.toolGuidance = opts.definition?.config?.toolGuidance ?? true;
   }
 
@@ -155,7 +163,9 @@ export class AgentSessionRuntime {
   systemPrompt(): string {
     if (!this.ready) throw new Error("call init() first");
     const mem = this.memory.formatAllForSystemPrompt();
-    const toolNames = [...this.tools().map((t) => t.name), ...this.extraToolNames];
+    const toolNames = [...this.tools().map((t) => t.name), ...this.extraToolNames].filter(
+      (name) => !this.disabledToolNames.has(name),
+    );
     const guidance = buildToolGuidance(toolNames, this.toolGuidance, {
       memory: this.writeApprovalEnabled("memory"),
       skills: this.writeApprovalEnabled("skills"),

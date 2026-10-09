@@ -91,7 +91,11 @@ export interface OpenAgentSessionOptions extends ResolveModelOptions {
   sandboxTools?: ToolSet;
   /** Extra SessionTools merged into the default surface for every turn. */
   addTools?: SessionTool[];
-  /** Tool names to remove from the default surface for every turn. */
+  /**
+   * Tool names to remove from the default surface for every turn. The frozen
+   * system prompt's tool guidance skips them too. (Per-turn `disableTools`
+   * on `run` / `stream` change the tools only, not the frozen prompt.)
+   */
   disableTools?: string[];
   /**
    * Pair AI SDK UI Approve/Deny with kit write application.
@@ -181,6 +185,8 @@ export async function openAgentSession(
     origin: opts.origin ?? "foreground",
     promptInline,
     extraToolNames,
+    // Session-level disableTools also shape the frozen prompt's tool guidance.
+    disabledToolNames: opts.disableTools,
     secrets: opts.secrets,
   });
   await runtime.init();

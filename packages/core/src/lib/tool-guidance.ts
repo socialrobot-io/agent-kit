@@ -63,6 +63,13 @@ export const SKILLS_GUIDANCE_BASE =
 /** Default (gate on): base + pending-approval sentence. */
 export const SKILLS_GUIDANCE = `${SKILLS_GUIDANCE_BASE} ${SKILLS_WRITE_APPROVAL_GUIDANCE}`;
 
+/** Skills guidance when the session can read skills but not write them (no `skill_manage`). */
+export const SKILLS_READ_GUIDANCE =
+  "# Skills\n" +
+  "Use skills when one matches the task (`skills_list` → `skill_view`). Load the " +
+  "full SKILL.md before following a skill; open linked files under that skill " +
+  "directory only when the instructions reference them.";
+
 export const SANDBOX_GUIDANCE =
   "# Sandbox\n" +
   "bash / readFile / writeFile operate only inside the tenant sandbox workspace. " +
@@ -120,6 +127,10 @@ export function buildToolGuidance(
     if (!isKeyEnabled(config, key)) continue;
     const { toolNames: names, text, textOff } = GUIDANCE_BY_KEY[key];
     if (!names.some((n) => present.has(n))) continue;
+    if (key === "skills" && !present.has("skill_manage")) {
+      parts.push(SKILLS_READ_GUIDANCE);
+      continue;
+    }
     const gateOn = key === "memory" || key === "skills" ? writeApproval[key] !== false : true;
     parts.push(!gateOn && textOff ? textOff : text);
   }
