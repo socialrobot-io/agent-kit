@@ -1,0 +1,302 @@
+import { describe, it, expect, afterEach } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { LanguageModel } from "ai";
+import { defineAgent, InMemoryFs } from "@socialrobot-io/agent-kit-core";
+import type { CuratorModelRunner } from "@socialrobot-io/agent-kit-curator";
+import { InMemoryTranscriptStore } from "@socialrobot-io/agent-kit-sessions";
+import { createTenantHome, resetTenantHomeCache } from "./tenant-home.js";
+import { createAgentKit } from "./agent-kit.js";
+import { parseCuratorJob, waitForSessionCurators, type CuratorJob } from "./session-curator.js";
+import type { StorageAdapter, TenantStorage } from "./storage.js";
+
+afterEach(async () => {
+  await waitForSessionCurators();
+  resetTenantHomeCache();
+});
+
+const USAGE = { inputTokens: 1, outputTokens: 1, totalTokens: 2 };
+
+function mockModel(text = "ok"): LanguageModel {
+  return {
+    specificationVersion: "v4",
+    provider: "mock",
+    modelId: "mock",
+    supportedUrls: {},
+    async doGenerate() {
+      return {
+        content: [{ type: "text", text }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: USAGE,
+        warnings: [],
+      };
+    },
+    async doStream() {
+      throw new Error("no stream");
+    },
+  } as unknown as LanguageModel;
+}
+
+/** In-memory adapter: one InMemoryFs and one transcript store per tenant. */
+function memoryStorage(): StorageAdapter & { opened: Map<string, TenantStorage> } {
+  const opened = new Map<string, TenantStorage>();
+  return {
+    opened,
+    key: (tenantId) => `memory:${tenantId}`,
+    async open(tenantId) {
+      let storage = opened.get(tenantId);
+      if (!storage) {
+        storage = {
+          volume: new InMemoryFs(),
+          transcripts: new InMemoryTranscriptStore(),
+          location: `memory:${tenantId}`,
+        };
+        opened.set(tenantId, storage);
+      }
+      return storage;
+    },
+  };
+}
+
+/** Curator runner that always saves one memory entry. */
+function savingRunner(content: string): CuratorModelRunner {
+  return async () => ({
+    text: "Saved.",
+    toolCalls: [{ name: "memory", args: { action: "add", target: "user", content } }],
+  });
+}
+
+const autoApprove = defineAgent({
+  model: "mock/model",
+  config: { curator: { mode: "memory", autoApprove: true } },
+});
+
+describe("storage adapters", () => {
+  it("opens a home on a custom adapter with its transcript store", async () => {
+    const storage = memoryStorage();
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage,
+      model: mockModel(),
+      sandbox: false,
+    });
+
+    expect(home.location).toBe("memory:t1");
+    expect(home.volumePath).toBe("memory:t1");
+    expect(home.agentFs).toBeUndefined();
+    expect(home.bash).toBeUndefined();
+    expect(home.transcripts).toBe(storage.opened.get("t1")?.transcripts);
+
+    await home.volume.writeFile("agent/SOUL.md", "You are brief.");
+    const session = await home.openSession("chat-1");
+    expect(session.builtinTools.map((t) => t.name)).toContain("session_search");
+    expect(await home.transcripts!.listSessions("t1")).toHaveLength(1);
+    expect((await session.run([{ role: "user", content: "Hi" }])).text).toBe("ok");
+  });
+
+  it("gives the sandbox an in-memory workspace when storage has no AgentFS", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      model: mockModel(),
+      workspaceFiles: { "notes.txt": "hi\n" },
+    });
+    expect(home.bash?.persisted).toBe(false);
+    const out = await home.bash!.tenantSandbox.executeCommand("cat /workspace/notes.txt");
+    expect(out.stdout).toBe("hi\n");
+  });
+
+  it("keeps tenants apart on one adapter", async () => {
+    const storage = memoryStorage();
+    const a = await createTenantHome({
+      tenantId: "a",
+      storage,
+      model: mockModel(),
+      sandbox: false,
+    });
+    const b = await createTenantHome({
+      tenantId: "b",
+      storage,
+      model: mockModel(),
+      sandbox: false,
+    });
+    await a.volume.writeFile("memories/USER.md", "Likes tea\n");
+    expect(await b.volume.readFile("memories/USER.md")).toBeNull();
+  });
+
+  it("rejects storage together with dataDir or volumePath", async () => {
+    await expect(
+      createTenantHome({ tenantId: "t1", storage: memoryStorage(), dataDir: "./x" }),
+    ).rejects.toThrow(/not both/);
+  });
+
+  it("refuses a second tenant on the same AgentFS volumePath", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agent-kit-storage-"));
+    try {
+      const volumePath = join(dir, "one.db");
+      await createTenantHome({ tenantId: "a", volumePath, model: mockModel(), sandbox: false });
+      await expect(
+        createTenantHome({ tenantId: "b", volumePath, model: mockModel(), sandbox: false }),
+      ).rejects.toThrow(/already open for tenant 'a'/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("home.stores", () => {
+  it("returns loaded memory that host code can list and edit", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      model: mockModel(),
+      sandbox: false,
+    });
+    await home.volume.writeFile("memories/USER.md", "Prefers short posts\n");
+    const { memory } = await home.stores();
+    expect(memory.getEntries("user")).toEqual(["Prefers short posts"]);
+    await memory.remove("user", "short posts");
+    expect((await home.stores()).memory.getEntries("user")).toEqual([]);
+  });
+});
+
+describe("curator queue", () => {
+  it("hands a job to curatorQueue instead of reviewing in process", async () => {
+    const jobs: CuratorJob[] = [];
+    let reviewed = 0;
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      model: mockModel("Hello"),
+      sandbox: false,
+      curatorQueue: (job) => {
+        jobs.push(job);
+      },
+      curatorRunner: async () => {
+        reviewed++;
+        return { text: "", toolCalls: [] };
+      },
+    });
+    const session = await home.openSession("chat-1");
+    await session.run([{ role: "user", content: "Call me Sam." }]);
+    await waitForSessionCurators();
+
+    expect(reviewed).toBe(0);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      v: 1,
+      tenantId: "t1",
+      sessionId: "chat-1",
+      conversation: [
+        { role: "user", content: "Call me Sam." },
+        { role: "assistant", content: "Hello" },
+      ],
+    });
+    // Survives a round trip through a JSON queue.
+    expect(parseCuratorJob(JSON.parse(JSON.stringify(jobs[0])))).toEqual(jobs[0]);
+  });
+
+  it("never rejects the turn when the queue throws", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      model: mockModel(),
+      sandbox: false,
+      curatorQueue: () => {
+        throw new Error("redis down");
+      },
+    });
+    const session = await home.openSession("chat-1");
+    await expect(session.run([{ role: "user", content: "Hi" }])).resolves.toBeTruthy();
+    await waitForSessionCurators();
+  });
+});
+
+describe("home.review and kit.review", () => {
+  const job = (tenantId: string): CuratorJob => ({
+    v: 1,
+    tenantId,
+    sessionId: "chat-1",
+    conversation: [{ role: "user", content: "I am Sam and I hate emojis." }],
+    createdAt: 1,
+  });
+
+  it("applies a review with the worker's agent policy", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("Hates emojis"),
+    });
+    const outcome = await home.review(job("t1"));
+    expect(outcome?.applied).toHaveLength(1);
+    expect((await home.stores()).memory.getEntries("user")).toEqual(["Hates emojis"]);
+  });
+
+  it("stages the review when the worker's policy has no autoApprove", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: defineAgent({ model: "mock/model", config: { curator: { mode: "memory" } } }),
+      sandbox: false,
+      curatorRunner: savingRunner("Hates emojis"),
+    });
+    const outcome = await home.review(job("t1"));
+    expect(outcome?.staged).toHaveLength(1);
+    expect((await home.stores()).memory.getEntries("user")).toEqual([]);
+  });
+
+  it("returns null when the curator is off", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: defineAgent({ model: "mock/model", config: { curator: false } }),
+      sandbox: false,
+      curatorRunner: savingRunner("x"),
+    });
+    expect(await home.review(job("t1"))).toBeNull();
+  });
+
+  it("refuses a job for another tenant", async () => {
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("x"),
+    });
+    await expect(home.review(job("t2"))).rejects.toThrow(/tenant 't2'/);
+  });
+
+  it("kit.review opens the job's tenant home", async () => {
+    const storage = memoryStorage();
+    const kit = createAgentKit({
+      storage,
+      definition: autoApprove,
+      sandbox: false,
+      curatorRunner: savingRunner("Hates emojis"),
+    });
+    await kit.review(job("t2"));
+    expect(await storage.opened.get("t2")?.volume.readFile("memories/USER.md")).toContain(
+      "Hates emojis",
+    );
+    expect(storage.opened.has("t1")).toBe(false);
+  });
+});
+
+describe("parseCuratorJob", () => {
+  it("rejects bad shapes from a queue", () => {
+    expect(() => parseCuratorJob(null)).toThrow(/not an object/);
+    expect(() => parseCuratorJob({ v: 2 })).toThrow(/version/);
+    expect(() =>
+      parseCuratorJob({ v: 1, tenantId: "t", sessionId: "s", conversation: [{ role: "x" }] }),
+    ).toThrow(/bad message/);
+    expect(() => parseCuratorJob({ v: 1, tenantId: "", sessionId: "s", conversation: [] })).toThrow(
+      /tenantId/,
+    );
+  });
+});

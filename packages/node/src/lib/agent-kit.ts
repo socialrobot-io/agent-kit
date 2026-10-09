@@ -11,6 +11,8 @@
  */
 
 import type { AgentSession } from "@socialrobot-io/agent-kit-ai";
+import type { CuratorOutcome } from "@socialrobot-io/agent-kit-curator";
+import { parseCuratorJob, type CuratorJob } from "./session-curator.js";
 import {
   createTenantHome,
   resetTenantHomeCache,
@@ -64,6 +66,13 @@ export interface AgentKit {
   ) => Promise<AgentSession>;
   /** Advanced: the cached {@link TenantHome} for a tenant, if opened here. */
   home: (tenantId: string) => Promise<TenantHome>;
+  /**
+   * Run one curator job (from `curatorQueue`) against the job's tenant home.
+   * Call it from a queue worker that opens the same storage.
+   *
+   * @returns The review outcome, or `null` when the curator is disabled.
+   */
+  review: (job: CuratorJob) => Promise<CuratorOutcome | null>;
   /** Session ids currently cached for a tenant (observability / debug UI). */
   openSessions: (tenantId: string) => string[];
   /** Drop the cached session for one chat (no-op in stateless mode). */
@@ -169,6 +178,11 @@ export function createAgentKit(opts: CreateAgentKitOptions = {}): AgentKit {
     return out;
   };
 
+  const review = async (input: CuratorJob): Promise<CuratorOutcome | null> => {
+    const job = parseCuratorJob(input);
+    return (await home(job.tenantId)).review(job);
+  };
+
   const reset = (): void => {
     sessions.clear();
     homes.clear();
@@ -179,6 +193,7 @@ export function createAgentKit(opts: CreateAgentKitOptions = {}): AgentKit {
     options: opts,
     session,
     home,
+    review,
     openSessions,
     closeSession,
     reset,
