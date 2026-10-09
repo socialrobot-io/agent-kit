@@ -8,6 +8,9 @@ export default defineConfig(() => ({
     watch: false,
     globals: true,
     environment: 'node',
+    // Postgres specs boot a WASM Postgres (PGlite) per file; allow for slow CI runners.
+    hookTimeout: 60_000,
+    testTimeout: 30_000,
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {

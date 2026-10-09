@@ -18,7 +18,7 @@ Product requirements: [Company envelope PRD](../roadmap/company-envelope-prd.md)
 - **Secret scrubbing** — Host `secrets` and common credential shapes redacted from tool output and learning writes
 - **Write approval** — Unlocked memory/skill writes stage under `pending/` by default
 - **Sandbox guardrails** — Destructive bash, exfil patterns, and non-allowlisted hosts blocked
-- **Tenant isolation** — One AgentFS volume (and audit trail) per `tenantId`
+- **Tenant isolation** — One volume (and audit trail) per `tenantId`: an AgentFS file, or tenant-bound rows in shared storage
 
 ## Three zones
 
@@ -68,7 +68,7 @@ Full table: [Skills & learning](skills-and-learning.md).
 | Dangerous shell / unexpected network | [Sandbox](sandbox.md) blocks before run; secrets redacted on command line and output |
 | Agent rewriting company identity or locked skills | Path policy + skill locks deny in code |
 | Agent quietly rewriting unlocked memory/skills | Write approval stages under `pending/` until a human approves |
-| One customer reading another’s data | One AgentFS volume per tenant; your app binds login → `tenantId` → volume |
+| One customer reading another’s data | One volume per tenant (an AgentFS file, or Postgres stores bound to the tenant); your app binds login → `tenantId` → volume |
 
 ## Write approval
 
@@ -170,7 +170,7 @@ not tell end users to run `/memory pending`.
 
 | Data | Where |
 | ---- | ----- |
-| Files and pending writes | That tenant’s AgentFS volume |
+| Files and pending writes | That tenant’s volume (AgentFS file or storage adapter) |
 | `USER.md` / `MEMORY.md` | `memories/` on that volume |
 | Skills | `skills/` on that volume |
 | Chat transcripts and search | Tenant-scoped transcript store |

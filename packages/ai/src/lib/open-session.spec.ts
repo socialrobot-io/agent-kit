@@ -36,6 +36,22 @@ function textStep(text: string): GenResult {
   };
 }
 
+describe("openAgentSession disableTools", () => {
+  it("also removes disabled tools from the frozen prompt's guidance", async () => {
+    const fs = new InMemoryFs();
+    const session = await openAgentSession({
+      tenantId: "t1",
+      fs,
+      definition: defineAgent({ model: mockModel([textStep("ok")]) as unknown as string }),
+      disableTools: ["skill_manage"],
+    });
+    const prompt = session.runtime.systemPrompt();
+    expect(prompt).toContain("skill_view");
+    expect(prompt).not.toContain("skill_manage");
+    expect(Object.keys(session.composeTools().toolSet)).not.toContain("skill_manage");
+  });
+});
+
 describe("openAgentSession.run", () => {
   it("runs a turn without host unpacking runtime/model/toolSet", async () => {
     const fs = new InMemoryFs();

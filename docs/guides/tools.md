@@ -42,6 +42,11 @@ const session = await home.openSession(sessionId, {
 });
 ```
 
+Tools that you disable when you open a session also leave the tool guidance
+in the frozen prompt. With `skill_manage` disabled, the agent reads skills
+but is not told to write them. `disableTools` on one `run` or `stream` call
+removes the tools for that turn only. The prompt stays the same.
+
 ## Add your own tool
 
 Pass a `LanguageModel` from any AI SDK provider (or use a Gateway string id

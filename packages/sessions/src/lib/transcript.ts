@@ -60,14 +60,55 @@ export interface SearchHit {
  * multiple tenants, every query must filter by tenantId and never leak.
  */
 export interface TranscriptStore {
+  /** Create a session. Idempotent: a second call with the same id is a no-op. */
   createSession(session: Session): Promise<void>;
+  /** Append one message. Idempotent by message id. */
   appendMessage(message: SessionMessage): Promise<void>;
   /** Search across messages for one tenant (substring in built-in adapters). */
   search(tenantId: string, query: string, limit?: number): Promise<SearchHit[]>;
   /** Read a window of messages from a session, oldest-first from offset. */
   scroll(sessionId: string, offset?: number, limit?: number): Promise<SessionMessage[]>;
-  /** List sessions for a tenant, newest first. */
-  listSessions(tenantId: string): Promise<Session[]>;
+  /**
+   * List sessions for a tenant, newest first. Stores may honor `limit`
+   * (return at most that many); callers must not rely on it.
+   */
+  listSessions(tenantId: string, limit?: number): Promise<Session[]>;
+  /**
+   * Optional point lookup. Return the session when it exists and belongs to
+   * `tenantId`, else `null`. Database-backed stores implement it so ownership
+   * checks do not list every session.
+   */
+  getSession?(tenantId: string, sessionId: string): Promise<Session | null>;
+}
+
+/**
+ * Look up one session for a tenant. Uses {@link TranscriptStore.getSession}
+ * when the store has it, else scans {@link TranscriptStore.listSessions}.
+ */
+export async function findTenantSession(
+  store: TranscriptStore,
+  tenantId: string,
+  sessionId: string,
+): Promise<Session | null> {
+  if (store.getSession) {
+    const found = await store.getSession(tenantId, sessionId);
+    return found && found.tenantId === tenantId ? found : null;
+  }
+  const sessions = await store.listSessions(tenantId);
+  return sessions.find((s) => s.id === sessionId) ?? null;
+}
+
+/**
+ * Snippet around the first case-insensitive match of `query` in `content`.
+ * Shared by the built-in stores so search hits look the same everywhere.
+ */
+export function searchSnippet(content: string, query: string, radius = 60): string {
+  const q = query.toLowerCase();
+  const i = q ? content.toLowerCase().indexOf(q) : -1;
+  if (i === -1) return content.slice(0, radius * 2);
+  const start = Math.max(0, i - radius);
+  const end = Math.min(content.length, i + q.length + radius);
+  return (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");
 }
 
 /**
@@ -79,8 +120,7 @@ export async function assertTenantSession(
   tenantId: string,
   sessionId: string,
 ): Promise<Session> {
-  const sessions = await store.listSessions(tenantId);
-  const found = sessions.find((s) => s.id === sessionId);
+  const found = await findTenantSession(store, tenantId, sessionId);
   if (!found) {
     throw new Error(`Session '${sessionId}' not found for tenant '${tenantId}'.`);
   }
@@ -116,7 +156,7 @@ export class InMemoryTranscriptStore implements TranscriptStore {
             sessionId,
             messageId: m.id,
             role: m.role,
-            snippet: this.snippet(m.content, q),
+            snippet: searchSnippet(m.content, q),
             createdAt: m.createdAt,
           });
         }
@@ -124,14 +164,6 @@ export class InMemoryTranscriptStore implements TranscriptStore {
     }
     hits.sort((a, b) => b.createdAt - a.createdAt);
     return hits.slice(0, limit);
-  }
-
-  private snippet(content: string, q: string, radius = 60): string {
-    const i = content.toLowerCase().indexOf(q);
-    if (i === -1) return content.slice(0, radius * 2);
-    const start = Math.max(0, i - radius);
-    const end = Math.min(content.length, i + q.length + radius);
-    return (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");
   }
 
   async scroll(sessionId: string, offset = 0, limit = 20): Promise<SessionMessage[]> {
@@ -209,8 +241,7 @@ export async function sessionSearch(
           "or pass include_current=true to override.",
       };
     }
-    const sessions = await store.listSessions(tenantId);
-    if (!sessions.some((s) => s.id === args.session_id)) {
+    if (!(await findTenantSession(store, tenantId, args.session_id))) {
       return { success: false, error: `Session '${args.session_id}' not found for this tenant.` };
     }
     const messages = await store.scroll(args.session_id, args.offset ?? 0, limit);
@@ -226,8 +257,9 @@ export async function sessionSearch(
   }
 
   // Browse: list past sessions, never the active chat (unless include_current).
-  let sessions = await store.listSessions(tenantId);
-  if (currentId && !includeCurrent) {
+  const excludeCurrent = Boolean(currentId) && !includeCurrent;
+  let sessions = await store.listSessions(tenantId, limit + (excludeCurrent ? 1 : 0));
+  if (excludeCurrent) {
     sessions = sessions.filter((s) => s.id !== currentId);
   }
   return { success: true, mode: "browse", sessions: sessions.slice(0, limit) };

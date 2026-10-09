@@ -18,7 +18,7 @@ That pulls core, agent-kit-ai, sessions, sandbox, and curator. Install `ai`
 
 | Package | Job |
 | ------- | --- |
-| `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session + curator) |
+| `agent-kit-node` | `createTenantHome` (volume + transcripts + sandbox + session + curator). Postgres storage at `agent-kit-node/postgres` |
 | `agent-kit-next` | `withAgentKit` Next.js config helper (optional) |
 | `agent-kit-core` | Definition, memory, skills, approval |
 | `agent-kit-ai` | Live model loop (`session.run` / `session.stream`) |
@@ -85,7 +85,7 @@ Never invent numbers.
 
 Pass a `LanguageModel` from any AI SDK provider, or set `AI_GATEWAY_API_KEY`
 and use a `"provider/model"` string. Creates `./data/tenants/${tenantId}.db`
-by default.
+by default. For Postgres, pass `storage` (see [Storage](storage.md)).
 
 Pass `agent` so `SOUL.md`, `AGENTS.md`, and skills are installed on the volume.
 Without it, the session does not use your authored files.

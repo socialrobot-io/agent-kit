@@ -3,6 +3,7 @@ export * from "./lib/scrub-secrets.js";
 export * from "./lib/skill-locks.js";
 export * from "./lib/path-policy.js";
 export * from "./lib/seed-company.js";
+export * from "./lib/exclusive.js";
 export * from "./lib/memory.js";
 export * from "./lib/skills.js";
 export * from "./lib/approval.js";

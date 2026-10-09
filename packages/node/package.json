@@ -12,6 +12,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./postgres": {
+      "@socialrobot-io/source": "./src/postgres/index.ts",
+      "types": "./dist/postgres/index.d.ts",
+      "import": "./dist/postgres/index.js",
+      "default": "./dist/postgres/index.js"
     }
   },
   "nx": {
@@ -45,9 +51,12 @@
     "ai": "^7.0.0"
   },
   "devDependencies": {
-    "ai": "^7.0.41"
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/pg": "^8.23.1",
+    "ai": "^7.0.41",
+    "pg": "^8.23.1"
   },
-  "description": "Host composition: createTenantHome wires volume, transcripts, sandbox, sessions, and curator",
+  "description": "Host composition: createTenantHome wires storage (AgentFS or Postgres), transcripts, sandbox, sessions, and curator",
   "license": "MIT",
   "files": [
     "dist",

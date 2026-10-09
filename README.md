@@ -40,7 +40,7 @@ No huge cloud bill. No fancy infrastructure.
 | ------ | ------------ |
 | **Secure by default** | Prompt-injection, promptware, and exfiltration scanning on every memory and skill write. Threats never reach the system prompt. |
 | **Sandboxed execution** | Per-tenant [AgentFS](https://www.agentfs.ai/) volumes and [bash-tool](https://github.com/vercel-labs/bash-tool) guardrails. Destructive commands, secret exfil, and non-allowlisted network egress are blocked before they run. |
-| **Production multi-tenancy** | One isolated filesystem, memory, skill library, transcript store, and audit trail per tenant. A bug in tenant A cannot touch tenant B. |
+| **Production multi-tenancy** | One isolated filesystem, memory, skill library, transcript store, and audit trail per tenant. A bug in tenant A cannot touch tenant B. Run on local AgentFS files, or on Postgres when many processes serve a tenant. |
 | **Self-improving under approval** | A background curator distills sessions into durable memory and reusable skills. Writes stage for human review by default. Hosts can set `curator.autoApprove` when end users are not the right reviewers. |
 
 ---
@@ -167,7 +167,8 @@ shapes most of the live API (`ModelMessage`, `session.run` / `session.stream`,
 | ----- | ------- | ------------------------ |
 | Model loop | [`ai`](https://www.npmjs.com/package/ai) (Vercel AI SDK) | Messages, `run` / `stream`, tools, UI approval |
 | Model providers | [AI SDK providers](https://sdk.vercel.ai/providers) or [`@ai-sdk/gateway`](https://www.npmjs.com/package/@ai-sdk/gateway) | Pass a `LanguageModel`, or a string id via the Gateway |
-| Tenant volume | [AgentFS](https://www.agentfs.ai/) | One SQLite filesystem per tenant |
+| Tenant volume | [AgentFS](https://www.agentfs.ai/) | One SQLite filesystem per tenant (default) |
+| Shared storage (optional) | Postgres, through your driver (`pg`, Prisma, postgres.js) | `storage: postgresStorage({ db })` for many processes and curator workers |
 | Sandbox shell | [bash-tool](https://github.com/vercel-labs/bash-tool) + [just-bash](https://github.com/vercel-labs/just-bash) | `bash` / `readFile` / `writeFile` behind guardrails |
 
 If you already use the AI SDK, agent-kit slots in as the tenant home, memory,

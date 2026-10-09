@@ -7,16 +7,17 @@ agent-kit is a library. It does not start a server, check cookies, or choose
 who may call you. Your app authenticates the user, maps them to a `tenantId`,
 then opens a tenant home.
 
-This guide assumes **one machine**: one Node process and one SQLite file per
-tenant on local disk. Multi-machine hosting is not ready yet
-([roadmap](../roadmap/multi-machine.md)).
+By default each tenant gets one AgentFS SQLite file on local disk, opened by
+one Node process. When several processes or machines serve the same tenant,
+use Postgres storage. See [Storage](storage.md).
 
 ## Words used here
 
 | Term | Meaning |
 | ---- | ------- |
 | `tenantId` | Stable id for one customer’s data. You create it from your login system. |
-| Volume | One SQLite file for that tenant. Memory, skills, workspace, chat logs, and audit live here. |
+| Volume | The agent-home filesystem of one tenant: agent files, memory, skills, and pending writes. By default one AgentFS SQLite file, which also holds the workspace and chat logs. |
+| Storage adapter | Where volumes and transcripts live. Default AgentFS. See [Storage](storage.md). |
 | `sessionId` | Id for one chat conversation. |
 | `createTenantHome` | Convention entry: opens volume + transcripts + sandbox and caches per process. |
 
@@ -84,11 +85,13 @@ that caller is allowed to use it.
 Install `@socialrobot-io/agent-kit-node` and its peer `ai` (Vercel AI SDK).
 Defaults:
 
-- volume at `./data/tenants/${tenantId}.db`
+- AgentFS volume at `./data/tenants/${tenantId}.db`
 - transcripts + `session_search`
 - sandbox tools (`bash`, `readFile`, `writeFile`)
 - model `anthropic/claude-sonnet-4-5`
-- process cache so the same volume path reuses one home
+- process cache: each storage key (for AgentFS, the volume path) opens once per
+  process. Every kit on that key shares the opened storage and keeps its own
+  options
 
 Most apps want `createAgentKit`: one object that opens a tenant home (cached
 per process, bounded by the number of tenants) and a chat session on demand.
@@ -141,12 +144,14 @@ and `createTenantHome` accept these.
 ```ts
 const kit = createAgentKit({
   agent: await loadAgent("chat"),
-  dataDir: "/var/lib/agents", // or volumePath: "/data/acme.db"
+  dataDir: "/var/lib/agents", // or storage: postgresStorage({ db })
   model: "anthropic/claude-sonnet-4-5", // or a ready LanguageModel
   interactiveApproval: true, // chat UI Approve applies writes
   workspaceFiles: { "README.md": "# hi\n" },
   sandbox: { allowedHosts: ["api.example.com"] }, // hostnames only; or sandbox: false
   // transcripts: false,
+  // curatorModel: "anthropic/claude-haiku-4-5", // cheaper review model
+  // curatorQueue: (job) => queue.add("curator", job), // review in a worker
 });
 
 // per-chat overrides via the third argument:
@@ -160,13 +165,20 @@ What `kit.home(tenantId)` / `createTenantHome` returns:
 
 | Field | What it is |
 | ----- | ---------- |
-| `home.volume` | The tenant SQLite filesystem (memory, skills, workspace, audit). |
-| `home.transcripts` | Chat history store used by `session_search` and the curator. |
+| `home.volume` | The privileged tenant filesystem (agent files, memory, skills, pending). Host code only. |
+| `home.location` | Where the data lives: a file path or a backend label. |
+| `home.agentFs` | AgentFS handle, when the storage is AgentFS. |
+| `home.transcripts` | Chat history store used by `session_search`. |
 | `home.bash` | Guarded shell toolkit (`bash`, `readFile`, `writeFile`). |
 | `home.openSession` | Opens one chat with frozen memory for that `sessionId`. |
+| `home.stores()` | Fresh memory, skill, and pending stores for host pages (for example "what the agent remembers"). |
+| `home.review(job)` | Runs one curator review now (queue workers, host events). |
 
 Most apps only call `openSession`. Use the other fields when you persist
 messages yourself, inspect the volume, or call sandbox tools outside a turn.
+The kit does not save chat messages to `home.transcripts` for you. Append the
+user message and the reply after each turn when you want `session_search` to
+find them.
 
 A full streaming chat with the same shape lives in
 [`examples/example-app`](../../examples/example-app).
@@ -207,6 +219,11 @@ export default withAgentKit(nextConfig);
 - `outputFileTracingIncludes["/*"]`: `./{agentsDir}/**/*`
 - `env.AGENT_KIT_AGENTS_DIR`: same `agentsDir` (so `loadAgent("chat")` matches tracing)
 
+The kit loads the sandbox package (AgentFS, just-bash) only when a home opens
+an AgentFS volume or creates bash tools. With Postgres storage and
+`sandbox: false`, it never loads those native packages. Keep `withAgentKit`
+anyway, so the build still works when you turn the sandbox on later.
+
 Rules:
 
 1. Set `export const runtime = "nodejs"` in the route or action file. The
@@ -226,7 +243,8 @@ Reference wiring: [`examples/example-app`](../../examples/example-app).
 
 ## Rules you must keep
 
-1. One volume file per tenant. Never open tenant A’s path for tenant B.
+1. One volume per tenant. Never open tenant A’s path for tenant B. The kit
+   throws when a second tenant uses a storage key that is already open.
 2. Do not share one open volume across tenants.
 3. Leave write approval on unless you opt out for a local demo. Use
    `curator.autoApprove` when only curator proposals should skip human review.
@@ -234,7 +252,7 @@ Reference wiring: [`examples/example-app`](../../examples/example-app).
 
 | Detail | Fact |
 | ------ | ---- |
-| What is in the volume | Memory, skills, workspace files, transcripts, audit data |
+| What is in the volume | Agent files, memory, skills, pending writes. With AgentFS also workspace files, transcripts, and audit data. |
 | Who checks login | Your app. The kit trusts the `tenantId` you pass. |
 | Audit trail | Prefer AgentFS timeline or SQL. The kit also records blocked shell commands. |
 
@@ -274,6 +292,11 @@ host posture:
 Approved or auto-applied content shows up in a **new** session (the open chat
 keeps its frozen memory snapshot).
 
+To run reviews in a worker instead of the web process, pass `curatorQueue`.
+The kit hands a JSON `CuratorJob` to it after each turn. The worker calls
+`kit.review(job)` with the same agent and storage. See
+[Storage](storage.md#run-the-curator-in-a-worker).
+
 Bare `openAgentSession` (without `createTenantHome`) does not auto-run the
 curator. Call `runBackgroundReview` yourself in that case.
 
@@ -281,6 +304,7 @@ Details: [Skills & learning](skills-and-learning.md).
 
 ## Next
 
+- Run on Postgres or with a curator worker: [Storage](storage.md)
 - Add product tools: [Tools](tools.md)
 - Choose a model or stream replies: [Models](models.md)
 - Shell limits: [Sandbox](sandbox.md)

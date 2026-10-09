@@ -10,7 +10,9 @@ in-memory implementations, `sessionSearch`, and `createSessionSearchTool`.
    messages, even when searching by `session_id` alone. Use `assertTenantSession`
    before serving history to a caller.
 2. **The interface is the product.** `TranscriptStore` exists so hosts can plug
-   in Postgres later. Keep it minimal and storage-agnostic.
+   in other stores (`agent-kit-node/postgres` ships one). Keep it minimal and
+   storage-agnostic. New methods are optional (`getSession`) so existing
+   stores keep compiling.
 3. **Prefer one store per tenant volume** (`FileTranscriptStore` on that FS).
 4. **Leaf package.** No `@socialrobot-io/agent-kit-*` dependencies.
 

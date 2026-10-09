@@ -24,6 +24,7 @@
 import { firstThreatMessage } from "./threats.js";
 import { scrubSecrets } from "./scrub-secrets.js";
 import { isSkillNameLocked, parseLockFlags } from "./skill-locks.js";
+import { withExclusive, type ExclusiveFs } from "./exclusive.js";
 
 /** Metadata for one skill directory (from SKILL.md frontmatter + lock state). */
 export interface SkillMeta {
@@ -56,7 +57,7 @@ export interface SkillLibraryOptions {
   secrets?: string[];
 }
 
-export interface SkillsFs {
+export interface SkillsFs extends ExclusiveFs {
   readFile(path: string): Promise<string | null>;
   writeFile(path: string, content: string): Promise<void>;
   deleteFile?(path: string): Promise<void>;
@@ -391,7 +392,20 @@ export class SkillLibrary {
 
   // ── skill_manage actions ────────────────────────────────────────────────
 
+  /**
+   * Serialize check-then-write and read-modify-write actions (`create`,
+   * `patch`) across writers that share this filesystem, the same way memory
+   * writes are serialized.
+   */
+  private mutateExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    return withExclusive(this.fs, fn);
+  }
+
   async create(name: string, content: string, category?: string): Promise<SkillResult> {
+    return this.mutateExclusive(() => this.createLocked(name, content, category));
+  }
+
+  private async createLocked(name: string, content: string, category?: string): Promise<SkillResult> {
     if (!content) return { success: false, error: "content is required for 'create'." };
     if (await this.isLocked(name)) return this.lockedError(name);
     const nameErr = validateName(name);
@@ -445,6 +459,18 @@ export class SkillLibrary {
     newString: string,
     filePath?: string,
     replaceAll = false,
+  ): Promise<SkillResult> {
+    return this.mutateExclusive(() =>
+      this.patchLocked(name, oldString, newString, filePath, replaceAll),
+    );
+  }
+
+  private async patchLocked(
+    name: string,
+    oldString: string,
+    newString: string,
+    filePath: string | undefined,
+    replaceAll: boolean,
   ): Promise<SkillResult> {
     if (!oldString) return { success: false, error: "old_string is required for 'patch'." };
     if (await this.isLocked(name)) return this.lockedError(name);

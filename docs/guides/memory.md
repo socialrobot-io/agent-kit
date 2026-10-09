@@ -13,8 +13,11 @@ rejected. Consolidate first, then add in one batch.
 
 Parallel chats for one tenant share the same volume. Memory
 `add` / `replace` / `remove` / `applyBatch` run one at a time per volume so
-concurrent writers do not overwrite each other. The frozen system-prompt
-snapshot for each open chat still does not change mid-session.
+concurrent writers do not overwrite each other. On AgentFS a queue in the
+process does this. On shared storage (Postgres) the volume's `exclusive` lock
+does it across processes and machines. See [Storage](storage.md#concurrent-edits).
+The frozen system-prompt snapshot for each open chat still does not change
+mid-session.
 
 ## Frozen snapshot (why mid-chat writes feel “delayed”)
 

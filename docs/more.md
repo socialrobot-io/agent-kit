@@ -9,7 +9,7 @@ commands. For the product pitch and copy-paste setup, see the
 **Requirements**
 
 - Node.js 20+ (or Bun)
-- Durable local disk for per-tenant SQLite volumes (one machine today)
+- Durable local disk for per-tenant SQLite volumes (default), or Postgres for many processes ([Storage](guides/storage.md))
 - A model provider for live turns
 
 Happy path package (volume + transcripts + sandbox + live loop):
@@ -23,7 +23,7 @@ npm i @socialrobot-io/agent-kit-node ai
 
 | Package | Job |
 | ------- | --- |
-| [`@socialrobot-io/agent-kit-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (volume, sandbox, sessions, curator) |
+| [`@socialrobot-io/agent-kit-node`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-node) | `createTenantHome` (volume, sandbox, sessions, curator). Postgres storage at `/postgres` |
 | [`@socialrobot-io/agent-kit-next`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-next) | `withAgentKit` Next.js config helper |
 | [`@socialrobot-io/agent-kit-core`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-core) | Definition, memory, skills, approval |
 | [`@socialrobot-io/agent-kit-ai`](https://www.npmjs.com/package/@socialrobot-io/agent-kit-ai) | `AgentSession.run` / `.stream` |
@@ -146,9 +146,10 @@ Details: [Security guide](guides/security.md).
 | [Models](guides/models.md) | Pick a model, run or stream a turn |
 | [Memory](guides/memory.md) | What is remembered across chats |
 | [Skills & learning](guides/skills-and-learning.md) | Skills, curator, human approve |
+| [Storage](guides/storage.md) | AgentFS or Postgres, curator workers |
 | [Publishing](guides/publishing.md) | npm release (maintainers) |
 
-Not ready yet: [Multi-machine](roadmap/multi-machine.md).
+Many processes or machines: [Storage](guides/storage.md). Sharing one AgentFS volume: [roadmap](roadmap/multi-machine.md).
 
 Full index: [docs/README](README.md).
 
