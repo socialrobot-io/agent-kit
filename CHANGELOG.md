@@ -1,3 +1,23 @@
+## 0.3.1 (2026-10-09)
+
+### 🚀 Features
+
+- enhance memory tool guidance and write approval handling ([63b005d](https://github.com/socialrobot-io/agent-kit/commit/63b005d))
+- ⚠️  pluggable storage, Postgres adapter, and a curator queue for workers ([#28](https://github.com/socialrobot-io/agent-kit/pull/28))
+
+### ⚠️  Breaking Changes
+
+- pluggable storage, Postgres adapter, and a curator queue for workers  ([#28](https://github.com/socialrobot-io/agent-kit/pull/28))
+  home.volume is typed StorageVolume (AgentFsLike plus
+  deleteFile). The AgentFS handle moved to home.agentFs. home.location
+  replaces home.volumePath (kept as a deprecated alias).
+
+### ❤️ Thank You
+
+- Claude
+- Claude Opus 5.5
+- Nicolas Torres
+
 ## 0.3.0 (2026-09-04)
 
 ### 🚀 Features
