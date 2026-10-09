@@ -1,3 +1,14 @@
+## 0.3.2 (2026-10-09)
+
+### 🚀 Features
+
+- skill index in the prompt, recordTurn, and exported tool schemas ([#30](https://github.com/socialrobot-io/agent-kit/pull/30))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 ## 0.3.1 (2026-10-09)
 
 ### 🚀 Features
