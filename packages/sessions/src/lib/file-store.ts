@@ -9,11 +9,12 @@
  * lines (idempotent by message id).
  */
 
-import type {
-  SearchHit,
-  Session,
-  SessionMessage,
-  TranscriptStore,
+import {
+  searchSnippet,
+  type SearchHit,
+  type Session,
+  type SessionMessage,
+  type TranscriptStore,
 } from "./transcript.js";
 
 /** Minimal async FS surface — satisfied by AgentFS adapters and Node fs wrappers. */
@@ -194,7 +195,7 @@ export class FileTranscriptStore implements TranscriptStore {
             sessionId: session.id,
             messageId: m.id,
             role: m.role,
-            snippet: this.snippet(m.content, q),
+            snippet: searchSnippet(m.content, q),
             createdAt: m.createdAt,
           });
         }
@@ -202,14 +203,6 @@ export class FileTranscriptStore implements TranscriptStore {
     }
     hits.sort((a, b) => b.createdAt - a.createdAt);
     return hits.slice(0, limit);
-  }
-
-  private snippet(content: string, q: string, radius = 60): string {
-    const i = content.toLowerCase().indexOf(q);
-    if (i === -1) return content.slice(0, radius * 2);
-    const start = Math.max(0, i - radius);
-    const end = Math.min(content.length, i + q.length + radius);
-    return (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");
   }
 
   async scroll(sessionId: string, offset = 0, limit = 20): Promise<SessionMessage[]> {
