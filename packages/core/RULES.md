@@ -15,9 +15,12 @@ Everything else depends on this package; it depends on nothing.
    memory snapshot taken at runtime init, gate decisions keyed off origin and
    write-approval config) is contractual. Change it only intentionally, update
    the porting comments, the specs, and `docs/guides/` in the same commit.
-3. **AgentFS is the source of truth.** Memory, skills, and pending writes are
-   read from and written to the injected `AgentFsLike`. Never introduce
-   Postgres, Redis, or any external store for agent state here.
+3. **The injected volume is the source of truth.** Memory, skills, and
+   pending writes are read from and written to the injected `AgentFsLike`.
+   Never import Postgres, Redis, or any store here; backends live in adapter
+   packages. Multi-call edits (read, change, write) go through
+   `withExclusive(fs, fn)`, which uses the volume's own `exclusive` lock when
+   it has one (shared backends) and a process-local queue otherwise.
 4. **The `AgentFsLike` contract is load-bearing.** `readFile` returns `null`
    (never throws) on missing files; `list` returns `[]` on missing directories;
    `deleteFile` is optional but required by pending-store discard and skill

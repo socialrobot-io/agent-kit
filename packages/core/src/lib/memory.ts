@@ -14,14 +14,16 @@
  * The snapshot refreshes on the next session start.
  *
  * Parallel chats that share one filesystem (one tenant volume) serialize
- * add/replace/remove/applyBatch via an exclusive queue keyed by that fs, so
- * reload→mutate→persist cannot lose updates across MemoryStore instances.
+ * add/replace/remove/applyBatch, so reload→mutate→persist cannot lose updates
+ * across MemoryStore instances. The lock is the filesystem's own `exclusive`
+ * when it has one (shared backends, many processes), else a process-local
+ * queue keyed by that fs.
  *
  * Entry delimiter: § (section sign). Entries can be multiline.
  * Character limits (not tokens) because char counts are model-independent.
  */
 
-import { exclusiveFor } from "./exclusive.js";
+import { withExclusive, type ExclusiveFs } from "./exclusive.js";
 import { firstThreatMessage } from "./threats.js";
 import { scrubSecrets } from "./scrub-secrets.js";
 
@@ -57,7 +59,7 @@ interface MemoryOperation {
  * implementation is backed by a per-tenant AgentFS volume; tests can use a
  * plain in-memory map. All paths are POSIX-style relative to the agent home.
  */
-export interface MemoryFs {
+export interface MemoryFs extends ExclusiveFs {
   readFile(path: string): Promise<string | null>;
   writeFile(path: string, content: string): Promise<void>;
   rename?(from: string, to: string): Promise<void>;
@@ -263,7 +265,7 @@ export class MemoryStore {
    * parallel chats each hold their own store on one tenant volume.
    */
   private mutateExclusive<T>(fn: () => Promise<T>): Promise<T> {
-    return exclusiveFor(this.fs as object)(fn);
+    return withExclusive(this.fs, fn);
   }
 
   async add(target: MemoryTarget, content: string): Promise<MemoryResult> {

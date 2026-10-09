@@ -6,6 +6,7 @@
 
 import type { AgentFsLike } from "./agent.js";
 import { isSkillNameLocked, SKILL_LOCKS_PATH } from "./skill-locks.js";
+import { withExclusive } from "./exclusive.js";
 
 export class PathPolicyError extends Error {
   readonly code = "PATH_POLICY_DENIED" as const;
@@ -83,6 +84,10 @@ export function createAgentFs(inner: AgentFsLike, options: PathPolicyOptions = {
       await inner.deleteFile!(path);
     };
   }
+
+  // Share the inner store's lock, so a policy wrapper and the privileged
+  // volume (or two wrappers on one volume) never hold separate locks.
+  wrapped.exclusive = <T>(fn: () => Promise<T>) => withExclusive(inner, fn);
 
   return wrapped;
 }
