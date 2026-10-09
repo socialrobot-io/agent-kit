@@ -1,3 +1,14 @@
+## 0.3.3 (2026-10-09)
+
+### 🚀 Features
+
+- remove skills and files a host drops from its bundle ([#31](https://github.com/socialrobot-io/agent-kit/pull/31))
+
+### ❤️ Thank You
+
+- Cursor @cursoragent
+- Nicolas Torres
+
 ## 0.3.2 (2026-10-09)
 
 ### 🚀 Features
