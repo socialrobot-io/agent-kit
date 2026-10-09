@@ -64,7 +64,7 @@ Skill locking (see [Skills & learning](skills-and-learning.md)):
 ### Checklist
 
 1. Author `agent/` and run `compileAgent` in CI / predev
-2. Mark company-owned skills with frontmatter or `.locked`
+2. Mark company-owned skills with frontmatter or `.locked`. Each boot installs the bundle again and removes what you took out of it (see [Bundle updates](skills-and-learning.md#bundle-updates))
 3. Pass sandbox `secrets` / `allowedHosts` at home creation
 4. Enable `javascript` / `python` on `sandbox` if the agent should run `js-exec` / `python3`
 5. Add product tools with `addTools` (see [Tools](tools.md))

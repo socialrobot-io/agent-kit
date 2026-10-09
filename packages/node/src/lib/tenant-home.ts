@@ -307,14 +307,17 @@ function homeModel(opts: CreateTenantHomeOptions, definition: AgentDefinition): 
   return typeof opts.model !== "string" && opts.model !== undefined ? opts.model : definition.model;
 }
 
+/**
+ * Install the host bundle and the framework skills in one pruning pass, so
+ * a skill or file the host dropped from its bundle leaves the volume too.
+ * A process that opens a home without a bundle never prunes.
+ */
 async function installEnvelope(volume: AgentFsLike, agent?: AgentBundle): Promise<void> {
+  const framework = FRAMEWORK_SKILLS.map((s) => ({ ...s, tier: "framework" as const }));
   if (agent) {
-    await installAgent(volume, agent);
-  }
-  if (FRAMEWORK_SKILLS.length) {
-    await installAgent(volume, {
-      skills: FRAMEWORK_SKILLS.map((s) => ({ ...s, tier: "framework" as const })),
-    });
+    await installAgent(volume, { ...agent, skills: [...(agent.skills ?? []), ...framework] }, { prune: true });
+  } else if (framework.length) {
+    await installAgent(volume, { skills: framework });
   }
 }
 

@@ -499,3 +499,37 @@ describe("parseCuratorJob", () => {
     );
   });
 });
+
+describe("bundle install", () => {
+  const skill = (name: string) => ({
+    name,
+    files: { "SKILL.md": `---\nname: ${name}\ndescription: The ${name} skill.\nlocked: true\n---\n\n# ${name}\n` },
+  });
+  const withIndex = defineAgent({ model: "mock/model", config: { skillIndex: true } });
+  const boot = (storage: StorageAdapter, agent?: Parameters<typeof createTenantHome>[0]["agent"]) => {
+    resetTenantHomeCache();
+    return createTenantHome({ tenantId: "t1", storage, agent, definition: withIndex, model: mockModel(), sandbox: false });
+  };
+  const indexed = async (home: Awaited<ReturnType<typeof createTenantHome>>) =>
+    (await home.openSession(`chat-${Date.now()}`)).runtime.systemPrompt();
+
+  it("drops a skill the host removed from its bundle on the next boot", async () => {
+    const storage = memoryStorage();
+    const v1 = await boot(storage, { soul: "You write posts.", skills: [skill("threads"), skill("captions")] });
+    expect(await indexed(v1)).toContain("- captions: The captions skill.");
+
+    const v2 = await boot(storage, { soul: "You write posts.", skills: [skill("threads")] });
+    const prompt = await indexed(v2);
+    expect(prompt).toContain("- threads: The threads skill.");
+    expect(prompt).not.toContain("captions");
+    expect(await v2.volume.readFile("skills/captions/SKILL.md")).toBeNull();
+  });
+
+  it("leaves the volume alone when a process opens the home without a bundle", async () => {
+    const storage = memoryStorage();
+    await boot(storage, { soul: "You write posts.", skills: [skill("threads")] });
+    const bare = await boot(storage);
+    expect(await bare.volume.readFile("agent/SOUL.md")).toBe("You write posts.");
+    expect(await bare.volume.readFile("skills/threads/SKILL.md")).not.toBeNull();
+  });
+});
