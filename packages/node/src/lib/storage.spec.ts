@@ -289,6 +289,25 @@ describe("recordTurn", () => {
     expect((await home.stores()).memory.getEntries("user")).toEqual(["Sells tea"]);
   });
 
+  it("skips the review when the turn has no new text", async () => {
+    const jobs: CuratorJob[] = [];
+    const home = await createTenantHome({
+      tenantId: "t1",
+      storage: memoryStorage(),
+      definition: autoApprove,
+      sandbox: false,
+      curatorQueue: (job) => {
+        jobs.push(job);
+      },
+    });
+    const result = await home.recordTurn("chat-1", {
+      context: [{ role: "user", content: "Earlier" }],
+      messages: [{ id: "m1", role: "assistant", content: " " }],
+    });
+    expect(result).toEqual({ recorded: 0, review: "skipped" });
+    expect(jobs).toHaveLength(0);
+  });
+
   it("skips the review when the curator is off", async () => {
     const jobs: CuratorJob[] = [];
     const home = await createTenantHome({

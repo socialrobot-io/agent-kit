@@ -486,12 +486,13 @@ async function bootHome(opts: CreateTenantHomeOptions, storage: StorageAdapter):
       }
     }
 
+    // Nothing new in this turn: earlier context alone is not worth a review.
+    if (input.review === false || !resolveCuratorConfig(definition) || messages.length === 0) {
+      return { recorded, review: "skipped" };
+    }
     const conversation = [...(input.context ?? []), ...messages]
       .filter((m) => m.content.trim())
       .map(({ role, content }) => ({ role, content }));
-    if (input.review === false || !resolveCuratorConfig(definition) || conversation.length === 0) {
-      return { recorded, review: "skipped" };
-    }
     const job: CuratorJob = { v: 1, tenantId, sessionId, conversation, createdAt: Date.now() / 1000 };
     if (opts.curatorQueue) {
       await opts.curatorQueue(job);
