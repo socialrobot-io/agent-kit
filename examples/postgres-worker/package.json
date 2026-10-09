@@ -1,0 +1,26 @@
+{
+  "name": "@socialrobot-io/agent-kit-example-postgres-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "name": "example-postgres-worker",
+    "tags": [
+      "type:example"
+    ]
+  },
+  "scripts": {
+    "start": "bun src/main.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@socialrobot-io/agent-kit-ai": "workspace:*",
+    "@socialrobot-io/agent-kit-core": "workspace:*",
+    "@socialrobot-io/agent-kit-node": "workspace:*",
+    "ai": "^7.0.41",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

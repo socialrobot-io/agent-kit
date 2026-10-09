@@ -127,6 +127,7 @@ export async function POST(req: Request) {
 ```
 
 Working demo: [`examples/example-app`](examples/example-app).
+Postgres with a curator worker: [`examples/postgres-worker`](examples/postgres-worker).
 
 ### 3. Hono / Express
 

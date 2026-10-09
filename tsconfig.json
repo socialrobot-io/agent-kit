@@ -29,6 +29,9 @@
     },
     {
       "path": "./packages/next"
+    },
+    {
+      "path": "./examples/postgres-worker"
     }
   ]
 }
