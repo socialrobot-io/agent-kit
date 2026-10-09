@@ -10,6 +10,7 @@ and human-gated learning.
 | ------- | ----- |
 | Company envelope + skill tiers | [Skills](guides/skills-and-learning.md) · [Security](guides/security.md) · [CONTEXT.md](../CONTEXT.md) |
 | Per-tenant volume + auth → `createTenantHome` | [Hosting](guides/hosting.md) (includes [Next.js App Router](guides/hosting.md#nextjs-app-router)) |
+| AgentFS or Postgres storage, curator workers | [Storage](guides/storage.md) |
 | Agents as files (`SOUL.md`, `AGENTS.md`, skills) | [Getting started](guides/getting-started.md) |
 | Frozen memory snapshot | [Memory](guides/memory.md) |
 | Skills, curator, approve | [Skills & learning](guides/skills-and-learning.md) |
@@ -33,13 +34,14 @@ and human-gated learning.
 6. [Models](guides/models.md): pick a model; use `session.run` / `session.stream`
 7. [Memory](guides/memory.md): what the agent remembers across chats
 8. [Skills & learning](guides/skills-and-learning.md): procedures, curator, human approve
+9. [Storage](guides/storage.md): AgentFS or Postgres, many processes, curator workers
 
 Maintainers: [Publishing](guides/publishing.md).
 
 ## Roadmap
 
 - [Company envelope PRD](roadmap/company-envelope-prd.md): sealed company identity and policy, free agents inside
-- [Multi-machine](roadmap/multi-machine.md): not ready yet
+- [Multi-machine](roadmap/multi-machine.md): use Postgres storage; sharing one AgentFS volume is deferred
 
 Product pitch and setup: [root README](../README.md).
 

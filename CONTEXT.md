@@ -35,6 +35,18 @@ toolApproval).
 Core module that owns lock-check → gate → stage/apply for memory and skills.
 Session tools, curator, and approve replay call the same seam.
 
+## Storage adapter
+
+Where a tenant home keeps its volume and transcripts (`StorageAdapter`).
+AgentFS (one SQLite file per tenant) is the default. `agent-kit-node/postgres`
+stores the same files as rows bound to the tenant, for many processes.
+
+## Curator job
+
+A JSON `CuratorJob` (tenant, chat id, conversation) that `curatorQueue`
+hands to a host queue. A worker runs it with `kit.review(job)`, using its own
+agent policy.
+
 ## Privileged volume
 
 Raw tenant AgentFS handle used only by the host for seed/deploy. Sessions use

@@ -46,7 +46,8 @@ await compileAgent({ dir: "./agent", outFile: "./src/generated/agent.ts" });
 const home = await createTenantHome({ tenantId, agent });
 ```
 
-The durable copy lives on the AgentFS volume after install.
+The durable copy lives on the tenant volume after install (AgentFS by
+default, or your [storage](storage.md) adapter).
 ## Skill layout
 
 ```text
@@ -127,6 +128,12 @@ defineAgent({
   },
 });
 ```
+
+To review in a worker instead of the process that served the turn, pass
+`curatorQueue` to `createAgentKit`. The worker runs each job with
+`kit.review(job)`, using its own agent policy. See
+[Storage](storage.md#run-the-curator-in-a-worker). Pass `curatorModel` to
+review with a cheaper model.
 
 | Capture | Skip |
 | ------- | ---- |

@@ -347,7 +347,7 @@ Agent-facing FS used by the runtime must be the policy-wrapped FS, not the raw v
 | May the company turn approval off? | Yes, host may set `writeApproval` false. Default remains on. Envelope path locks and skill locks still apply. |
 | Are workspace files approval-gated? | No. Workspace is FREE. Learning into memory/unlocked skills is gated. |
 | Does bash under `/workspace` rewrite `agent/` or locked skills? | No. Path policy and mount layout must keep those prefixes out of the writable view, or deny writes if reachable. |
-| Postgres for agent state? | Out of scope. Agent state stays on the tenant AgentFS volume. |
+| Postgres for agent state? | Out of scope for this PRD. Later shipped as an optional storage adapter ([Storage](../guides/storage.md)); the envelope rules apply the same way. |
 
 ## 11. Rollout
 

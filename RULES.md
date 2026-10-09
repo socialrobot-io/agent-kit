@@ -11,16 +11,20 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
    (SocialRobot, DeepSeek defaults, business flows) belongs in `packages/`.
    Specialization happens in consumer apps on top of the toolkit.
 2. **Agents are files.** An agent is authored as a directory (`SOUL.md`,
-   `AGENTS.md`, `skills/`) and its learned state is files in an AgentFS volume
-   (`memories/MEMORY.md`, `memories/USER.md`, `skills/`, `pending/`). Code reads and
-   writes files; there is no hidden database of agent state.
+   `AGENTS.md`, `skills/`) and its learned state is files in a per-tenant
+   volume (`memories/MEMORY.md`, `memories/USER.md`, `skills/`, `pending/`).
+   Code reads and writes files through `AgentFsLike`; there is no hidden
+   database of agent state. A storage adapter decides where the files live
+   (AgentFS by default, Postgres rows with `agent-kit-node/postgres`), and the file
+   layout is the same on every backend.
 3. **The learning loop is explicit.** Session transcripts feed a background
    curator; the curator proposes memory and skill writes; a human (or
    `config.curator.autoApprove`) applies them; the next session's frozen system
    prompt reflects them. Every arrow in that loop is inspectable and testable.
-4. **Multi-tenancy by construction.** Isolation comes from one AgentFS volume
-   per tenant plus tenant-scoped transcript/audit stores, not from filters
-   sprinkled on shared state.
+4. **Multi-tenancy by construction.** Isolation comes from one volume per
+   tenant plus tenant-scoped transcript/audit stores, not from filters
+   sprinkled on shared state. Shared backends bind each store object to one
+   tenant at construction; callers never pass a tenant filter per query.
 5. **Execution is safe by default.** bash goes through guardrails, runs against
    a per-tenant AgentFS volume, and is audited. Untrusted content is
    threat-scanned. Writes behind approval stay staged until approved.
@@ -32,6 +36,10 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
   - `curator` and `ai` may depend on `core` only.
   - `node` is the host composition package (`createTenantHome`); it may depend
     on `core`, `ai`, `sessions`, and `sandbox`. Never add `node` as a dep of a leaf.
+    It loads `sandbox` lazily (dynamic import), so hosts without AgentFS or bash
+    never load native bindings.
+  - `node` also ships the Postgres storage adapter as the `./postgres` subpath
+    export. It has no driver dependency, and the main entry never imports it.
   - `cli` and `examples/*` are top-level consumers and may depend on anything.
 - `vendor/hermes` is a pinned, read-only upstream snapshot (see
   `vendor/hermes/UPSTREAM_COMMIT`). Never edit it; port deliberately into
@@ -46,7 +54,9 @@ and `examples/RULES.md`; the nearest file wins when they overlap.
 - Source and tests are colocated in `src/lib/` as `name.ts` + `name.spec.ts`
   (vitest). Spec imports use relative `./name.js` paths.
 - Tests must pass offline: no network, no API keys, no real AgentFS volumes in
-  unit tests (use `InMemoryFs` and mock models).
+  unit tests (use `InMemoryFs` and mock models). Postgres specs use PGlite
+  (in-process); specs that need a real server skip unless
+  `AGENT_KIT_TEST_DATABASE_URL` is set.
 - Comments explain non-obvious intent, constraints, and ports (e.g. "mirrors
   vendor/hermes memory_tool.py"). Never narrate what the code plainly does.
 - Prose in code, docs, and commit messages: no em dashes, no emojis.

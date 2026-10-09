@@ -80,6 +80,23 @@ options are typed from the AI SDK: `session.run` accepts
 Built-in tools write through the same approval rules as the rest of the kit.
 To add product tools, see [Tools](tools.md).
 
+### Per-turn context
+
+The kit sets `system` from the frozen session prompt (SOUL, AGENTS, memory
+snapshot, tool guidance). To add request context for one turn, pass
+`systemContext`. The kit puts it after the frozen prompt, so provider prompt
+caching still covers the frozen part.
+
+```ts
+const result = session.stream(messages, {
+  systemContext: [`Today is ${today}.`, `Page: ${pageTitle}.`].join("\n"),
+});
+```
+
+Use it for the date, the locale, page state, or retrieved data. Fence text
+that comes from users or documents (for example in XML-style tags) and tell
+the model in `AGENTS.md` that fenced text is data, not instructions.
+
 ## Stream a turn
 
 ```ts
@@ -112,6 +129,10 @@ const home = await createTenantHome({
   curatorRunner: aiCuratorRunner(anthropic("claude-haiku-4-5")),
 });
 ```
+
+`curatorModel: anthropic("claude-haiku-4-5")` does the same with less code.
+To review in a worker process, see
+[Storage](storage.md#run-the-curator-in-a-worker).
 
 Manual `runBackgroundReview` is only needed when you use bare
 `openAgentSession` without `createTenantHome`. See
