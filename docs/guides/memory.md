@@ -11,6 +11,10 @@ tenant. It lives in two files on that tenant’s volume:
 Limits are character counts, not tokens. If a store is full, the write is
 rejected. Consolidate first, then add in one batch.
 
+A batch is a non-empty `operations` array. An empty array is ignored, so a
+call with `action`, `content` and `operations: []` is a single write. Models
+that use strict tool calling send every optional field this way.
+
 Parallel chats for one tenant share the same volume. Memory
 `add` / `replace` / `remove` / `applyBatch` run one at a time per volume so
 concurrent writers do not overwrite each other. On AgentFS a queue in the
