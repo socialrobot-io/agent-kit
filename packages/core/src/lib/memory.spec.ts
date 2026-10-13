@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { MemoryStore, ENTRY_DELIMITER } from "./memory.js";
+import { MemoryStore, ENTRY_DELIMITER, applyMemoryArgs } from "./memory.js";
 import { InMemoryFs } from "./in-memory-fs.js";
 
 describe("MemoryStore", () => {
@@ -81,6 +81,51 @@ describe("MemoryStore", () => {
     ]);
     expect(res.success).toBe(true);
     expect(store.getEntries("memory")).toEqual(["new consolidated entry"]);
+  });
+
+  it("treats an empty operations array as a single-op call", async () => {
+    // Strict tool calling fills every optional field: `operations: []` comes
+    // with a plain add, list, replace or remove.
+    const strict = { content: "", old_text: "", operations: [] };
+    const added = await applyMemoryArgs(store, {
+      ...strict,
+      action: "add",
+      target: "user",
+      content: "User is Nico",
+    });
+    expect(added.success).toBe(true);
+    expect(store.getEntries("user")).toEqual(["User is Nico"]);
+
+    const listed = await applyMemoryArgs(store, { ...strict, action: "list", target: "user" });
+    expect(listed.success).toBe(true);
+    expect(listed.entries).toEqual(["User is Nico"]);
+
+    const replaced = await applyMemoryArgs(store, {
+      ...strict,
+      action: "replace",
+      target: "user",
+      old_text: "Nico",
+      content: "User is Nico, a founder",
+    });
+    expect(replaced.success).toBe(true);
+    expect(store.getEntries("user")).toEqual(["User is Nico, a founder"]);
+
+    const removed = await applyMemoryArgs(store, { ...strict, action: "remove", target: "user", old_text: "founder" });
+    expect(removed.success).toBe(true);
+    expect(store.getEntries("user")).toEqual([]);
+  });
+
+  it("still applies a non-empty operations array as a batch", async () => {
+    const res = await applyMemoryArgs(store, {
+      action: "add",
+      content: "",
+      operations: [
+        { action: "add", content: "first" },
+        { action: "add", content: "second" },
+      ],
+    });
+    expect(res.success).toBe(true);
+    expect(store.getEntries("memory")).toEqual(["first", "second"]);
   });
 
   it("batch is all-or-nothing on limit overflow", async () => {

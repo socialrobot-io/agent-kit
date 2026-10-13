@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   assertTenantSession,
   InMemoryTranscriptStore,
+  searchWords,
   sessionSearch,
   type Session,
   type SessionMessage,
@@ -67,5 +68,55 @@ describe("InMemoryTranscriptStore + sessionSearch", () => {
       tenantId: "tenantA",
     });
     await expect(assertTenantSession(store, "tenantB", "s1")).rejects.toThrow(/not found/);
+  });
+});
+
+describe("sessionSearch when no message has every word", () => {
+  let store: InMemoryTranscriptStore;
+
+  beforeEach(async () => {
+    store = new InMemoryTranscriptStore();
+    await store.createSession(makeSession("launch", "t1"));
+    await store.appendMessage(makeMsg("launch", "user", "Write a LinkedIn post launching approval flows."));
+    await store.appendMessage(makeMsg("launch", "assistant", "Draft: Approval flows are live."));
+    await store.createSession(makeSession("chatter", "t1"));
+    await store.appendMessage(makeMsg("chatter", "user", "What time is it? I'd like a coffee."));
+    await store.appendMessage(makeMsg("chatter", "user", "Last time we talked about time zones."));
+  });
+
+  it("returns messages with some of the words, rare words first", async () => {
+    const res = await sessionSearch(store, "t1", { query: "NetSuite launch posts like last time" });
+    expect(res.success).toBe(true);
+    expect(res.match).toBe("some");
+    expect(res.message).toMatch(/some of them/);
+    expect(res.hits![0].sessionId).toBe("launch");
+    expect(res.hits![0].snippet).toContain("launching");
+  });
+
+  it("keeps the current chat out of some-word hits", async () => {
+    const res = await sessionSearch(
+      store,
+      "t1",
+      { query: "NetSuite launch posts" },
+      { currentSessionId: "launch" },
+    );
+    expect(res.hits!.every((hit) => hit.sessionId !== "launch")).toBe(true);
+  });
+
+  it("reports a full match when a message has the query", async () => {
+    const res = await sessionSearch(store, "t1", { query: "approval flows" });
+    expect(res.match).toBe("all");
+    expect(res.message).toBeUndefined();
+    expect(res.hits).toHaveLength(2);
+  });
+
+  it("returns no hits when no word matches", async () => {
+    const res = await sessionSearch(store, "t1", { query: "kubernetes" });
+    expect(res.success).toBe(true);
+    expect(res.hits).toEqual([]);
+  });
+
+  it("splits a query into searchable words", () => {
+    expect(searchWords("NetSuite sync: launch POSTS, ok?")).toEqual(["netsuite", "sync", "launch", "post"]);
   });
 });

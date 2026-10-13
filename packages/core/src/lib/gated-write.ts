@@ -3,7 +3,7 @@
  * Session tools, curator, and approve replay all call this module.
  */
 
-import { applyMemoryArgs, type MemoryStore } from "./memory.js";
+import { applyMemoryArgs, isMemoryBatch, type MemoryStore } from "./memory.js";
 import { SkillLibrary } from "./skills.js";
 import {
   evaluateGateAsync,
@@ -51,7 +51,7 @@ export function memoryWriteSummary(args: Record<string, unknown>): string {
     const action = (args.action as string) ?? "add";
     return `${action}: ${args.content.slice(0, 60)}`;
   }
-  if (Array.isArray(args.operations)) {
+  if (isMemoryBatch(args)) {
     const first = args.operations.find(
       (op): op is { content?: string } =>
         typeof op === "object" && op != null && typeof (op as { content?: string }).content === "string",

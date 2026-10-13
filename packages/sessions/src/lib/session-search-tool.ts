@@ -34,7 +34,10 @@ export const SESSION_SEARCH_TOOL_SCHEMA = {
     "no summarization.\n\n" +
     "BROWSE (no args): list past sessions for this tenant (newest first). The current " +
     "chat is skipped by default — it is already in context.\n" +
-    "DISCOVERY (query): find matching messages across past sessions.\n" +
+    "DISCOVERY (query): find matching messages across past sessions. Use a few words the " +
+    "earlier chat would contain. A message matches when it has the query or all of its " +
+    "words; when none does, messages with some of the words come back, best first " +
+    "(match: \"some\"). Then scroll a hit's session_id to read the whole chat.\n" +
     "SCROLL (session_id): read a window within one past session. Do not scroll the " +
     "current session_id unless the user explicitly needs it (include_current=true).",
   inputSchema: {

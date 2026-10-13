@@ -186,6 +186,13 @@ export interface SessionSearchResult {
   mode?: "discovery" | "scroll" | "browse";
   /** Discovery hits when `query` was set. */
   hits?: SearchHit[];
+  /**
+   * Discovery only. `all`: each hit contains the query or every word of it.
+   * `some`: no message did, so the hits match some of the words.
+   */
+  match?: "all" | "some";
+  /** A short note for the model about the result. */
+  message?: string;
   /** Scroll window when `session_id` was set. */
   messages?: SessionMessage[];
   /** Browse list when no query / session_id was set. */
@@ -213,11 +220,64 @@ export interface SessionSearchOptions {
   currentSessionId?: string;
 }
 
+/** Most words a some-words search tries, so a long query stays a few store calls. */
+const MAX_FALLBACK_WORDS = 8;
+
+/**
+ * Words of a query worth searching one by one: three characters or more,
+ * without duplicates. A trailing "s" is dropped from longer words, so with
+ * substring matching "posts" also finds "post".
+ */
+export function searchWords(query: string): string[] {
+  const words = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length >= 3)
+    .map((word) => (word.length > 4 && word.endsWith("s") ? word.slice(0, -1) : word));
+  return [...new Set(words)].slice(0, MAX_FALLBACK_WORDS);
+}
+
+/**
+ * Messages that match some words of `query`, best first. Each word adds
+ * 1 / (messages it matched), so a rare word ("launch") counts for more than a
+ * common one ("time"), as inverse document frequency does in full-text
+ * ranking. Ties go to the newest message.
+ *
+ * Upstream session_search (SQLite FTS5) returns nothing when a message lacks
+ * one word. Models often mix the new topic into the query ("NetSuite launch
+ * posts" to find an old launch post), so this pass keeps recall.
+ */
+async function searchSomeWords(
+  store: TranscriptStore,
+  tenantId: string,
+  query: string,
+  limit: number,
+  visible: (hit: SearchHit) => boolean,
+): Promise<SearchHit[]> {
+  const words = searchWords(query);
+  if (words.length === 0 || (words.length === 1 && words[0] === query.trim().toLowerCase())) return [];
+  const scored = new Map<string, { hit: SearchHit; score: number }>();
+  for (const word of words) {
+    const wordHits = (await store.search(tenantId, word, limit * 2)).filter(visible);
+    for (const hit of wordHits) {
+      const key = `${hit.sessionId}\u0000${hit.messageId}`;
+      const entry = scored.get(key) ?? { hit, score: 0 };
+      entry.score += 1 / wordHits.length;
+      scored.set(key, entry);
+    }
+  }
+  return [...scored.values()]
+    .sort((a, b) => b.score - a.score || b.hit.createdAt - a.hit.createdAt)
+    .slice(0, limit)
+    .map((entry) => entry.hit);
+}
+
 /**
  * session_search tool handler.
  *
  * - No args → browse: list past sessions (newest first), excluding current.
  * - query → discovery: FTS/substring hits across sessions, excluding current.
+ *   When no message has every word, messages that match some words (`match: "some"`).
  * - session_id → scroll: read a window within one session (current blocked unless
  *   include_current).
  */
@@ -249,11 +309,22 @@ export async function sessionSearch(
   }
 
   if (args.query) {
-    let hits = await store.search(tenantId, args.query, limit * 2);
-    if (currentId && !includeCurrent) {
-      hits = hits.filter((h) => h.sessionId !== currentId);
+    const visible = (hit: SearchHit) => !currentId || includeCurrent || hit.sessionId !== currentId;
+    const hits = (await store.search(tenantId, args.query, limit * 2)).filter(visible);
+    if (hits.length > 0) {
+      return { success: true, mode: "discovery", match: "all", hits: hits.slice(0, limit) };
     }
-    return { success: true, mode: "discovery", hits: hits.slice(0, limit) };
+    const some = await searchSomeWords(store, tenantId, args.query, limit, visible);
+    if (some.length > 0) {
+      return {
+        success: true,
+        mode: "discovery",
+        match: "some",
+        message: "No message has every word of the query. These messages match some of them, best first.",
+        hits: some,
+      };
+    }
+    return { success: true, mode: "discovery", match: "all", hits: [] };
   }
 
   // Browse: list past sessions, never the active chat (unless include_current).

@@ -506,13 +506,17 @@ export class MemoryStore {
 /**
  * Apply a memory tool payload (single-op or `operations` batch).
  * Used by the live tool handler, curator, and human approval replay.
+ *
+ * Only a non-empty `operations` array selects the batch path, as in upstream
+ * memory_tool.py (`if operations:`). Strict tool calling (OpenAI) sends every
+ * optional field, so a single add often arrives with `operations: []`.
  */
 export async function applyMemoryArgs(
   store: MemoryStore,
   args: Record<string, unknown>,
 ): Promise<MemoryResult> {
   const target = (args.target as MemoryTarget) ?? "memory";
-  if (Array.isArray(args.operations)) {
+  if (isMemoryBatch(args)) {
     return store.applyBatch(target, args.operations as MemoryOperation[]);
   }
   const action = args.action as string | undefined;
@@ -528,4 +532,11 @@ export async function applyMemoryArgs(
       `unknown memory action '${action ?? ""}'. ` +
       `Use action=list|add|replace|remove with content/old_text, or an operations array.`,
   };
+}
+
+/** True when a memory tool payload is a batch: a non-empty `operations` array. */
+export function isMemoryBatch(
+  args: Record<string, unknown>,
+): args is Record<string, unknown> & { operations: unknown[] } {
+  return Array.isArray(args.operations) && args.operations.length > 0;
 }

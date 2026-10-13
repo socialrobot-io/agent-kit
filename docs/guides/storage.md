@@ -171,7 +171,10 @@ a Postgres lock timeout error.
 
 `session_search` finds a message when it contains the query (case does not
 matter), or when it has all the query words in any order. Hits are newest
-first. Search reads the messages of one tenant, which is fast for thousands
+first. When no message matches, the tool searches each word of three or more
+characters on its own and returns the messages that match some of them, with
+`match: "some"`. A word that matches few messages counts for more than a word
+that matches many. These steps are the same on every store. Search reads the messages of one tenant, which is fast for thousands
 of messages per tenant. For more, add an index that suits your queries and
 your own `TranscriptStore`.
 
