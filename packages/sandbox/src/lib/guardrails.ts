@@ -55,7 +55,7 @@ function redactSecrets(command: string, secrets: string[]): string {
   }
   const staticPatterns: RegExp[] = [
     /\bsk-[A-Za-z0-9_-]{16,}\b/g,
-    /\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{10,}\b/g,
+    /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{10,}\b/g,
     /\bghp_[A-Za-z0-9_]{20,}\b/g,
     /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
     /\bAKIA[A-Z0-9]{12,}\b/g,

@@ -18,9 +18,11 @@ new one changes, in the same turn. When nothing is related, the response is
 the plain `Entry added.`
 
 Memory does not keep secrets. A write fails when its text has an API key or
-token of a known shape (OpenAI, Stripe, GitHub, AWS, Google, Slack) or a
-password with its label ("password: ...", "contraseña es ..."). Nothing is
-saved and the error tells the model so. Secrets that the host passes in
+token of a known shape (OpenAI, Stripe secret and restricted keys, GitHub,
+AWS, Google, Slack) or a password with its label ("password: ...",
+"contraseña es ...") whose value has a digit or a symbol. Nothing is saved
+and the error tells the model so. Notes that only mention a password
+("password is required") and Stripe publishable keys (`pk_`) still save. Secrets that the host passes in
 `secrets` are still replaced with `***REDACTED***`.
 
 A batch is a non-empty `operations` array. An empty array is ignored, so a

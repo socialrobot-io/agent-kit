@@ -122,13 +122,21 @@ describe("MemoryStore", () => {
     }
     await store.add("memory", "Billing is on Stripe.");
     expect((await store.replace("memory", "Billing", `Stripe key ${stripeLike("live")}`)).success).toBe(false);
-    expect((await store.applyBatch("memory", [{ action: "add", content: "pwd = hunter2hunter2" }])).success).toBe(false);
+    expect((await store.applyBatch("memory", [{ action: "add", content: "password = hunter2hunter2" }])).success).toBe(false);
     expect(store.getEntries("memory")).toEqual(["Billing is on Stripe."]);
   });
 
-  it("still saves text that only mentions passwords", async () => {
-    const res = await store.add("user", "Keeps passwords in a password manager.");
-    expect(res.success).toBe(true);
+  it("still saves notes that only look like credentials", async () => {
+    const publishable = ["pk", "live", "51PublicByDesignAbcdef"].join("_");
+    for (const content of [
+      "Keeps passwords in a password manager.",
+      "Password is required for the staging site.",
+      "La clave es la constancia.",
+      "pwd: /workspace/app",
+      `Stripe publishable key: ${publishable}`,
+    ]) {
+      expect((await store.add("memory", content)).success).toBe(true);
+    }
   });
 
   it("treats an empty operations array as a single-op call", async () => {
