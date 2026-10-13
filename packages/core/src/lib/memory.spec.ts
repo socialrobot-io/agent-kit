@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { MemoryStore, ENTRY_DELIMITER, applyMemoryArgs, relatedEntries } from "./memory.js";
+import { containsCredential } from "./scrub-secrets.js";
 import { InMemoryFs } from "./in-memory-fs.js";
 
 describe("MemoryStore", () => {
@@ -115,6 +116,7 @@ describe("MemoryStore", () => {
       `Stripe key: ${stripeLike("test")}`,
       "Xero password: Hunter2Ledger",
       "La contraseña es Girasol88",
+      "Canva login: team@example.com, password Sunflower88!",
     ]) {
       const res = await store.add("memory", content);
       expect(res.success).toBe(false);
@@ -126,11 +128,19 @@ describe("MemoryStore", () => {
     expect(store.getEntries("memory")).toEqual(["Billing is on Stripe."]);
   });
 
+  it("checks long runs of spaces quickly", () => {
+    const started = performance.now();
+    expect(containsCredential(`password${" ".repeat(50_000)}x`)).toBe(false);
+    expect(containsCredential(`password${" ".repeat(50_000)}Hunter2!`)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it("still saves notes that only look like credentials", async () => {
     const publishable = ["pk", "live", "51PublicByDesignAbcdef"].join("_");
     for (const content of [
       "Keeps passwords in a password manager.",
       "Password is required for the staging site.",
+      "Password reset links expire after a day.",
       "La clave es la constancia.",
       "pwd: /workspace/app",
       `Stripe publishable key: ${publishable}`,
