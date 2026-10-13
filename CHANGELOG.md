@@ -1,3 +1,14 @@
+## 0.3.6 (2026-10-13)
+
+### 🩹 Fixes
+
+- **core:** catch a labeled password with no separator ([#34](https://github.com/socialrobot-io/agent-kit/pull/34))
+
+### ❤️ Thank You
+
+- Claude Opus 5.5
+- Nicolas Torres
+
 ## 0.3.5 (2026-10-13)
 
 ### 🚀 Features
