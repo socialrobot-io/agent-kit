@@ -1,3 +1,14 @@
+## 0.3.4 (2026-10-13)
+
+### 🩹 Fixes
+
+- empty memory operations, and some-word recall in session_search ([#32](https://github.com/socialrobot-io/agent-kit/pull/32))
+
+### ❤️ Thank You
+
+- Claude Opus 5.5
+- Nicolas Torres
+
 ## 0.3.3 (2026-10-09)
 
 ### 🚀 Features
