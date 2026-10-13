@@ -18,12 +18,12 @@ const STATIC_CREDENTIAL_PATTERNS: RegExp[] = [
 ];
 
 /**
- * A password given with its label: "password: …", "la contraseña es …". The
+ * A password given with its label: "password: …", "password …", "la contraseña es …". The
  * value must have a digit or a symbol, so notes like "password is required"
  * still save. Stripe publishable keys (pk_) are public and not listed.
  */
 const LABELED_PASSWORD =
-  /\b(?:password|passcode|passwd|contraseña)\b\s*(?:is|es|=|:)\s*(?=\S*[\d!@#$%^&*_+=?~])\S{6,}/iu;
+  /\b(?:password|passcode|passwd|contraseña)\b\s*(?:is|es|=|:)?\s*(?=\S*[\d!@#$%^&*_+=?~])\S{6,}/iu;
 
 /**
  * True when text holds a credential a user pasted: an API key or token of a

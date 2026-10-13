@@ -115,6 +115,7 @@ describe("MemoryStore", () => {
       `Stripe key: ${stripeLike("test")}`,
       "Xero password: Hunter2Ledger",
       "La contraseña es Girasol88",
+      "Canva login: team@example.com, password Sunflower88!",
     ]) {
       const res = await store.add("memory", content);
       expect(res.success).toBe(false);
@@ -131,6 +132,7 @@ describe("MemoryStore", () => {
     for (const content of [
       "Keeps passwords in a password manager.",
       "Password is required for the staging site.",
+      "Password reset links expire after a day.",
       "La clave es la constancia.",
       "pwd: /workspace/app",
       `Stripe publishable key: ${publishable}`,
