@@ -11,6 +11,20 @@ tenant. It lives in two files on that tenant’s volume:
 Limits are character counts, not tokens. If a store is full, the write is
 rejected. Consolidate first, then add in one batch.
 
+After an `add`, the response lists up to three saved entries on the same
+subject (two or more shared words of four letters or more) in
+`related_entries`. The model can then replace or remove an old entry that the
+new one changes, in the same turn. When nothing is related, the response is
+the plain `Entry added.`
+
+Memory does not keep secrets. A write fails when its text has an API key or
+token of a known shape (OpenAI, Stripe secret and restricted keys, GitHub,
+AWS, Google, Slack) or a password with its label ("password: ...",
+"contraseña es ...") whose value has a digit or a symbol. Nothing is saved
+and the error tells the model so. Notes that only mention a password
+("password is required") and Stripe publishable keys (`pk_`) still save. Secrets that the host passes in
+`secrets` are still replaced with `***REDACTED***`.
+
 A batch is a non-empty `operations` array. An empty array is ignored, so a
 call with `action`, `content` and `operations: []` is a single write. Models
 that use strict tool calling send every optional field this way.

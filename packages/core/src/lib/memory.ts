@@ -25,7 +25,7 @@
 
 import { withExclusive, type ExclusiveFs } from "./exclusive.js";
 import { firstThreatMessage } from "./threats.js";
-import { scrubSecrets } from "./scrub-secrets.js";
+import { containsCredential, scrubSecrets } from "./scrub-secrets.js";
 
 export const ENTRY_DELIMITER = "\n§\n";
 
@@ -109,6 +109,13 @@ export class MemoryStore {
 
   private scrub(content: string): string {
     return scrubSecrets(content, this.secrets);
+  }
+
+  /** Memory never keeps credentials a user pasted; see containsCredential. */
+  private credentialError(content: string): string | null {
+    return containsCredential(content)
+      ? "Memory can't hold secrets (API keys, tokens, passwords). Nothing was saved. Don't save them; suggest a password manager."
+      : null;
   }
 
   private pathFor(target: MemoryTarget): string {
@@ -269,6 +276,8 @@ export class MemoryStore {
   }
 
   async add(target: MemoryTarget, content: string): Promise<MemoryResult> {
+    const credential = this.credentialError(content);
+    if (credential) return { success: false, error: credential };
     content = this.scrub(content.trim());
     if (!content) return { success: false, error: "Content cannot be empty." };
 
@@ -303,14 +312,28 @@ export class MemoryStore {
       });
     }
 
+    const related = relatedEntries(entries, content);
     entries.push(content);
     this.setEntries(target, entries);
     await this.persist(target);
-    return this.successResponse(target, "Entry added.");
+    const response = this.successResponse(target, "Entry added.");
+    if (related.length === 0) return response;
+    return {
+      ...response,
+      // Not done yet: the model should check the related entries first.
+      done: false,
+      message:
+        "Entry added. related_entries are saved entries on the same subject. " +
+        "If the new entry repeats one, remove one of the two now. If it changes one, " +
+        "remove the old one now. If neither, you are done.",
+      related_entries: related,
+    };
   }
 
   async replace(target: MemoryTarget, oldText: string, newContent: string): Promise<MemoryResult> {
     oldText = oldText.trim();
+    const credential = this.credentialError(newContent);
+    if (credential) return { success: false, error: credential };
     newContent = this.scrub(newContent.trim());
     if (!oldText) return { success: false, error: "old_text cannot be empty." };
     if (!newContent) {
@@ -436,6 +459,8 @@ export class MemoryStore {
     for (let i = 0; i < operations.length; i++) {
       const op = operations[i] ?? {};
       const label = `Operation ${i + 1}/${operations.length} (${op.action})`;
+      const credential = op.action === "remove" ? null : this.credentialError(op.content ?? "");
+      if (credential) return this.batchError(target, `${label}: ${credential}`);
       if (op.action === "add") {
         const content = this.scrub((op.content ?? "").trim());
         if (!content) return this.batchError(target, `${label}: content cannot be empty.`);
@@ -501,6 +526,41 @@ export class MemoryStore {
   getEntries(target: MemoryTarget): string[] {
     return [...this.entriesFor(target)];
   }
+}
+
+/** Most saved entries a successful add points back to. */
+const MAX_RELATED_ENTRIES = 3;
+
+/** Words that say what an entry is about: four characters or more. */
+function topicWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((word) => word.length >= 4),
+  );
+}
+
+/**
+ * Saved entries that share at least two topic words with `content`, most
+ * shared first. A model that changes a preference often adds the new line
+ * ("On Instagram: use no hashtags") and leaves the old one ("On Instagram:
+ * 3 to 5 hashtags"). Listing the related lines after the add lets it replace
+ * or remove the old one in the same turn.
+ *
+ * Deliberate difference from upstream memory_tool.py, whose success response
+ * lists no entries so the model does not re-edit memory that is already
+ * right. This lists only overlapping lines, and only when there are some.
+ */
+export function relatedEntries(entries: readonly string[], content: string): string[] {
+  const words = topicWords(content);
+  return entries
+    .filter((entry) => entry !== content)
+    .map((entry) => ({ entry, shared: [...topicWords(entry)].filter((word) => words.has(word)).length }))
+    .filter((item) => item.shared >= 2)
+    .sort((a, b) => b.shared - a.shared)
+    .slice(0, MAX_RELATED_ENTRIES)
+    .map((item) => item.entry);
 }
 
 /**

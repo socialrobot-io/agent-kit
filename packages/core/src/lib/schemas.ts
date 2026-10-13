@@ -18,7 +18,9 @@ const MEMORY_SCHEMA_LEAD =
   "Answer 'who am I' / 'what do you remember' from the USER PROFILE / MEMORY blocks " +
   "in the system prompt. Do NOT add entries that say you don't know the user.\n\n" +
   "ACTIONS: add, replace, remove (mutate). Optional list = read live entries without " +
-  "changing the frozen prompt. Prefer an 'operations' array for multiple writes: " +
+  "changing the frozen prompt. To change a saved entry, use replace with old_text; " +
+  "never add an entry that contradicts or repeats a saved one. " +
+  "Prefer an 'operations' array for multiple writes: " +
   "each item is {action, content?, old_text?}; batches apply atomically and the char " +
   "limit is checked only on the FINAL result.\n\n" +
   "WHEN TO WRITE: the user states a preference, correction, or personal detail, or you " +

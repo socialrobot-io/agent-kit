@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { MemoryStore, ENTRY_DELIMITER, applyMemoryArgs } from "./memory.js";
+import { MemoryStore, ENTRY_DELIMITER, applyMemoryArgs, relatedEntries } from "./memory.js";
 import { InMemoryFs } from "./in-memory-fs.js";
 
 describe("MemoryStore", () => {
@@ -81,6 +81,62 @@ describe("MemoryStore", () => {
     ]);
     expect(res.success).toBe(true);
     expect(store.getEntries("memory")).toEqual(["new consolidated entry"]);
+  });
+
+  it("points to saved entries on the same subject after an add", async () => {
+    await store.add("memory", "On Instagram: put 3 to 5 hashtags at the end.");
+    await store.add("memory", "Project sells soy candles.");
+    const res = await store.add("memory", "On Instagram: use no hashtags.");
+    expect(res.success).toBe(true);
+    expect(res.related_entries).toEqual(["On Instagram: put 3 to 5 hashtags at the end."]);
+    expect(res.done).toBe(false);
+    expect(res.message).toMatch(/remove the old one/);
+  });
+
+  it("keeps the plain add response when nothing is related", async () => {
+    await store.add("memory", "Project sells soy candles.");
+    const res = await store.add("user", "User is Maya.");
+    expect(res.message).toBe("Entry added.");
+    expect(res.related_entries).toBeUndefined();
+  });
+
+  it("needs two shared topic words to call entries related", () => {
+    const saved = ["On LinkedIn: links go in the first comment.", "Never use emojis on LinkedIn posts."];
+    expect(relatedEntries(saved, "On LinkedIn: end with a question.")).toEqual([]);
+    expect(relatedEntries(saved, "Emojis are fine on LinkedIn posts now.")).toEqual([
+      "Never use emojis on LinkedIn posts.",
+    ]);
+  });
+
+  it("refuses credentials a user pasted, on every write path", async () => {
+    // Built at runtime so secret scanners don't flag fake keys in the source.
+    const stripeLike = (mode: string) => ["sk", mode, "51EvalOnlyNotARealKey"].join("_");
+    for (const content of [
+      `Stripe key: ${stripeLike("test")}`,
+      "Xero password: Hunter2Ledger",
+      "La contraseña es Girasol88",
+    ]) {
+      const res = await store.add("memory", content);
+      expect(res.success).toBe(false);
+      expect(res.error).toMatch(/can't hold secrets/);
+    }
+    await store.add("memory", "Billing is on Stripe.");
+    expect((await store.replace("memory", "Billing", `Stripe key ${stripeLike("live")}`)).success).toBe(false);
+    expect((await store.applyBatch("memory", [{ action: "add", content: "password = hunter2hunter2" }])).success).toBe(false);
+    expect(store.getEntries("memory")).toEqual(["Billing is on Stripe."]);
+  });
+
+  it("still saves notes that only look like credentials", async () => {
+    const publishable = ["pk", "live", "51PublicByDesignAbcdef"].join("_");
+    for (const content of [
+      "Keeps passwords in a password manager.",
+      "Password is required for the staging site.",
+      "La clave es la constancia.",
+      "pwd: /workspace/app",
+      `Stripe publishable key: ${publishable}`,
+    ]) {
+      expect((await store.add("memory", content)).success).toBe(true);
+    }
   });
 
   it("treats an empty operations array as a single-op call", async () => {
