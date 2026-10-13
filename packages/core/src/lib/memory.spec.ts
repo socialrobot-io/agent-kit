@@ -127,6 +127,13 @@ describe("MemoryStore", () => {
     expect(store.getEntries("memory")).toEqual(["Billing is on Stripe."]);
   });
 
+  it("checks long runs of spaces quickly", async () => {
+    const started = performance.now();
+    const res = await store.add("memory", `password${" ".repeat(50_000)}x`);
+    expect(res.success).toBe(true);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it("still saves notes that only look like credentials", async () => {
     const publishable = ["pk", "live", "51PublicByDesignAbcdef"].join("_");
     for (const content of [
