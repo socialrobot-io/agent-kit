@@ -1,3 +1,14 @@
+## 0.3.5 (2026-10-13)
+
+### 🚀 Features
+
+- **core:** related entries after a memory add, and no secrets in memory ([#33](https://github.com/socialrobot-io/agent-kit/pull/33))
+
+### ❤️ Thank You
+
+- Claude Opus 5.5
+- Nicolas Torres
+
 ## 0.3.4 (2026-10-13)
 
 ### 🩹 Fixes
